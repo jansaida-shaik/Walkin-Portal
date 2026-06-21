@@ -1,9 +1,12 @@
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET environment variable is missing!');
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is missing!');
+  }
+  return secret;
 }
 
 export interface SessionUser {
@@ -21,7 +24,8 @@ export interface SessionUser {
 }
 
 export async function createSession(user: SessionUser): Promise<void> {
-  const token = jwt.sign(user, JWT_SECRET as string, { expiresIn: '7d' });
+  const secret = getJwtSecret();
+  const token = jwt.sign(user, secret, { expiresIn: '7d' });
   const cookieStore = await cookies();
   cookieStore.set('token', token, {
     httpOnly: true,
@@ -38,7 +42,8 @@ export async function getSession(): Promise<SessionUser | null> {
     const token = cookieStore.get('token')?.value;
     if (!token) return null;
 
-    const decoded = jwt.verify(token, JWT_SECRET as string) as SessionUser;
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret) as SessionUser;
     return decoded;
   } catch (err) {
     return null;
