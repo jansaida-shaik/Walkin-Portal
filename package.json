@@ -5,7 +5,7 @@
   "scripts": {
     "predev": "lsof -ti :3000 -ti :8080 | xargs kill -9 2>/dev/null || true",
     "dev": "pnpm --filter walkin-portal-backend dev & next dev -p 8080 --turbopack",
-    "build": "prisma generate && pnpm --filter walkin-portal-backend build && next build",
+    "build": "prisma generate && prisma migrate deploy && prisma db seed && pnpm --filter walkin-portal-backend build && next build",
     "start": "next start -p 8080",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed"
