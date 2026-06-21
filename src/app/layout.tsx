@@ -2,6 +2,7 @@ import './globals.css';
 import { getSession } from '../lib/auth';
 import Layout from '../components/Layout';
 import { ReactNode } from 'react';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'Walk-In Management Control Center',
@@ -19,6 +20,7 @@ export default async function RootLayout({
     <html lang="en" data-theme="dark" data-scroll-behavior="smooth">
       <body>
         <Layout user={user}>{children}</Layout>
+        <Analytics />
       </body>
     </html>
   );
