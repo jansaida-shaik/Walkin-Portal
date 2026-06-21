@@ -135,14 +135,15 @@ export async function endCounsellingSession(studentId: string, notes: string, fo
   }
 }
 
-export async function uploadSessionAudio(sessionId: string, audioBlob: Blob) {
+export async function uploadSessionAudio(sessionId: string, base64Audio: string) {
   try {
+    const audioBuffer = Buffer.from(base64Audio, 'base64');
     const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/audio`, {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/webm'
       },
-      body: audioBlob
+      body: audioBuffer
     });
 
     const data = await res.json();

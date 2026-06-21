@@ -4,11 +4,6 @@ import { useState } from 'react';
 import { COURSES, COUNTRY_CODES, branches } from '../../lib/constants';
 import { createWalkin } from '../../actions/walkinActions';
 
-const qrData = encodeURIComponent(
-  typeof window !== 'undefined' ? window.location.href : 'http://localhost:8080/walkin-form'
-);
-const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}`;
-
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '11px 14px',
@@ -156,7 +151,10 @@ export default function WalkinForm() {
           borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)',
         }}>
           <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('http://localhost:8080/walkin-form')}&bgcolor=ffffff&color=000000`}
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+              (typeof window !== 'undefined' ? window.location.href : '') ||
+              `${process.env.NEXT_PUBLIC_APP_URL || ''}/walkin-form`
+            )}&bgcolor=ffffff&color=000000`}
             alt="Walkin form QR code"
             style={{ width: 120, height: 120, borderRadius: '8px' }}
           />

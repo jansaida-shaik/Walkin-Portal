@@ -623,13 +623,37 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
     // Upload recording
     if (audioBlob && ses?.id && !micWarning) {
       showToast('Uploading session recording...', 'info');
-      const uploadRes = await uploadSessionAudio(ses.id, audioBlob);
-      if (uploadRes.success) {
-        showToast('🪄 Analyzing recording & generating AI summary...', 'info');
-        await analyzeSessionAudio(ses.id);
+      
+      // Convert blob to base64 on the client before calling server action
+      let base64Audio = '';
+      try {
+        base64Audio = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            // Strip "data:audio/webm;base64," prefix
+            const base64 = dataUrl.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(audioBlob!);
+        });
+      } catch (err) {
+        console.error('Error converting audio blob to base64:', err);
+      }
+
+      if (base64Audio) {
+        const uploadRes = await uploadSessionAudio(ses.id, base64Audio);
+        if (uploadRes.success) {
+          showToast('🪄 Analyzing recording & generating AI summary...', 'info');
+          await analyzeSessionAudio(ses.id);
+        } else {
+          console.error('Audio upload failed:', uploadRes.error);
+          showToast('⚠️ Recording upload failed, but saving session...', 'info');
+          await new Promise(r => setTimeout(r, 1500));
+        }
       } else {
-        console.error('Audio upload failed:', uploadRes.error);
-        showToast('⚠️ Recording upload failed, but saving session...', 'info');
+        showToast('⚠️ Failed to prepare recording for upload.', 'error');
         await new Promise(r => setTimeout(r, 1500));
       }
     }
