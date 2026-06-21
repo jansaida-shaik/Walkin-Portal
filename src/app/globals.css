@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Centralized scalable stylesheets */
+@import "../styles/tokens.css";
+@import "../styles/typography.css";
+@import "../styles/layout.css";
+@import "../styles/navigation.css";
+@import "../styles/components.css";
+@import "../styles/utilities.css";
+@import "../styles/login.css";

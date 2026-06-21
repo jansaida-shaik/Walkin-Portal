@@ -1,0 +1,223 @@
+/* Login Page Specific Styling */
+
+.login-split {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background: var(--bg);
+}
+
+/* Left panel (containing logo) - called .login-right in page.tsx */
+.login-right {
+  flex: 1.2;
+  background: linear-gradient(135deg, rgba(9, 13, 22, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.login-right::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.login-right-content {
+  max-width: 420px;
+  text-align: center;
+  z-index: 1;
+}
+
+.login-org-logo {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: var(--space-8);
+  filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.25));
+}
+
+.login-right h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.02em;
+}
+
+.login-right p {
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+/* Right form panel - called .login-left in page.tsx */
+.login-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-12);
+  background: var(--surface);
+  position: relative;
+}
+
+.login-left::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.login-left-inner {
+  width: 100%;
+  max-width: 380px;
+  z-index: 1;
+}
+
+.login-heading {
+  margin-bottom: var(--space-8);
+}
+
+.login-heading h1 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.03em;
+}
+
+.login-heading p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.login-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon-svg {
+  position: absolute;
+  left: 16px;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  pointer-events: none;
+  transition: var(--transition-fast);
+}
+
+.input-wrapper input {
+  padding-left: 48px;
+  padding-right: 48px;
+  height: 48px;
+  font-size: 0.95rem;
+}
+
+.input-wrapper input:focus + .input-icon-svg {
+  color: var(--primary);
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.password-toggle:hover {
+  color: var(--text);
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.login-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  box-shadow: 0 4px 16px var(--primary-glow);
+  transition: var(--transition);
+  letter-spacing: 0.01em;
+  margin-top: var(--space-2);
+}
+
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--primary-glow);
+  filter: brightness(1.08);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .login-split {
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+  }
+
+  .login-right {
+    flex: none;
+    padding: var(--space-10) var(--space-6);
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .login-left {
+    flex: 1;
+    padding: var(--space-10) var(--space-6);
+  }
+}

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+**/.next/
+**/next-env.d.ts
+
+# TypeScript build output
+**/dist/
+
+# Local database files
+**/backend/data/
+**/data/
+*.json.bak
+
+# OS metadata
+**/.DS_Store
+**/Thumbs.db
+
+# Environment variables
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Logs
+**/logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Editor directories and files
+**/.vscode/
+**/.idea/
+**/*.suo
+**/*.ntvs*
+**/*.njsproj
+**/*.sln
+**/*.sw?

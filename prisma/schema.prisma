@@ -1,0 +1,186 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Users
+model User {
+  id           String            @id @default(cuid())
+  username     String            @unique
+  password     String
+  name         String
+  email        String            @unique
+  roleId       String            // e.g. role_super_admin, role_counselor, role_admin, role_manager, role_frontdesk
+  branchId     String
+  locationId   String
+  departmentId String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+
+  // Relationships
+  counselorProfile CounselorProfile?
+  sessions         CounselingSession[] @relation("CounselorSessions")
+
+  @@index([branchId, deletedAt])
+}
+
+// 2. Counselor Profile (1-to-1 extension of User when roleId = role_counselor)
+model CounselorProfile {
+  id                String    @id // Maps directly to User.id
+  user              User      @relation(fields: [id], references: [id], onDelete: Cascade)
+  availability      String[]  // Array of hours e.g., ["09:00", "12:00"]
+  status            String    // Available, Busy, Offline, Break
+  assignedStudentId String?   @unique
+  assignedStudent   Student?  @relation("CounselorStudent", fields: [assignedStudentId], references: [id])
+  deletedAt         DateTime?
+  version           Int       @default(0)
+
+  @@index([status, deletedAt])
+}
+
+// 3. Students (Walk-in registry logs)
+model Student {
+  id               String            @id @default(cuid())
+  name             String
+  phone            String            @unique
+  email            String?           @unique
+  course           String
+  branchId         String            @default("branch_jntu1")
+  branchName       String            @default("1st Campus (JNTU-HYD)")
+  walkinDate       DateTime          @default(now())
+  status           String            // Waiting, Assigned, In Session, Completed, Follow-up, No Show, Cancelled
+  remarks          String?           @db.Text
+  source           String            @default("Walk-in")
+  details          Json?             // Extra data fields stored as Json
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  version          Int               @default(0)
+
+  // Relationships
+  sessions         CounselingSession[]
+  queueEntry       QueueEntry?
+  assignedCounselor CounselorProfile?   @relation("CounselorStudent")
+
+  @@index([branchId, status, deletedAt])
+  @@index([createdAt, deletedAt])
+}
+
+// 4. Queue Entries (Active Tokens)
+model QueueEntry {
+  id        String    @id // Maps to Token ID (integer converted to string, or cuid)
+  studentId String    @unique
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  position  Int
+  status    String    // active, completed
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([status, deletedAt])
+}
+
+// 5. Counseling Sessions
+model CounselingSession {
+  id             String    @id @default(cuid())
+  studentId      String
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  counselorId    String
+  counselor      User      @relation("CounselorSessions", fields: [counselorId], references: [id], onDelete: Cascade)
+  startTime      DateTime?
+  endTime        DateTime?
+  duration       Int?      // Duration in seconds
+  status         String    // ASSIGNED, IN_SESSION, COMPLETED, CANCELLED
+  notes          String?   @db.Text
+  followUpStatus String?
+  audioUrl       String?
+  transcript     String?   @db.Text
+  summary        String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([studentId, counselorId, status, deletedAt])
+  @@index([createdAt, deletedAt])
+}
+
+// 6. Audit Logs
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  module    String
+  oldValue  String?  @db.Text
+  newValue  String?  @db.Text
+  timestamp DateTime @default(now())
+}
+
+// 10. Failed / Duplicate Walk-in Submissions
+model FailedWalkin {
+  id         String   @id @default(cuid())
+  name       String
+  phone      String
+  email      String?
+  course     String
+  branchId   String
+  branchName String
+  source     String   @default("Walk-in Form")
+  reason     String   // "Duplicate phone" | "Duplicate email"
+  details    Json?    // full form payload for reference
+  createdAt  DateTime @default(now())
+
+  @@index([phone])
+  @@index([email])
+  @@index([createdAt])
+}
+
+// 7. Webhook Subscriptions
+model WebhookSubscription {
+  id         String    @id @default(cuid())
+  name       String
+  url        String    @db.Text
+  method     String    @default("POST")
+  events     String[]  // Array of webhook trigger events
+  conditions Json      @default("[]") // Array of conditions
+  enabled    Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+}
+
+// 8. Webhook Global Config
+model WebhookConfig {
+  id                  Int    @id @default(1)
+  customHeaders       Json   @default("[]")
+  globalPayloadFields Json   @default("[]")
+  signingSecret       String @default("")
+  maxRetries          Int    @default(1)
+  retryDelayMs        Int    @default(2000)
+  timeoutMs           Int    @default(5000)
+}
+
+// 9. Webhook Delivery Logs
+model WebhookLog {
+  id                String   @id @default(cuid())
+  subscriptionId    String
+  subscriptionName  String
+  url               String   @db.Text
+  method            String
+  event             String
+  conditionsMatched Boolean
+  conditionDetails  String   @db.Text
+  payload           Json?
+  status            String   // Success, Failure, Skipped
+  statusCode        Int?
+  response          String   @db.Text
+  retryCount        Int      @default(0)
+  triggeredAt       DateTime @default(now())
+  durationMs        Int
+
+  @@index([subscriptionId, status, triggeredAt])
+}

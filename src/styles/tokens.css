@@ -1,0 +1,97 @@
+:root {
+  /* ─── Dark Mode (Obsidian) ────────────────────────────── */
+  --bg: #030712;
+  --surface: #090d16;
+  --surface-alt: #0f172a;
+  --card-bg: rgba(9, 13, 22, 0.9);
+  --card-glow: rgba(99, 102, 241, 0.03);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.14);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+
+  /* Brand */
+  --primary: #6366f1;
+  --primary-strong: #4f46e5;
+  --primary-glow: rgba(99, 102, 241, 0.15);
+  --accent: #a855f7;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --panel-gradient: linear-gradient(145deg, #0f172a 0%, #070a13 100%);
+
+  /* Status */
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-glow: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.15);
+  --info: #06b6d4;
+  --info-glow: rgba(6, 182, 212, 0.15);
+
+  /* ─── Spacing ──────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ─── Radii ────────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* ─── Motion ───────────────────────────────────────────── */
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─── Z-Index ──────────────────────────────────────────── */
+  --z-base: 0;
+  --z-content: 10;
+  --z-header: 100;
+  --z-sidebar: 200;
+  --z-dropdown: 1000;
+  --z-popover: 2000;
+  --z-drawer: 5000;
+  --z-modal: 9000;
+  --z-toast: 10000;
+
+  /* ─── Layout ───────────────────────────────────────────── */
+  --content-max-width: 1800px;
+  --workspace-max-width: 100%;
+  --dashboard-max-width: 1800px;
+  --drawer-width: 540px;
+  --sidebar-width: 256px;
+  --sidebar-collapsed-width: 68px;
+}
+
+/* ─── LIGHT THEME — Clean SaaS (Edaca-inspired) ─────────── */
+html[data-theme="light"],
+[data-theme="light"] {
+  /* Page & Surfaces */
+  --bg: #f0f4f9;               /* Light blue-gray page background */
+  --surface: #ffffff;           /* White cards & sidebar */
+  --surface-alt: #f8fafc;       /* Subtle surface variation */
+  --card-bg: #ffffff;
+  --card-glow: rgba(37, 99, 235, 0.04);
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-hover: #c7d2e0;
+
+  /* Typography */
+  --text: #1e293b;
+  --muted: #64748b;
+
+  /* Brand — Clean Blue */
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-glow: rgba(37, 99, 235, 0.1);
+  --accent: #3b82f6;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  --panel-gradient: linear-gradient(145deg, #ffffff 0%, #f0f4f9 100%);
+}
