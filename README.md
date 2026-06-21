@@ -26,5 +26,13 @@ A simple website for generating visitor tokens based on branch, counselor availa
 - `http://localhost:8080/walkin-form` — student walkin form with QR code
 
 ## Customize
-- Edit `backend/server.js` to add branches, locations, counselors, or webhook logic.
-- Edit `frontend/pages/*.js` and `frontend/styles/globals.css` to change the portal UI.
+- Edit backend/server.js to add branches, locations, counselors, or webhook logic.
+- Edit frontend/pages/*.js and frontend/styles/globals.css to change the portal UI.
+
+## Production Deployment (Vercel)
+Ensure the following environment variables are set in the Vercel Project Settings:
+- `DATABASE_URL`: Production PostgreSQL connection string (e.g. `postgresql://...`).
+- `BACKEND_URL`: The base URL of the backend API (e.g. `https://[your-app].vercel.app/_/backend`).
+- `JWT_SECRET`: Secret key for session token signing (should match backend).
+- `NEXT_PUBLIC_APP_URL`: The frontend public URL (for QR code generation).
+
