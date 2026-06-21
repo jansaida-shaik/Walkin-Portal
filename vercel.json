@@ -6,7 +6,6 @@
     },
     "backend": {
       "entrypoint": "backend/src/index.ts",
-      "runtime": "@vercel/node",
       "routePrefix": "/_/backend"
     }
   }
