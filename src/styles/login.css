@@ -221,3 +221,13 @@
     padding: var(--space-10) var(--space-6);
   }
 }
+
+/* Hide browser's native reveal/clear buttons inside password fields to avoid double icon indicators */
+input::-ms-reveal,
+input::-ms-clear,
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

@@ -25,11 +25,16 @@ export async function login(state: any, formData: FormData) {
       body: JSON.stringify({ username, password })
     });
 
-    const data = await res.json();
     if (!res.ok) {
-      return { error: data.error || 'Invalid username or password.' };
+      try {
+        const errorData = await res.json();
+        return { error: errorData.error || 'Invalid username or password.' };
+      } catch {
+        return { error: `Backend API server returned an error (status ${res.status}). Please ensure your BACKEND_URL environment variable is set correctly and the backend is running.` };
+      }
     }
 
+    const data = await res.json();
     const sessionUser: SessionUser = data.user;
     await createSession(sessionUser);
 
