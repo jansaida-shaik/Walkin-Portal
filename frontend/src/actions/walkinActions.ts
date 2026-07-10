@@ -2,11 +2,14 @@
 
 import { validateSession } from '../lib/auth';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8080';
+};
 
 export async function getStudents() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/walkins`, { cache: 'no-store' });
+    const res = await fetch(`${getBaseUrl()}/api/walkins`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch walkins');
     return await res.json();
   } catch (err) {
@@ -26,111 +29,53 @@ export async function createWalkin(state: any, formData: FormData) {
   const remarks     = formData.get('remarks') as string || '';
   const source      = formData.get('source') as string || 'Walk-in';
 
-  if (!studentName || !phone || !branchId || !course) {
-    return { error: 'Name, phone, branch, and course are required.' };
-  }
-  if (!email) {
-    return { error: 'Email address is required.' };
-  }
+  if (!studentName || !phone || !branchId || !course) return { error: 'Name, phone, branch, and course are required.' };
+  if (!email) return { error: 'Email address is required.' };
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/walkins`, {
+    const res = await fetch(`${getBaseUrl()}/api/walkins`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        studentName,
-        phone,
-        email,
-        course,
-        branchId,
-        remarks,
-        source
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentName, phone, email, course, branchId, remarks, source }),
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to check in student.' };
-    }
-
-    return {
-      success: true,
-      walkin: data.walkin,
-      token: data.token
-    };
+    if (!res.ok) return { error: data.error || 'Failed to check in student.' };
+    return { success: true, walkin: data.walkin, token: data.token };
   } catch (err: any) {
-    console.error('createWalkin action error:', err);
     return { error: err.message || 'Failed to check in student.' };
   }
 }
 
 export async function startCounsellingSession(studentId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/sessions/start`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ studentId })
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId }) });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to start session.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to start session.' };
     return { success: true, session: data.session };
   } catch (err: any) {
-    console.error('startSession error:', err);
     return { error: err.message || 'Failed to start session.' };
   }
 }
 
 export async function cancelCounsellingSession(studentId: string) {
   try {
-    // Only allow super admins to cancel the start of counselling
     await validateSession(['role_super_admin']);
-
-    const res = await fetch(`${BACKEND_URL}/api/sessions/cancel`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ studentId })
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId }) });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to cancel session.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to cancel session.' };
     return { success: true, session: data.session };
   } catch (err: any) {
-    console.error('cancelCounsellingSession error:', err);
     return { error: err.message || 'Failed to cancel session.' };
   }
 }
 
 export async function endCounsellingSession(studentId: string, notes: string, followUpStatus: string, transcript?: string, summary?: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/sessions/end`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ studentId, notes, followUpStatus, transcript, summary })
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/end`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, notes, followUpStatus, transcript, summary }) });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to complete session.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to complete session.' };
     return { success: true, session: data.session };
   } catch (err: any) {
-    console.error('endSession error:', err);
     return { error: err.message || 'Failed to complete session.' };
   }
 }
@@ -138,94 +83,51 @@ export async function endCounsellingSession(studentId: string, notes: string, fo
 export async function uploadSessionAudio(sessionId: string, base64Audio: string) {
   try {
     const audioBuffer = Buffer.from(base64Audio, 'base64');
-    const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/audio`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'audio/webm'
-      },
-      body: audioBuffer
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/${sessionId}/audio`, { method: 'POST', headers: { 'Content-Type': 'audio/webm' }, body: audioBuffer });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to upload session audio.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to upload session audio.' };
     return { success: true, audioUrl: data.audioUrl, session: data.session };
   } catch (err: any) {
-    console.error('uploadSessionAudio error:', err);
     return { error: err.message || 'Failed to upload session audio.' };
   }
 }
 
 export async function analyzeSessionAudio(sessionId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/${sessionId}/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to analyze audio.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to analyze audio.' };
     return { success: true, session: data.session };
   } catch (err: any) {
-    console.error('analyzeSessionAudio error:', err);
     return { error: err.message || 'Failed to analyze audio.' };
   }
 }
 
 export async function updateStudentDetails(studentId: string, patch: any) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/walkins/${studentId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(patch)
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/walkins/${studentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to update student.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to update student.' };
     return { success: true, student: data.student };
   } catch (err: any) {
-    console.error('updateStudentDetails error:', err);
     return { error: err.message || 'Failed to update student.' };
   }
 }
 
 export async function saveSessionNotes(studentId: string, notes: string, followUpStatus: string, summary?: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/sessions/notes`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ studentId, notes, followUpStatus, summary })
-    });
-
+    const res = await fetch(`${getBaseUrl()}/api/sessions/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, notes, followUpStatus, summary }) });
     const data = await res.json();
-    if (!res.ok) {
-      return { error: data.error || 'Failed to save session notes.' };
-    }
-
+    if (!res.ok) return { error: data.error || 'Failed to save session notes.' };
     return { success: true, session: data.session };
   } catch (err: any) {
-    console.error('saveSessionNotes error:', err);
     return { error: err.message || 'Failed to save session notes.' };
   }
 }
 
 export async function getFailedWalkins() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/failed-walkins`, { cache: 'no-store' });
+    const res = await fetch(`${getBaseUrl()}/api/failed-walkins`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch failed walkins');
     return await res.json();
   } catch (err) {
