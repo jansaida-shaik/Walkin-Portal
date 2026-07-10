@@ -32,8 +32,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "backend"
+    "node_modules"
   ],
   "ts-node": {
     "compilerOptions": {
