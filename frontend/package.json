@@ -7,12 +7,15 @@
     "build": "prisma generate && next build",
     "start": "next start -p 8080",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "6.4.1",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.5",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.6",
     "pg": "^8.21.0",
@@ -28,12 +31,9 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
-    "prisma": "6.4.1",
+    "prisma": "^7.0.0",
     "tailwindcss": "^4.3.0",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
     "typescript": "^6.0.3"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
   }
 }

@@ -9,6 +9,9 @@ node_modules/
 # TypeScript build output
 **/dist/
 
+# Prisma generated client
+**/src/generated/
+
 # Local database files
 **/backend/data/
 **/data/

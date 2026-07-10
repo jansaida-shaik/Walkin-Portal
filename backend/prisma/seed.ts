@@ -1,4 +1,5 @@
-import { PrismaClient } from '../src/generated/prisma/client/client';import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
