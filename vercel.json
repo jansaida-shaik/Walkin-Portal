@@ -1,12 +1,5 @@
 {
-  "experimentalServices": {
-    "frontend": {
-      "routePrefix": "/",
-      "framework": "nextjs"
-    },
-    "backend": {
-      "entrypoint": "backend/src/index.ts",
-      "routePrefix": "/_/backend"
-    }
-  }
+  "buildCommand": "pnpm install && pnpm --filter walkin-portal-frontend build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs"
 }
