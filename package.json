@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "lsof -ti :3000 -ti :8080 | xargs kill -9 2>/dev/null || true",
-    "dev": "pnpm --filter walkin-portal-backend dev & pnpm --filter walkin-portal-frontend dev",
-    "build": "pnpm --filter walkin-portal-backend build && pnpm --filter walkin-portal-frontend build",
+    "predev": "lsof -ti :8080 | xargs kill -9 2>/dev/null || true",
+    "dev": "pnpm --filter walkin-portal-frontend dev",
+    "build": "pnpm --filter walkin-portal-frontend build",
     "start": "pnpm --filter walkin-portal-frontend start"
   }
 }
