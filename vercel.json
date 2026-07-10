@@ -1,5 +1,6 @@
 {
-  "buildCommand": "pnpm install && pnpm --filter walkin-portal-frontend build",
-  "outputDirectory": "frontend/.next",
-  "framework": "nextjs"
+  "buildCommand": "pnpm install && pnpm --filter walkin-portal-backend build && pnpm --filter walkin-portal-frontend build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "installCommand": "pnpm install"
 }
