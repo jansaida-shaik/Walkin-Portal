@@ -1,9 +1,6 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.ts"
-    }
-  ]
+  "buildCommand": "cd apps/frontend && pnpm install && pnpm run build",
+  "outputDirectory": "apps/frontend/.next",
+  "framework": "nextjs"
 }
