@@ -4,14 +4,14 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '@/lib/db';
 import { getBranchName, getDepartment, getLocation, getRole } from '@/lib/constants';
 
-function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('FATAL: JWT_SECRET environment variable is missing!');
-  return secret;
-}
-const JWT_SECRET = getJwtSecret();
-
 export async function POST(req: NextRequest) {
+  // Read JWT_SECRET inside the handler — never at module top level
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET environment variable is not set');
+    return NextResponse.json({ error: 'Server configuration error. Please contact administrator.' }, { status: 500 });
+  }
+
   try {
     const { username, password } = await req.json();
 

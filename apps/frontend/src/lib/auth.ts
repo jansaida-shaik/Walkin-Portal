@@ -4,7 +4,9 @@ import jwt from 'jsonwebtoken';
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('FATAL: JWT_SECRET environment variable is missing!');
+    // Log the error but don't crash — getSession will return null gracefully
+    console.error('WARNING: JWT_SECRET environment variable is not set. All sessions will be invalid.');
+    return 'MISSING_SECRET_PLACEHOLDER';
   }
   return secret;
 }
