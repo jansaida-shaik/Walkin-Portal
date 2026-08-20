@@ -95,8 +95,7 @@ export default function Layout({ children, user }: LayoutProps) {
               <img
                 src="/Complete website logo.png"
                 alt="Organization Logo"
-                className="sidebar-logo-full"
-                className="max-h-9 w-auto"
+                className="sidebar-logo-full max-h-9 w-auto"
               />
             ) : (
               <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-gradient)] flex items-center justify-center font-black text-white text-[0.95rem] shrink-0 tracking-tight">C</div>
@@ -159,13 +158,12 @@ export default function Layout({ children, user }: LayoutProps) {
             <div className="sidebar-footer">
               <button
                 type="button"
-                className="outline-btn"
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className={`outline-btn w-full h-9 min-h-9 px-2.5 flex items-center gap-2 text-[0.8rem] font-bold ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                 title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease', flexShrink: 0 }}>
+                  className={`shrink-0 transition-transform duration-250 ease-in-out ${sidebarCollapsed ? 'rotate-180' : ''}`}>
                   <path d="M15 18l-6-6 6-6" />
                 </svg>
                 {!sidebarCollapsed && <span>Collapse</span>}

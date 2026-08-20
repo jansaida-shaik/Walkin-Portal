@@ -361,31 +361,31 @@ export default function DashboardClient({
   };
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+    <section className="flex flex-col gap-6">
       {/* ─── Control Center Header ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <h1 className="page-title flex items-center gap-2">
             Operations Control Center
-            <span style={{ fontSize: '0.8rem', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
+            <span className="text-[0.8rem] bg-indigo-500/10 text-[var(--primary)] px-2.5 py-1 rounded-md font-bold">
               Live Telemetry
             </span>
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+          <p className="text-muted text-[0.88rem] mt-1">
             Role Context: <strong>{user?.role || 'Guest'}</strong> | Branch ID: <strong>{user?.branchId || 'All'}</strong>
           </p>
         </div>
 
         {/* Dynamic header toggles based on role */}
         {isCounselor && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <label htmlFor="availability-status" style={{ fontSize: '0.84rem', color: 'var(--muted)', fontWeight: 600, marginBottom: 0 }}>My Availability Status:</label>
+          <div className="flex items-center gap-3">
+            <label htmlFor="availability-status" className="text-[0.84rem] text-[var(--muted)] font-semibold mb-0">My Availability Status:</label>
             <select
               id="availability-status"
               aria-label="My Availability Status"
               value={counselorStatus}
               onChange={(e) => handleUpdateAvailability(e.target.value)}
-              style={{ width: 'auto', background: 'var(--surface-alt)', border: '1px solid var(--border)', padding: '6px 12px', fontSize: '0.82rem', height: '36px', borderRadius: 'var(--radius-sm)' }}
+              className="w-auto bg-[var(--surface-alt)] border border-[var(--border)] px-3 py-1.5 text-[0.82rem] h-9 rounded-sm"
             >
               <option value="Available">🟢 Available</option>
               <option value="Busy">🔴 Busy</option>
@@ -400,9 +400,9 @@ export default function DashboardClient({
             type="button"
             className="primary-btn"
             onClick={() => router.push('/walkins')}
-            style={{ height: '38px', minHeight: '38px', fontSize: '0.82rem', padding: '0 16px' }}
+            className="h-[38px] min-h-[38px] text-[0.82rem] px-4"
           >
-            <span aria-hidden="true" style={{ marginRight: '4px' }}>➕</span> Check-In Walk-in
+            <span aria-hidden="true" className="mr-1">➕</span> Check-In Walk-in
           </button>
         )}
       </div>
@@ -412,14 +412,14 @@ export default function DashboardClient({
         {isFrontDesk && (
           <>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}>🎫</div>
+              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">🎫</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Waiting Students</span>
                 <span className="ops-metric-compact-value">{waitingStudents.length}</span>
               </div>
             </div>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--success-glow)', color: 'var(--success)' }}>👥</div>
+              <div className="ops-metric-compact-icon bg-[var(--success-glow)] text-[var(--success)]">👥</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Available Counselors</span>
                 <span className="ops-metric-compact-value">{counselors.filter(c => c.status === 'Available').length}</span>
@@ -431,14 +431,14 @@ export default function DashboardClient({
         {isCounselor && (
           <>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--warning-glow)', color: 'var(--warning)' }}>🎙️</div>
+              <div className="ops-metric-compact-icon bg-[var(--warning-glow)] text-[var(--warning)]">🎙️</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">My Active Sessions</span>
                 <span className="ops-metric-compact-value">{myStudents.filter(w => w.status === 'In Session').length}</span>
               </div>
             </div>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}>⏳</div>
+              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">⏳</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">My Assigned Queue</span>
                 <span className="ops-metric-compact-value">{myStudents.filter(w => w.status === 'Assigned').length}</span>
@@ -449,15 +449,15 @@ export default function DashboardClient({
 
         {isManager && (
           <>
-            <div className="ops-metric-compact" style={{ borderLeft: slaAlerts.filter(a => a.type === 'breach').length > 0 ? '3px solid var(--danger)' : 'none' }}>
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--danger-glow)', color: 'var(--danger)' }}>🚨</div>
+            <div className="ops-metric-compact" className={slaAlerts.filter(a => a.type === 'breach').length > 0 ? 'border-l-[3px] border-[var(--danger)]' : ''}>
+              <div className="ops-metric-compact-icon bg-[var(--danger-glow)] text-[var(--danger)]">🚨</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Critical SLA Alerts</span>
                 <span className="ops-metric-compact-value">{slaAlerts.filter(a => a.type === 'breach').length}</span>
               </div>
             </div>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--warning-glow)', color: 'var(--warning)' }}>⚠️</div>
+              <div className="ops-metric-compact-icon bg-[var(--warning-glow)] text-[var(--warning)]">⚠️</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Active Warnings</span>
                 <span className="ops-metric-compact-value">{slaAlerts.filter(a => a.type === 'warning').length}</span>
@@ -469,19 +469,19 @@ export default function DashboardClient({
         {isAdmin && (
           <>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--success-glow)', color: 'var(--success)' }}>⚡</div>
+              <div className="ops-metric-compact-icon bg-[var(--success-glow)] text-[var(--success)]">⚡</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">System State</span>
-                <span className="ops-metric-compact-value" style={{ fontSize: '1rem', color: dbLatency !== null ? 'var(--success)' : 'var(--muted)', fontWeight: 800 }}>
+                <span className={`ops-metric-compact-value text-base font-extrabold ${dbLatency !== null ? "text-[var(--success)]" : "text-[var(--muted)]"}`}>
                   {dbLatency !== null ? `Healthy (${dbLatency}ms)` : 'Unavailable'}
                 </span>
               </div>
             </div>
             <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon" style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}>🪝</div>
+              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">🪝</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Webhooks Status</span>
-                <span className="ops-metric-compact-value" style={{ fontSize: '1rem', color: webhookStatus !== null ? 'var(--primary)' : 'var(--muted)', fontWeight: 800 }}>
+                <span className={`ops-metric-compact-value text-base font-extrabold ${webhookStatus !== null ? "text-[var(--primary)]" : "text-[var(--muted)]"}`}>
                   {webhookStatus !== null ? webhookStatus : 'Unavailable'}
                 </span>
               </div>
@@ -491,7 +491,7 @@ export default function DashboardClient({
 
         {/* Global base indicators */}
         <div className="ops-metric-compact">
-          <div className="ops-metric-compact-icon" style={{ background: 'var(--border)', color: 'var(--text)' }}>🎫</div>
+          <div className="ops-metric-compact-icon bg-[var(--border)] text-[var(--text)]">🎫</div>
           <div className="ops-metric-compact-details">
             <span className="ops-metric-compact-label">Checked-In Today</span>
             <span className="ops-metric-compact-value">{walkins.length}</span>
@@ -506,9 +506,9 @@ export default function DashboardClient({
         <div className="ops-card">
           <div className="ops-card-header">
             <h2>Active Queue Board</h2>
-            <span style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 700 }}>Total: {activeQueue.length}</span>
+            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Total: {activeQueue.length}</span>
           </div>
-          <div tabIndex={0} role="region" aria-label="Active Queue Board List" style={{ flex: 1, overflowY: 'auto', maxHeight: '520px', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} className="scroller">
+          <div tabIndex={0} role="region" aria-label="Active Queue Board List" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-2 scroller">
             {activeQueue.length > 0 ? (
               activeQueue.map((w) => {
                 const created = new Date(w.walkinDate).getTime();
@@ -521,27 +521,21 @@ export default function DashboardClient({
                 }
 
                 return (
-                  <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div key={w.id} className="flex justify-between items-center p-3 border border-[var(--border)] rounded-sm bg-[var(--surface-alt)] shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex flex-col gap-0.5">
                       <button
                         type="button"
                         onClick={() => openStudentDrawer(w)}
-                        style={{
-                          background: 'none', border: 'none', padding: 0,
-                          cursor: 'pointer', fontSize: '0.86rem', fontWeight: 800,
-                          color: 'var(--text)', fontFamily: 'var(--font-sans)',
-                          textAlign: 'left', transition: 'color var(--transition-fast)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text)')}
+                        className="bg-transparent border-none p-0 cursor-pointer text-[0.86rem] font-extrabold text-[var(--text)] font-sans text-left transition-colors duration-200 hover:text-[var(--primary)]"
+                        
                         aria-label={`View profile for ${w.name}`}
                       >
                         {w.name}
                       </button>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                      <span className="text-[0.72rem] text-[var(--muted)]">
                         Token: <strong>A{w.queueEntry ? w.queueEntry.position : w.id.slice(-3)}</strong> | Course: <strong>{w.course}</strong>
                       </span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontFamily: 'monospace' }}>
+                      <span className="text-[0.72rem] text-[var(--muted)] font-mono">
                         {mounted
                           ? (w.status === 'In Session'
                               ? `Session Time: ${formatHHMMSS(sessionElapsedSecs)}`
@@ -557,7 +551,7 @@ export default function DashboardClient({
                 );
               })
             ) : (
-              <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--muted)', fontSize: '0.84rem' }}>
+              <div className="p-6 text-center text-[var(--muted)] text-[0.84rem]">
                 No active students waiting or in session.
               </div>
             )}
@@ -568,14 +562,14 @@ export default function DashboardClient({
         <div className="ops-card">
           <div className="ops-card-header">
             <h2>Counselor Availability Roster</h2>
-            <span style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 700 }}>Active: {counselors.length}</span>
+            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Active: {counselors.length}</span>
           </div>
-          <div tabIndex={0} role="region" aria-label="Counselor Availability Roster List" style={{ flex: 1, overflowY: 'auto', maxHeight: '520px', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} className="scroller">
+          <div tabIndex={0} role="region" aria-label="Counselor Availability Roster List" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-2 scroller">
             
             {/* If the user is a counselor, display their specific active desk workspace widget at the top */}
             {isCounselor && (
-              <div style={{ border: '1.5px solid var(--primary)', borderRadius: 'var(--radius-sm)', padding: '12px', background: 'var(--primary-glow)', marginBottom: 'var(--space-2)' }}>
-                <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', display: 'block', letterSpacing: '0.04em' }}>
+              <div className="border-[1.5px] border-[var(--primary)] rounded-sm p-3 bg-[var(--primary-glow)] mb-2 shadow-sm">
+                <span className="text-[0.68rem] font-extrabold uppercase text-[var(--primary)] block tracking-wide">
                   My Workspace Desk
                 </span>
                 <div className="mt-2">
@@ -585,14 +579,14 @@ export default function DashboardClient({
                       return (
                         <div key={student.id} className="flex justify-between items-center">
                           <div>
-                            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text)' }}>{student.name}</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Course: {student.course}</span>
+                            <span className="text-[0.88rem] font-extrabold text-[var(--text)]">{student.name}</span>
+                            <span className="text-[0.72rem] text-[var(--muted)] block">Course: {student.course}</span>
                           </div>
                           <button
                             type="button"
                             className="primary-btn"
                             onClick={() => handleOpenAndStartWorkspace(student)}
-                            style={{ height: '32px', minHeight: '32px', padding: '0 12px', fontSize: '0.78rem' }}
+                            className="h-8 min-h-[32px] px-3 text-[0.78rem]"
                             disabled={loading}
                           >
                             {activeSession ? 'Open Desk' : 'Start Workspace'}
@@ -601,7 +595,7 @@ export default function DashboardClient({
                       );
                     })
                   ) : (
-                    <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>No student currently assigned to your desk.</span>
+                    <span className="text-[0.82rem] text-[var(--muted)]">No student currently assigned to your desk.</span>
                   )}
                 </div>
               </div>
@@ -625,14 +619,14 @@ export default function DashboardClient({
                 }
 
                 return (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.86rem', fontWeight: 800, color: 'var(--text)' }}>{c.name}</span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                  <div key={c.id} className="flex justify-between items-center p-3 border border-[var(--border)] rounded-sm bg-[var(--surface-alt)] shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[0.86rem] font-extrabold text-[var(--text)]">{c.name}</span>
+                      <span className="text-[0.72rem] text-[var(--muted)]">
                         Branch: <strong>{c.branchName}</strong> | Handled: <strong>{c.status}</strong>
                       </span>
                       {activeWalkin && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                        <span className="text-[0.72rem] text-[var(--muted)]">
                           Session: <strong>{activeWalkin.name}</strong> ({mounted ? formatHHMMSS(sessionSecs) : '—'})
                         </span>
                       )}
@@ -644,7 +638,7 @@ export default function DashboardClient({
                 );
               })
             ) : (
-              <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--muted)', fontSize: '0.84rem' }}>
+              <div className="p-6 text-center text-[var(--muted)] text-[0.84rem]">
                 No counselors loaded.
               </div>
             )}
@@ -655,15 +649,15 @@ export default function DashboardClient({
         <div className="ops-card">
           <div className="ops-card-header">
             <h2>Alerts & Activity Stream</h2>
-            <span style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 700 }}>Alarms: {slaAlerts.length}</span>
+            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Alarms: {slaAlerts.length}</span>
           </div>
-          <div tabIndex={0} role="region" aria-label="Alerts and Activity Stream Timeline" style={{ flex: 1, overflowY: 'auto', maxHeight: '520px', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }} className="scroller">
+          <div tabIndex={0} role="region" aria-label="Alerts and Activity Stream Timeline" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-4 scroller">
             
             {/* Critical SLA alerts banner container */}
             {slaAlerts.length > 0 && (
               <div className="flex flex-col gap-1">
                 {/* A4 fix: promote to h3 for correct document heading outline */}
-                <h3 style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--danger)', letterSpacing: '0.04em', margin: 0 }}>SLA Warnings</h3>
+                <h3 className="text-[0.68rem] font-extrabold uppercase text-[var(--danger)] tracking-wide m-0">SLA Warnings</h3>
                 <div className="flex flex-col gap-1">
                   {slaAlerts.slice(0, 4).map(alert => (
                     // A1 fix: breach = role="alert" (live), warning = role="status" (polite)
@@ -685,7 +679,7 @@ export default function DashboardClient({
             {/* Vertical timeline activity stream */}
             <div>
               {/* A4 fix: h3 for correct document outline */}
-              <h3 style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.04em', margin: '0 0 var(--space-2) 0' }}>Activity Stream</h3>
+              <h3 className="text-[0.68rem] font-extrabold uppercase text-[var(--primary)] tracking-wide mb-2">Activity Stream</h3>
               {/* A2 fix: semantic ol/li for screen reader navigation */}
               <ol className="ops-activity-feed" aria-label="Recent activity events">
                 {recentActivities.map((act, index) => (
@@ -707,39 +701,20 @@ export default function DashboardClient({
 
       {/* Legacy Details CRM Modal (Preserving functionality for student records lookup) */}
       {showDetailsModal && selectedDetailsStudent && (
-        <div className="modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(6, 9, 19, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
-        }}>
-          <div style={{
-            background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '20px',
-            width: '95vw', height: '90vh', maxWidth: '1200px',
-            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
-            display: 'flex', flexDirection: 'column', overflow: 'hidden'
-          }}>
+        <div className="modal-overlay fixed inset-0 bg-[#060913cc] backdrop-blur-md flex items-center justify-center z-[10000]">
+          <div className="bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] rounded-[20px] w-[95vw] h-[90vh] max-w-[1200px] shadow-[0_24px_64px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
             {/* Header */}
-            <div style={{
-              padding: '18px 24px', borderBottom: '1.5px solid var(--border)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              background: 'rgba(255,255,255,0.01)',
-            }}>
+            <div className="px-6 py-[18px] border-b-[1.5px] border-[var(--border)] flex justify-between items-center bg-white/1">
               <div className="flex items-center gap-3.5">
-                <div style={{
-                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 800, fontSize: '1rem', color: '#fff',
-                  background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                  boxShadow: '0 3px 10px rgba(99,102,241,0.3)',
-                }}>
+                <div className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center font-extrabold text-base text-white bg-gradient-to-br from-indigo-500 to-purple-500 shadow-[0_3px_10px_rgba(99,102,241,0.3)]">
                   {getInitials(selectedDetailsStudent.name)}
                 </div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2 className="m-0 text-xl font-extrabold text-[var(--text)] flex items-center gap-2">
                     {selectedDetailsStudent.name}
                     {renderStatusPill(selectedDetailsStudent.status)}
                   </h2>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                  <p className="mt-[2px] mb-0 text-[0.82rem] text-[var(--muted)]">
                     Record ID: <strong>#{selectedDetailsStudent.id}</strong>
                   </p>
                 </div>
@@ -747,24 +722,18 @@ export default function DashboardClient({
               <button
                 type="button"
                 aria-label="Close details modal"
-                style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1.5px solid var(--border)',
-                  borderRadius: '50%', color: 'var(--text)', cursor: 'pointer',
-                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1rem', transition: 'all 0.2s', outline: 'none',
-                }}
+                className="bg-white/5 border-[1.5px] border-[var(--border)] rounded-full text-[var(--text)] cursor-pointer w-9 h-9 flex items-center justify-center text-base transition-all duration-200 outline-none hover:bg-red-500/10"
                 onClick={() => setShowDetailsModal(false)}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                
               >
                 ✕
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'var(--card-bg)' }}>
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[var(--card-bg)]">
               <div className="flex flex-col gap-2">
-                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--text)' }}>
+                <h3 className="m-0 text-[0.98rem] font-extrabold text-[var(--text)]">
                   Lead Record Sheet
                 </h3>
                 <StudentDetailsRecord student={selectedDetailsStudent} counselors={counselors} onClose={() => setShowDetailsModal(false)} />

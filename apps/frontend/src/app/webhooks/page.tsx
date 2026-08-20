@@ -1,5 +1,6 @@
 import { getSession } from '../../lib/auth';
 import { getSubscriptions, getWebhookLogs, getWebhookConfig } from '../../actions/webhookActions';
+import { getIncomingWebhooks } from '../../actions/incomingWebhookActions';
 import WebhooksClient from './WebhooksClient';
 import { redirect } from 'next/navigation';
 
@@ -18,10 +19,11 @@ export default async function WebhooksPage() {
     redirect('/dashboard');
   }
 
-  const [subscriptions, logs, config] = await Promise.all([
+  const [subscriptions, logs, config, incomingWebhooks] = await Promise.all([
     getSubscriptions(),
     getWebhookLogs(),
-    getWebhookConfig()
+    getWebhookConfig(),
+    getIncomingWebhooks()
   ]);
 
   return (
@@ -29,6 +31,7 @@ export default async function WebhooksPage() {
       initialSubscriptions={subscriptions as any}
       initialLogs={logs as any}
       initialConfig={config as any}
+      initialIncomingWebhooks={incomingWebhooks as any}
       user={user}
     />
   );

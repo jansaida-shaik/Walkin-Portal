@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  createIncomingWebhook,
+  toggleIncomingWebhook,
+  deleteIncomingWebhook
+} from '../../actions/incomingWebhookActions';
+
 import { SessionUser } from '../../lib/auth';
 import {
   createSubscription,
@@ -61,6 +67,7 @@ interface WebhooksClientProps {
   initialSubscriptions: WebhookSub[];
   initialLogs: WebhookLog[];
   initialConfig: GlobalCfg;
+  initialIncomingWebhooks?: any[];
   user: SessionUser | null;
 }
 
@@ -182,10 +189,11 @@ const emptyForm = () => ({
 });
 const emptyCond = (): WebhookCondition => ({ field: 'status', operator: 'equals', value: '' });
 
-export default function WebhooksClient({ initialSubscriptions, initialLogs, initialConfig, user }: WebhooksClientProps) {
+export default function WebhooksClient({ initialSubscriptions, initialLogs, initialConfig, initialIncomingWebhooks = [], user }: WebhooksClientProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<'webhooks' | 'failures' | 'usage' | 'globalfields'>('webhooks');
+  const [tab, setTab] = useState<'webhooks' | 'failures' | 'usage' | 'globalfields' | 'incoming'>('webhooks');
   const [webhooks, setWebhooks] = useState<WebhookSub[]>(initialSubscriptions);
+  const [incomingWebhooks, setIncomingWebhooks] = useState(initialIncomingWebhooks);
   const [logs, setLogs] = useState<WebhookLog[]>(initialLogs);
   const [globalCfg, setGlobalCfg] = useState<GlobalCfg>({
     customHeaders: (initialConfig.customHeaders as any) || [],
@@ -219,6 +227,10 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
   const successLogs = logs.filter((l) => l.status === 'Success');
   const skippedLogs = logs.filter((l) => l.status === 'Skipped');
 
+    const filteredIncomingWebhooks = (incomingWebhooks || []).filter((w: any) =>
+    !search || w.name.toLowerCase().includes(search.toLowerCase()) || w.token.toLowerCase().includes(search.toLowerCase())
+  );
+
   const filteredWebhooks = webhooks.filter((w) =>
     !search || w.name.toLowerCase().includes(search.toLowerCase()) || w.url.toLowerCase().includes(search.toLowerCase())
   );
@@ -241,6 +253,27 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
   const DAILY_LIMIT = 16000;
   const totalToday = logs.length;
+
+  
+  const [incForm, setIncForm] = useState({ name: '' });
+  const [showIncForm, setShowIncForm] = useState(false);
+  
+  const handleCreateInc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incForm.name) { showMsg('Name required', false); return; }
+    setLoading(true);
+    const res = await createIncomingWebhook(incForm.name);
+    if (res.success) {
+      setIncForm({ name: '' });
+      setShowIncForm(false);
+      showMsg('Incoming webhook created!');
+      router.refresh();
+      window.location.reload();
+    } else {
+      showMsg(res.error || 'Failed', false);
+    }
+    setLoading(false);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,8 +519,8 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
       {/* Tab Bar */}
       <div className="wh-tab-bar" style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--border)', marginBottom: '20px', paddingBottom: '8px' }}>
-        {(['webhooks', 'failures', 'usage', 'globalfields'] as const).map(t => {
-          const labels: Record<string, string> = { webhooks: 'Webhooks', failures: `Failures${failures.length ? ` (${failures.length})` : ''}`, usage: 'Usage', globalfields: 'Global Fields' };
+        {(['incoming', 'webhooks', 'failures', 'usage', 'globalfields'] as const).map(t => {
+          const labels: Record<string, string> = { incoming: 'Incoming', webhooks: 'Outgoing', failures: `Failures${failures.length ? ` (${failures.length})` : ''}`, usage: 'Usage', globalfields: 'Global Fields' };
           return (
             <button key={t} onClick={() => setTab(t)} className={`outline-btn ${tab === t ? 'active' : ''}`} style={{ background: tab === t ? 'var(--primary-glow)' : 'transparent', color: tab === t ? 'var(--primary)' : 'var(--text)', border: tab === t ? '1.5px solid var(--primary)' : '1px solid var(--border)', padding: '6px 16px', borderRadius: '6px', cursor: 'pointer' }}>
               {labels[t]}
@@ -497,6 +530,116 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
       </div>
 
       {/* WEBHOOKS TAB */}
+
+            {/* INCOMING TAB */}
+      {tab === 'incoming' && (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ position: 'relative', width: '300px' }}>
+              <input type="search" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
+            </div>
+            <div className="flex gap-2">
+              <button className="outline-btn" onClick={() => router.refresh()} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>↻ Refresh</button>
+              <button className="primary-btn" onClick={() => setShowIncForm(true)} style={{ fontSize: '0.85rem', padding: '7px 18px' }}>
+                + New Incoming Webhook
+              </button>
+            </div>
+          </div>
+
+          {showIncForm && (
+            <div className="dash-table-card" style={{ padding: '15px', marginBottom: '12px' }}>
+              <form onSubmit={handleCreateInc} style={{ display: 'flex', gap: '10px' }}>
+                <input type="text" placeholder="Webhook Name (e.g., Facebook Ads)" value={incForm.name} onChange={e => setIncForm({ name: e.target.value })} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
+                <button type="submit" disabled={loading} className="primary-btn" style={{ padding: '0 20px' }}>Create</button>
+                <button type="button" onClick={() => setShowIncForm(false)} className="outline-btn" style={{ padding: '0 15px' }}>Cancel</button>
+              </form>
+            </div>
+          )}
+
+          <div className="dash-table-card">
+            <div className="table-wrapper">
+              <table className="w-full">
+                                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Events</th>
+                    <th>URL To Notify</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Modified On</th>
+                    <th style={{ width: '90px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(!filteredIncomingWebhooks || filteredIncomingWebhooks.length === 0) ? (
+                    <tr>
+                      <td colSpan={7} className="empty-row" style={{ textAlign: 'center', opacity: 0.5 }}>No incoming webhooks created.</td>
+                    </tr>
+                  ) : (
+                    filteredIncomingWebhooks.map((iw: any) => (
+                      <tr key={iw.id} style={{ opacity: iw.isActive ? 1 : 0.55 }}>
+                                                <td>
+                          <span style={{ fontWeight: 600 }}>{iw.name || 'Untitled'}</span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.7rem', padding: '3px 6px', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>Data Ingestion</span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <code style={{ fontSize: '0.75rem', padding: '3px 6px', background: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)', color: '#fbbf24' }}>
+                              {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/in/{iw.token}
+                            </code>
+                            <button onClick={() => {
+                                const url = (typeof window !== 'undefined' ? window.location.origin : '') + '/api/webhooks/in/' + iw.token;
+                                navigator.clipboard.writeText(url);
+                                showMsg('Copied to clipboard!');
+                              }} style={{ fontSize: '0.7rem', padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer' }}>
+                              Copy
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', background: 'rgba(99,102,241,0.14)', color: '#818cf8' }}>POST</span>
+                        </td>
+                        <td>
+                          {iw.isActive ? (
+                            <span style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Active</span>
+                          ) : (
+                            <span style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Inactive</span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                          {new Date(iw.updatedAt || iw.createdAt).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={async () => {
+                              await toggleIncomingWebhook(iw.id, !iw.isActive);
+                              window.location.reload();
+                            }} style={{ background: 'transparent', border: 'none', color: iw.isActive ? 'var(--text)' : '#10b981', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.8 }}>
+                              {iw.isActive ? 'Disable' : 'Enable'}
+                            </button>
+                            <button onClick={async () => {
+                              if(confirm('Delete incoming webhook?')) {
+                                await deleteIncomingWebhook(iw.id);
+                                window.location.reload();
+                              }
+                            }} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.8rem' }}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {tab === 'webhooks' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
