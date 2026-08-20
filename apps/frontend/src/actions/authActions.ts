@@ -1,6 +1,7 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
+import { redirect } from 'next/navigation';
 import { prisma } from '../lib/db';
 import { createSession, deleteSession, getSession, SessionUser } from '../lib/auth';
 import { getBranchName, getDepartment, getLocation, getRole } from '../lib/constants';
@@ -13,7 +14,6 @@ export async function login(state: any, formData: FormData) {
   if (password.length < 6) return { error: 'Password must be at least 6 characters long.' };
 
   try {
-    // Direct Prisma call — no internal HTTP fetch needed
     const user = await prisma.user.findFirst({ where: { username, deletedAt: null } });
     if (!user) {
       return { error: 'Invalid username or password.' };
@@ -57,7 +57,7 @@ export async function login(state: any, formData: FormData) {
       departmentName: getDepartment(user.departmentId),
     };
 
-    // Set the JWT cookie directly — no HTTP fetch intermediary
+    // Set the cookie AND redirect server-side in the same response
     await createSession(sessionUser);
 
     try {
@@ -73,15 +73,19 @@ export async function login(state: any, formData: FormData) {
       console.error('Audit log failed:', e);
     }
 
-    return { success: true, user: sessionUser };
   } catch (err: any) {
     console.error('Login action error:', err);
     return { error: err.message || 'Something went wrong during login.' };
   }
+
+  // redirect() must be called OUTSIDE the try/catch
+  // Next.js redirect() throws a special error internally
+  redirect('/dashboard');
 }
 
 export async function logout() {
   await deleteSession();
+  redirect('/login');
 }
 
 export async function getLoggedUser() {

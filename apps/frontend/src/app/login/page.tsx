@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { login } from '../../actions/authActions';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -25,12 +23,9 @@ export default function LoginPage() {
     if (res && res.error) {
       setErrorMsg(res.error);
       setLoading(false);
-    } else if (res && res.success) {
-      router.push('/dashboard');
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 100);
     }
+    // If no error, the server action calls redirect('/dashboard') internally
+    // No client-side navigation needed
   };
 
   return (
