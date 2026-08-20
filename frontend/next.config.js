@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: process.env.VERCEL ? '../.next' : '.next',
+  output: 'standalone',
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'api.qrserver.com' },
