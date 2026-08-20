@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  backend:
+  apps/backend:
     dependencies:
       '@prisma/adapter-pg':
         specifier: ^7.0.0
@@ -75,7 +75,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  frontend:
+  apps/frontend:
     dependencies:
       '@prisma/adapter-pg':
         specifier: ^7.0.0
