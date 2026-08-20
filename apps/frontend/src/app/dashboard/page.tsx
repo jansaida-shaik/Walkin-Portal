@@ -56,15 +56,31 @@ export default async function DashboardPage() {
     console.error('Failed to get webhook telemetry status:', e);
   }
 
-  const [students, counselors] = await Promise.all([
+  const [students, rawCounselors] = await Promise.all([
     getStudents(),
     getCounselors()
   ]);
 
+  // Map raw Prisma CounselorProfile (with nested user) to the flat shape DashboardClient expects
+  const counselors = rawCounselors.map((c: any) => ({
+    id: c.id,
+    name: c.user?.name || '',
+    roleId: c.user?.roleId || '',
+    roleName: c.user?.roleId || '',
+    departmentId: c.user?.departmentId || '',
+    departmentName: c.user?.departmentId || '',
+    branchId: c.user?.branchId || '',
+    branchName: c.user?.branchId || '',
+    location: c.user?.locationId || '',
+    availability: c.availability || [],
+    status: c.status || 'Available',
+    assignedStudentId: c.assignedStudentId || null,
+  }));
+
   return (
     <DashboardClient
       initialWalkins={students as any}
-      initialCounselors={counselors as any}
+      initialCounselors={counselors}
       user={user}
       dbLatency={dbLatency}
       webhookStatus={webhookStatus}

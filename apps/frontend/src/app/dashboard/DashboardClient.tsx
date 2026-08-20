@@ -619,7 +619,7 @@ export default function DashboardClient({
                 return (
                   <div key={c.id} className="flex justify-between items-center p-3 border border-[var(--border)] rounded-sm bg-[var(--surface-alt)] shadow-sm hover:shadow-md transition-shadow duration-200">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[0.86rem] font-extrabold text-[var(--text)]">{c.name}</span>
+                      <span className="text-[0.86rem] font-extrabold text-[var(--text)]">{c.name || (c as any).user?.name}</span>
                       <span className="text-[0.72rem] text-[var(--muted)]">
                         Branch: <strong>{c.branchName}</strong> | Handled: <strong>{c.status}</strong>
                       </span>
@@ -743,7 +743,7 @@ export default function DashboardClient({
       {/* ── Student Context Drawer ── */}
       <StudentContextDrawer
         student={drawerStudent}
-        counselors={counselors.map(c => ({ id: c.id, name: c.name, branchName: c.branchName }))}
+        counselors={counselors.map(c => ({ id: c.id, name: c.name || (c as any).user?.name || 'Counselor', branchName: c.branchName || (c as any).user?.branchName }))}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />

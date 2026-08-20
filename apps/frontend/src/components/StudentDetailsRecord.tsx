@@ -474,8 +474,8 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       <div>
         <SectionHeader title="Academic Profile" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px' }}>
-          {renderText('Educational Qualification', 'qualification')}
-          {renderText('Institution Name', 'college_name')}
+          <div style={{ gridColumn: '1 / -1' }}>{renderText('Educational Qualification', 'qualification')}</div>
+          <div style={{ gridColumn: '1 / -1' }}>{renderText('Institution Name', 'college_name')}</div>
           {renderText('Year of Passout', 'passout_year')}
           {renderText('10th %', 'ssc_percentage')}
           {renderText('Intermediate %', 'inter_percentage')}
