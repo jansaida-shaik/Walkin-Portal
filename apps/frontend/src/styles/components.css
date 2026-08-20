@@ -259,12 +259,43 @@ textarea:disabled {
   border: 1px solid rgba(168, 85, 247, 0.22);
 }
 
+
 .status-chip.waiting,
 .status-chip[data-status="waiting"] {
-  background: rgba(59, 130, 246, 0.12);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.22);
+  background: rgba(14, 165, 233, 0.15);
+  color: #0284c7; /* darker cyan for better contrast in light mode */
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  position: relative;
+  padding-left: var(--space-4); /* make room for dot */
 }
+
+/* Dark mode adjustment for text color */
+:root:not([data-theme="light"]) .status-chip.waiting,
+:root:not([data-theme="light"]) .status-chip[data-status="waiting"] {
+  color: #38bdf8;
+}
+
+.status-chip.waiting::before,
+.status-chip[data-status="waiting"]::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.6);
+  animation: pulse-waiting 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulse-waiting {
+  0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.6); }
+  70% { box-shadow: 0 0 0 5px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+}
+
 
 .status-chip.assigned,
 .status-chip[data-status="assigned"] {
@@ -347,4 +378,48 @@ textarea:disabled {
 }
 .toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(20px);
+}
+
+/* Table Action Buttons */
+.table-btn-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--primary-glow);
+  color: var(--primary);
+  cursor: pointer;
+  transition: var(--transition-fast, 0.15s ease);
+}
+
+.table-btn-soft:hover {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 12px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+.table-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition-fast, 0.15s ease);
+}
+
+.table-btn-outline:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-alt);
+  transform: translateY(-1px);
 }

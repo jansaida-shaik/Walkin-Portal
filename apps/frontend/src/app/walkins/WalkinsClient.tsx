@@ -449,8 +449,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
                       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                         <button
                           type="button"
-                          className="outline-btn"
-                          style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)' }}
+                          className="table-btn-soft"
                           onClick={() => openDrawer(w)}
                           aria-label={`Quick view profile for ${w.name}`}
                         >
@@ -458,8 +457,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
                         </button>
                         <button
                           type="button"
-                          className="outline-btn"
-                          style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)' }}
+                          className="table-btn-outline"
                           onClick={() => router.push(`/walkins/record?studentId=${w.id}`)}
                           aria-label={`Open full record for ${w.name}`}
                         >
