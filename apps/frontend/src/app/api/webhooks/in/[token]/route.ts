@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function POST(request: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
 
-    const { token } = params;
+    const { token } = await params;
     const webhook = await prisma.incomingWebhook.findUnique({ where: { token } });
     if (!webhook || !webhook.isActive) {
       return NextResponse.json({ error: 'Unauthorized or inactive webhook token' }, { status: 401 });

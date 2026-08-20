@@ -306,7 +306,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
         <textarea rows={3} value={profileForm.address} onChange={e => setProfileForm({...profileForm, address: e.target.value})} style={{ resize: 'vertical', width: '100%', padding: '14px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
       </div>
       <div className="mt-3">
-        <button type="submit" className="primary-btn" className="px-6 py-2.5">
+        <button type="submit" className="primary-btn px-6 py-2.5">
           💾 Save Profile
         </button>
       </div>
@@ -359,10 +359,10 @@ export default function SettingsClient({ branches, locations, users: initialUser
       </div>
 
       <div className="flex gap-2.5 mt-3">
-        <button type="submit" className="primary-btn" className="px-6 py-2.5">
+        <button type="submit" className="primary-btn px-6 py-2.5">
           💾 Save Branding Configuration
         </button>
-        <button type="button" className="outline-btn" className="px-6 py-2.5" onClick={handleResetBranding}>
+        <button type="button" className="outline-btn px-6 py-2.5" onClick={handleResetBranding}>
           🔄 Reset Default
         </button>
       </div>
@@ -439,7 +439,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
         <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Total Users: {filteredUsers.length}</span>
       </div>
 
-      <div className="table-wrapper" className="m-0">
+      <div className="table-wrapper m-0">
         <table className="min-w-[600px]">
           <thead>
             <tr>
@@ -627,7 +627,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
       </div>
 
       <div className="mt-3">
-        <button type="submit" className="primary-btn" className="px-6 py-2.5">
+        <button type="submit" className="primary-btn px-6 py-2.5">
           💾 Save AI Preferences
         </button>
       </div>

@@ -562,7 +562,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
 
                     {/* Timer */}
                     {isInSes && (
-                      <div className="sc-timer" className="cursor-pointer" onClick={() => setActiveCounsellingStudent(student)} title="Click to open workspace">
+                      <div className="sc-timer cursor-pointer" onClick={() => setActiveCounsellingStudent(student)} title="Click to open workspace">
                         <div>
                           <div style={{ fontSize:'.72rem', fontWeight:800, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(245,158,11,.6)', marginBottom:3 }}>
                             ⏱ Active Time

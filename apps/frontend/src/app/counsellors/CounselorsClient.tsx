@@ -128,7 +128,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
 
   return (
     <section className="dash-page">
-      <div className="page-title-row" className="flex justify-between items-center">
+      <div className="page-title-row flex justify-between items-center">
         <div>
           <h1>Counselors</h1>
           <p className="small-text">Manage counselor profiles, branch assignments and availability status.</p>

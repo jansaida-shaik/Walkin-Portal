@@ -689,7 +689,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
   }
 
   return (
-    <section className="dash-page" className="pb-10">
+    <section className="dash-page pb-10">
       {/* Toast Alert */}
       {toastMsg && (
         <div style={{

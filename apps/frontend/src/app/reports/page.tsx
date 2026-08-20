@@ -29,7 +29,7 @@ export default async function ReportsPage() {
       if (w.details && (w.details as any).branchId === b.id) return true;
       return w.sessions.some(s => {
         const counselor = counselors.find(c => c.id === s.counselorId);
-        return counselor?.branchId === b.id;
+        return counselor?.user?.branchId === b.id;
       });
     }).length;
     const tokenCount = students.filter(w => {
@@ -37,7 +37,7 @@ export default async function ReportsPage() {
       if (w.details && (w.details as any).branchId === b.id) return true;
       return w.sessions.some(s => {
         const counselor = counselors.find(c => c.id === s.counselorId);
-        return counselor?.branchId === b.id;
+        return counselor?.user?.branchId === b.id;
       });
     }).length;
     return { branchId: b.id, branchName: b.name, walkins: walkinCount, tokens: tokenCount };
@@ -47,7 +47,7 @@ export default async function ReportsPage() {
     const walkinsHandled = students.filter(w =>
       w.sessions.some(s => s.counselorId === c.id && s.status === 'COMPLETED')
     ).length;
-    return { counselorId: c.id, counselorName: c.name, walkinsHandled, status: c.status };
+    return { counselorId: c.id, counselorName: c.user?.name || "Unknown", walkinsHandled, status: c.status };
   });
 
   const statCards = [

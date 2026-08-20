@@ -27,11 +27,18 @@ export async function createSession(user: SessionUser): Promise<void> {
   const secret = getJwtSecret();
   const token = jwt.sign(user, secret, { expiresIn: '7d' });
   const cookieStore = await cookies();
-  cookieStore.set('token', token, {
+    cookieStore.set('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict', // Hardened to strict
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60,
+    path: '/',
+  });
+  cookieStore.set('userRole', user.roleId, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60,
     path: '/',
   });
 }
@@ -52,7 +59,8 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function deleteSession(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete('token');
+    cookieStore.delete('token');
+  cookieStore.delete('userRole');
 }
 
 /**

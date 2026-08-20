@@ -489,10 +489,10 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
               <span className="font-semibold">Active</span>
             </label>
             <div style={{ display: 'flex', gap: '8px', paddingTop: '10px' }}>
-              <button type="submit" className="primary-btn" disabled={loading} className="flex-1">
+              <button type="submit" className="primary-btn flex-1" disabled={loading}>
                 {loading ? 'Saving...' : submitLabel}
               </button>
-              <button type="button" onClick={onCancel} className="outline-btn" className="flex-1">
+              <button type="button" onClick={onCancel} className="outline-btn flex-1">
                 Cancel
               </button>
             </div>
@@ -799,7 +799,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
       {/* USAGE TAB */}
       {tab === 'usage' && (
         <div className="flex flex-col gap-5">
-          <div className="dash-table-card" className="p-6">
+          <div className="dash-table-card p-6">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
               <div>
                 <h3 style={{ fontSize: '0.88rem', fontWeight: 700, opacity: 0.6, textTransform: 'uppercase', marginBottom: '16px' }}>Events Distribution</h3>
@@ -852,14 +852,14 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
       {tab === 'globalfields' && (
         <form onSubmit={handleGlobalCfgSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
-            <div className="dash-table-card" className="p-5">
+            <div className="dash-table-card p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Custom HTTP Headers</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Sent with every outgoing webhook. Use for Authorization, API keys, etc.
               </p>
               <KVList label="Headers" items={globalCfg.customHeaders} setItems={setHeadersList} kp="Header Name" vp="Value" />
             </div>
-            <div className="dash-table-card" className="p-5">
+            <div className="dash-table-card p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Global Payload Fields</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Extra fields merged into every webhook payload body.
@@ -868,7 +868,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
-            <div className="dash-table-card" className="p-5">
+            <div className="dash-table-card p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Security & Request Signing</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 HMAC-SHA256 signature added as X-Webhook-Signature to every request.
@@ -876,7 +876,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '0.85rem' }}>Signing Secret</label>
               <input type="password" placeholder="Leave empty to disable signing" value={globalCfg.signingSecret} onChange={e => setGlobalCfg({ ...globalCfg, signingSecret: e.target.value })} style={inp} />
             </div>
-            <div className="dash-table-card" className="p-5">
+            <div className="dash-table-card p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Retry & Timeout Settings</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Controls retry behavior on failed deliveries and timeout limits.

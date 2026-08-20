@@ -353,7 +353,7 @@ export default function DashboardClient({
     }
 
     return (
-      <span className={styleClass} className="inline-flex items-center gap-1.5">
+      <span className={`${styleClass} inline-flex items-center gap-1.5`}>
         <span aria-hidden="true">{icon}</span>
         <span>{label}</span>
       </span>
@@ -398,9 +398,8 @@ export default function DashboardClient({
         {isFrontDesk && (
           <button
             type="button"
-            className="primary-btn"
+            className="primary-btn h-[38px] min-h-[38px] text-[0.82rem] px-4"
             onClick={() => router.push('/walkins')}
-            className="h-[38px] min-h-[38px] text-[0.82rem] px-4"
           >
             <span aria-hidden="true" className="mr-1">➕</span> Check-In Walk-in
           </button>
@@ -449,7 +448,7 @@ export default function DashboardClient({
 
         {isManager && (
           <>
-            <div className="ops-metric-compact" className={slaAlerts.filter(a => a.type === 'breach').length > 0 ? 'border-l-[3px] border-[var(--danger)]' : ''}>
+            <div className={`ops-metric-compact ${slaAlerts.filter(a => a.type === 'breach').length > 0 ? 'border-l-[3px] border-[var(--danger)]' : ''}`}>
               <div className="ops-metric-compact-icon bg-[var(--danger-glow)] text-[var(--danger)]">🚨</div>
               <div className="ops-metric-compact-details">
                 <span className="ops-metric-compact-label">Critical SLA Alerts</span>
@@ -584,9 +583,8 @@ export default function DashboardClient({
                           </div>
                           <button
                             type="button"
-                            className="primary-btn"
+                            className="primary-btn h-8 min-h-[32px] px-3 text-[0.78rem]"
                             onClick={() => handleOpenAndStartWorkspace(student)}
-                            className="h-8 min-h-[32px] px-3 text-[0.78rem]"
                             disabled={loading}
                           >
                             {activeSession ? 'Open Desk' : 'Start Workspace'}
