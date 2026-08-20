@@ -10,5 +10,5 @@
       "*": ["node_modules/*"]
     }
   },
-  "include": ["api/**/*", "apps/**/*"]
+  "include": ["apps/frontend/src/**/*"]
 }
