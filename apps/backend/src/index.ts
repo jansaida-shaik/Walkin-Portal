@@ -45,9 +45,11 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(Number(port), '0.0.0.0', () => {
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(Number(port), '0.0.0.0', () => {
   console.log(`🚀 Backend Express server ready at http://0.0.0.0:${port}`);
   console.log(`🔗 Accepting requests from: ${frontendUrl}`);
-});
+  });
+}
 
 export default app;
