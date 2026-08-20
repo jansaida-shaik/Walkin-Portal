@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter walkin-portal-frontend dev",
-    "build": "pnpm --filter walkin-portal-frontend build",
+    "build": "pnpm -r run build && rm -rf .next public && cp -r apps/frontend/.next .next && cp -r apps/frontend/public public",
     "start": "pnpm --filter walkin-portal-frontend start",
     "dev:all": "pnpm --filter walkin-portal-backend dev & pnpm --filter walkin-portal-frontend dev"
   }
