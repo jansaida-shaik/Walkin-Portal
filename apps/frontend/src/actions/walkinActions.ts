@@ -1,22 +1,39 @@
 'use server';
 
+import { prisma } from '../lib/db';
+import { getBranchName } from '../lib/constants';
+import { triggerWebhook } from '../lib/webhooks';
 import { validateSession } from '../lib/auth';
 
-const getBaseUrl = () => {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-};
+// ─── READ OPERATIONS: Call Prisma directly (no HTTP fetch) ───────────────────
 
 export async function getStudents() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/walkins`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch walkins');
-    return await res.json();
+    return await prisma.student.findMany({
+      include: { sessions: true, queueEntry: true },
+      orderBy: { walkinDate: 'desc' },
+    });
   } catch (err) {
     console.error('getStudents error:', err);
     return [];
   }
 }
+
+export async function getFailedWalkins() {
+  try {
+    return await prisma.failedWalkin.findMany({ orderBy: { createdAt: 'desc' } });
+  } catch (err) {
+    console.error('getFailedWalkins error:', err);
+    return [];
+  }
+}
+
+// ─── WRITE OPERATIONS: Still go through API routes (client-callable) ─────────
+
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+};
 
 export async function createWalkin(state: any, formData: FormData) {
   const studentName = formData.get('studentName') as string;
@@ -33,14 +50,53 @@ export async function createWalkin(state: any, formData: FormData) {
   if (!email) return { error: 'Email address is required.' };
 
   try {
-    const res = await fetch(`${getBaseUrl()}/api/walkins`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentName, phone, email, course, branchId, remarks, source }),
+    const branchName = getBranchName(branchId);
+    const existingPhone = await prisma.student.findFirst({ where: { phone } });
+    if (existingPhone) {
+      await prisma.failedWalkin.create({ data: { name: studentName, phone, email: email || '', course, branchId, branchName, source: source || 'Walk-in API', reason: 'Duplicate phone number', details: { studentName, phone, email, course, branchId, branchName, remarks, source } } }).catch(() => {});
+      return { error: `A student with phone number ${phone} is already registered.` };
+    }
+    if (email) {
+      const existingEmail = await prisma.student.findFirst({ where: { email } });
+      if (existingEmail) {
+        await prisma.failedWalkin.create({ data: { name: studentName, phone, email, course, branchId, branchName, source: source || 'Walk-in API', reason: 'Duplicate email address', details: { studentName, phone, email, course, branchId, branchName, remarks, source } } }).catch(() => {});
+        return { error: `A student with email ${email} is already registered.` };
+      }
+    }
+
+    const candidates = await prisma.counselorProfile.findMany({
+      where: { user: { branchId }, status: 'Available', assignedStudentId: null },
+      include: { user: true }, orderBy: { id: 'asc' },
     });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to check in student.' };
-    return { success: true, walkin: data.walkin, token: data.token };
+    const counselor = candidates.length > 0 ? candidates[0] : null;
+    const status = counselor ? 'Assigned' : 'Waiting';
+    const assignedTime = counselor ? 'TBD' : 'Waitlist';
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const student = await tx.student.create({ data: { name: studentName, phone, email: email || null, course, branchId, branchName, status, remarks: remarks || '', source: source || 'Walk-in API', details: { branchId, branchName, email } } });
+      const maxPosition = await tx.queueEntry.aggregate({ where: { student: { branchId }, status: 'active' }, _max: { position: true } });
+      const nextPos = (maxPosition._max.position || 100) + 1;
+      const queueEntry = await tx.queueEntry.create({ data: { id: String(nextPos), studentId: student.id, position: nextPos, status: 'active' } });
+      let session = null;
+      if (counselor) {
+        await tx.counselorProfile.update({ where: { id: counselor.id }, data: { assignedStudentId: student.id } });
+        session = await tx.counselingSession.create({ data: { studentId: student.id, counselorId: counselor.id, status: 'ASSIGNED', notes: '' } });
+      }
+      return { student, queueEntry, session };
+    });
+
+    const walkinPayload = { id: result.student.id, studentName: result.student.name, contact: result.student.phone, phone: result.student.phone, email: email || '', branchId, branchName, counselorId: counselor ? counselor.id : 'unassigned', counselorName: counselor ? counselor.user.name : 'Unassigned', purpose: result.student.course, courseInterested: result.student.course, time: assignedTime, status: result.student.status, createdAt: result.student.createdAt.toISOString(), source: result.student.source, remarks: result.student.remarks };
+    const tokenPayload = { id: parseInt(result.queueEntry.id), branchId, counselorId: counselor ? counselor.id : 'unassigned', purpose: result.student.course, time: assignedTime, branchName, counselorName: counselor ? counselor.user.name : 'Unassigned', location: counselor ? counselor.user.locationId : 'Waitlist', walkinId: result.student.id, status: 'active' };
+
+    triggerWebhook('Walk-in Created', { walkin: walkinPayload, token: tokenPayload });
+    triggerWebhook('Token Generated', { token: tokenPayload, walkin: walkinPayload, branch: branchName });
+    triggerWebhook('Status Changed', { event: 'Walk-in Created', walkinId: result.student.id, status: result.student.status });
+    if (counselor) {
+      triggerWebhook('Counsellor Assigned', { walkin: walkinPayload, counselorId: counselor.id, counselorName: counselor.user.name, session: result.session });
+      triggerWebhook('Status Changed', { event: 'Counsellor Assigned', walkinId: result.student.id, counselorId: counselor.id });
+    }
+
+    return { success: true, walkin: walkinPayload, token: tokenPayload };
   } catch (err: any) {
     return { error: err.message || 'Failed to check in student.' };
   }
@@ -122,16 +178,5 @@ export async function saveSessionNotes(studentId: string, notes: string, followU
     return { success: true, session: data.session };
   } catch (err: any) {
     return { error: err.message || 'Failed to save session notes.' };
-  }
-}
-
-export async function getFailedWalkins() {
-  try {
-    const res = await fetch(`${getBaseUrl()}/api/failed-walkins`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch failed walkins');
-    return await res.json();
-  } catch (err) {
-    console.error('getFailedWalkins error:', err);
-    return [];
   }
 }

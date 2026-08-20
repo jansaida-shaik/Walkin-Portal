@@ -1,20 +1,27 @@
 'use server';
 
-const getBaseUrl = () => {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-};
+import { prisma } from '../lib/db';
+
+// ─── READ: Call Prisma directly ───────────────────────────────────────────────
 
 export async function getCounselors() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/counselors`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch counselors');
-    return await res.json();
+    return await prisma.counselorProfile.findMany({
+      include: { user: true },
+      orderBy: { id: 'asc' },
+    });
   } catch (err) {
     console.error('getCounselors error:', err);
     return [];
   }
 }
+
+// ─── WRITE: API routes (triggered from client components) ─────────────────────
+
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+};
 
 export async function updateCounselorStatus(counselorId: string, status: string) {
   try {
