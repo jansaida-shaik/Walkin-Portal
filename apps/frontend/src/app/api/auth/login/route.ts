@@ -4,7 +4,12 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '@/lib/db';
 import { getBranchName, getDepartment, getLocation, getRole } from '@/lib/constants';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'walkin-portal-super-secret-key-123456!';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('FATAL: JWT_SECRET environment variable is missing!');
+  return secret;
+}
+const JWT_SECRET = getJwtSecret();
 
 export async function POST(req: NextRequest) {
   try {
