@@ -128,7 +128,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
 
   return (
     <section className="dash-page">
-      <div className="page-title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-title-row" className="flex justify-between items-center">
         <div>
           <h1>Counselors</h1>
           <p className="small-text">Manage counselor profiles, branch assignments and availability status.</p>
@@ -243,7 +243,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                 required
               />
 
-              <div style={{ marginBottom: '12px' }}>
+              <div className="mb-3">
                 <label style={{ display: 'block', marginBottom: '6px' }}>Location</label>
                 <select
                   value={newCounselor.location}
@@ -256,7 +256,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                 </select>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
+              <div className="mb-3">
                 <label style={{ display: 'block', marginBottom: '6px' }}>Branch</label>
                 <select
                   value={newCounselor.branchId}

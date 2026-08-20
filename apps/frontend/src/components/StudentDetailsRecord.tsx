@@ -659,7 +659,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
                       gap: '16px',
                       marginTop: '8px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div className="flex items-center gap-3">
                         <span style={{
                           fontSize: '1.2rem',
                           background: 'rgba(99,102,241,0.08)',
@@ -824,7 +824,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
                         borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                         paddingBottom: '12px'
                       }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="flex gap-2">
                           {sess.summary && (
                             <button
                               type="button"

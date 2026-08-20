@@ -137,7 +137,7 @@ function DonutChart({ data, label, size = 140 }: {
   });
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+    <div className="flex items-center gap-5">
       <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
         <svg viewBox="0 0 120 120" width={size} height={size}>
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
@@ -346,7 +346,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
   const smInp = { ...inp, padding: '5px 9px', fontSize: '0.8rem' };
 
   const CondBuilder = ({ conds, setConds }: { conds: WebhookCondition[]; setConds: (v: WebhookCondition[]) => void }) => (
-    <div style={{ marginTop: '4px' }}>
+    <div className="mt-1">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
         <span style={{ fontSize: '0.82rem', fontWeight: 600, opacity: 0.85 }}>
           Conditions <span style={{ fontWeight: 400, opacity: 0.5 }}>(AND — all must pass)</span>
@@ -383,7 +383,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
         </div>
       </div>
       {Object.entries(EVENT_GROUPS).map(([grp, evts]) => (
-        <div key={grp} style={{ marginBottom: '8px' }}>
+        <div key={grp} className="mb-2">
           <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', opacity: 0.4, margin: '0 0 3px 0' }}>{grp}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px' }}>
             {evts.map(evt => (
@@ -399,7 +399,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
   );
 
   const KVList = ({ label, items, setItems, kp, vp }: { label: string; items: { key: string; value: string }[]; setItems: (v: { key: string; value: string }[]) => void; kp?: string; vp?: string }) => (
-    <div style={{ marginBottom: '8px' }}>
+    <div className="mb-2">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{label}</span>
         <button type="button" onClick={() => setItems([...items, { key: '', value: '' }])}
@@ -453,13 +453,13 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
             <CondBuilder conds={f.conditions} setConds={v => setF({ ...f, conditions: v })} />
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
               <input type="checkbox" checked={f.enabled} onChange={e => setF({ ...f, enabled: e.target.checked })} style={{ width: 'auto', padding: 0, margin: 0, accentColor: 'var(--primary)' }} />
-              <span style={{ fontWeight: 600 }}>Active</span>
+              <span className="font-semibold">Active</span>
             </label>
             <div style={{ display: 'flex', gap: '8px', paddingTop: '10px' }}>
-              <button type="submit" className="primary-btn" disabled={loading} style={{ flex: 1 }}>
+              <button type="submit" className="primary-btn" disabled={loading} className="flex-1">
                 {loading ? 'Saving...' : submitLabel}
               </button>
-              <button type="button" onClick={onCancel} className="outline-btn" style={{ flex: 1 }}>
+              <button type="button" onClick={onCancel} className="outline-btn" className="flex-1">
                 Cancel
               </button>
             </div>
@@ -471,7 +471,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
   return (
     <section className="wh-page">
-      <div style={{ marginBottom: '16px' }}>
+      <div className="mb-4">
         <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>Webhooks</h1>
         <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', opacity: 0.55 }}>
           Webhooks let you communicate with third-party applications by sending instant web notifications when a particular event occurs.
@@ -503,7 +503,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
             <div style={{ position: 'relative', width: '300px' }}>
               <input type="search" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-2">
               <button className="outline-btn" onClick={() => router.refresh()} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>↻ Refresh</button>
               <button className="primary-btn" onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm()); }} style={{ fontSize: '0.85rem', padding: '7px 18px' }}>
                 + Configure Webhook
@@ -513,7 +513,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
           <div className="dash-table-card">
             <div className="table-wrapper">
-              <table style={{ width: '100%' }}>
+              <table className="w-full">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -587,7 +587,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
           <div className="dash-table-card">
             <div className="table-wrapper">
-              <table style={{ width: '100%' }}>
+              <table className="w-full">
                 <thead>
                   <tr>
                     <th>Time</th>
@@ -600,7 +600,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
                 <tbody>
                   {failures.length ? failures.map((log) => (
                     <>
-                      <tr key={log.id} style={{ cursor: 'pointer' }} onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
+                      <tr key={log.id} className="cursor-pointer" onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
                         <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>
                           {mounted ? new Date(log.triggeredAt).toLocaleString() : ''}
                         </td>
@@ -627,12 +627,12 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
                                 <strong>URL:</strong> <span style={{ opacity: 0.7, wordBreak: 'break-all' }}>{log.url}</span><br />
                                 <strong>Method:</strong> {log.method}<br />
                                 {log.statusCode && <><strong>HTTP Status:</strong> {log.statusCode}<br /></>}
-                                <strong>Full Response:</strong> <span style={{ opacity: 0.7 }}>{log.response}</span><br />
+                                <strong>Full Response:</strong> <span className="opacity-70">{log.response}</span><br />
                                 <strong>Retries:</strong> {log.retryCount}<br />
                                 <strong>Duration:</strong> {log.durationMs}ms
                               </div>
                               <div>
-                                <strong>Condition Details:</strong> <span style={{ opacity: 0.7 }}>{log.conditionDetails}</span><br />
+                                <strong>Condition Details:</strong> <span className="opacity-70">{log.conditionDetails}</span><br />
                                 <strong>Payload:</strong>
                                 <pre style={{ fontSize: '0.72rem', background: 'var(--bg)', padding: '6px', borderRadius: '4px', overflow: 'auto', maxHeight: '100px', marginTop: '3px' }}>
                                   {JSON.stringify(log.payload, null, 2)}
@@ -655,8 +655,8 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
 
       {/* USAGE TAB */}
       {tab === 'usage' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="dash-table-card" style={{ padding: '24px' }}>
+        <div className="flex flex-col gap-5">
+          <div className="dash-table-card" className="p-6">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
               <div>
                 <h3 style={{ fontSize: '0.88rem', fontWeight: 700, opacity: 0.6, textTransform: 'uppercase', marginBottom: '16px' }}>Events Distribution</h3>
@@ -695,7 +695,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
                 {[{ label: 'Success', count: successLogs.length, color: '#10b981' }, { label: 'Failures', count: failures.length, color: '#f87171' }, { label: 'Skipped', count: skippedLogs.length, color: '#9ca3af' }].map(s => (
                   <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
-                    <span style={{ opacity: 0.7 }}>{s.label}:</span>
+                    <span className="opacity-70">{s.label}:</span>
                     <strong style={{ color: s.color }}>{s.count}</strong>
                   </div>
                 ))}
@@ -709,14 +709,14 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
       {tab === 'globalfields' && (
         <form onSubmit={handleGlobalCfgSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
-            <div className="dash-table-card" style={{ padding: '20px' }}>
+            <div className="dash-table-card" className="p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Custom HTTP Headers</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Sent with every outgoing webhook. Use for Authorization, API keys, etc.
               </p>
               <KVList label="Headers" items={globalCfg.customHeaders} setItems={setHeadersList} kp="Header Name" vp="Value" />
             </div>
-            <div className="dash-table-card" style={{ padding: '20px' }}>
+            <div className="dash-table-card" className="p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Global Payload Fields</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Extra fields merged into every webhook payload body.
@@ -725,7 +725,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
-            <div className="dash-table-card" style={{ padding: '20px' }}>
+            <div className="dash-table-card" className="p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Security & Request Signing</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 HMAC-SHA256 signature added as X-Webhook-Signature to every request.
@@ -733,7 +733,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '0.85rem' }}>Signing Secret</label>
               <input type="password" placeholder="Leave empty to disable signing" value={globalCfg.signingSecret} onChange={e => setGlobalCfg({ ...globalCfg, signingSecret: e.target.value })} style={inp} />
             </div>
-            <div className="dash-table-card" style={{ padding: '20px' }}>
+            <div className="dash-table-card" className="p-5">
               <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '4px' }}>Retry & Timeout Settings</h3>
               <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0 0 14px 0' }}>
                 Controls retry behavior on failed deliveries and timeout limits.
@@ -752,7 +752,7 @@ export default function WebhooksClient({ initialSubscriptions, initialLogs, init
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div className="flex items-center gap-3.5">
             <button type="submit" className="primary-btn" disabled={loading} style={{ minWidth: '200px' }}>
               {loading ? 'Saving...' : '💾 Save Global Configuration'}
             </button>

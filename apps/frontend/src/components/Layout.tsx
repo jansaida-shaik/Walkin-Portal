@@ -85,32 +85,21 @@ export default function Layout({ children, user }: LayoutProps) {
   const activeItem = navConfig.find(item => item.href === pathname);
 
   return (
-    <div className={`portal-shell ${hideNav ? 'no-sidebar' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`} style={{
-      gridTemplateColumns: hideNav ? '1fr' : sidebarCollapsed ? 'var(--sidebar-collapsed-width) 1fr' : 'var(--sidebar-width) 1fr'
-    }}>
+    <div className={`portal-shell ${hideNav ? 'no-sidebar' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`} style={{ gridTemplateColumns: hideNav ? '1fr' : sidebarCollapsed ? 'var(--sidebar-collapsed-width) 1fr' : 'var(--sidebar-width) 1fr' }}>
       {/* Sidebar navigation */}
       {!hideNav && (
-        <aside className={`sidebar ${menuOpen ? 'open' : ''}`} style={{
-          width: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
-          overflowX: 'hidden'
-        }}>
+        <aside className={`sidebar overflow-x-hidden ${menuOpen ? 'open' : ''}`} style={{ width: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}>
           {/* Logo container */}
-          <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
+          <div className={`sidebar-brand flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}>
             {!sidebarCollapsed ? (
               <img
                 src="/Complete website logo.png"
                 alt="Organization Logo"
                 className="sidebar-logo-full"
-                style={{ maxHeight: '36px', width: 'auto' }}
+                className="max-h-9 w-auto"
               />
             ) : (
-              <div style={{
-                width: 36, height: 36, borderRadius: '10px',
-                background: 'var(--accent-gradient)', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontWeight: 900, color: '#fff', fontSize: '0.95rem',
-                flexShrink: 0, letterSpacing: '-0.02em'
-              }}>C</div>
+              <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-gradient)] flex items-center justify-center font-black text-white text-[0.95rem] shrink-0 tracking-tight">C</div>
             )}
           </div>
 
@@ -172,11 +161,7 @@ export default function Layout({ children, user }: LayoutProps) {
                 type="button"
                 className="outline-btn"
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                style={{
-                  width: '100%', height: '36px', minHeight: '36px', padding: '0 10px',
-                  display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                  gap: '8px', fontSize: '0.8rem', fontWeight: 700
-                }}
+                className={`outline-btn w-full h-9 min-h-9 px-2.5 flex items-center gap-2 text-[0.8rem] font-bold ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                 title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round"
@@ -266,34 +251,33 @@ export default function Layout({ children, user }: LayoutProps) {
 
       {/* ─── Global Command Palette Foundation Overlay ──────────────── */}
       <div className={`command-palette-overlay ${isCommandPaletteOpen ? 'open' : ''}`} onClick={() => setIsCommandPaletteOpen(false)}>
-        <div className="command-palette-container" onClick={(e) => e.stopPropagation()} style={{ padding: 'var(--space-4)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-3)' }}>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="20" height="20" style={{ color: 'var(--primary)' }}>
+        <div className="command-palette-container p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-3 border-b border-[var(--border)] pb-3">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="20" height="20" className="text-[var(--primary)] shrink-0">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.3-4.3" />
             </svg>
             <input
               type="text"
               placeholder="Search leads, counselors, or enter commands (e.g. > new)..."
-              style={{ border: 'none', background: 'transparent', width: '100%', fontSize: '0.95rem', color: 'var(--text)', outline: 'none' }}
+              className="border-none bg-transparent w-full text-[0.95rem] text-[var(--text)] outline-none"
               disabled={!isCommandPaletteOpen}
               autoFocus
             />
-            <span style={{ fontSize: '0.72rem', background: 'var(--surface-alt)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--muted)', fontWeight: 700 }}>ESC</span>
+            <span className="text-[0.72rem] bg-[var(--surface-alt)] px-2 py-0.5 rounded border border-[var(--border)] text-[var(--muted)] font-bold">ESC</span>
           </div>
           
           {/* Static placeholders detailing how index results will behave in Phase 4 */}
-          <div style={{ marginTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--muted)', letterSpacing: '0.04em' }}>Quick Actions</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="text-[0.72rem] uppercase font-extrabold text-[var(--muted)] tracking-wider">Quick Actions</div>
+            <div className="flex flex-col gap-1">
               <button
                 type="button"
                 onClick={() => { setIsCommandPaletteOpen(false); router.push('/walkins'); }}
-                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', textAlign: 'left', fontSize: '0.84rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
-                className="outline-btn"
+                className="outline-btn w-full px-2.5 py-2 rounded-md text-left text-[0.84rem] cursor-pointer flex justify-between"
               >
                 <span>➕ Register Walk-in</span>
-                <span style={{ opacity: 0.5 }}>&gt; new</span>
+                <span className="opacity-50">&gt; new</span>
               </button>
             </div>
           </div>

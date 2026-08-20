@@ -276,37 +276,37 @@ export default function SettingsClient({ branches, locations, users: initialUser
   }, [users, userSearch, roleFilter, branchFilter]);
 
   const renderProfile = () => (
-    <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Organization Name</label>
+          <label className="block mb-2 font-semibold">Organization Name</label>
           <input type="text" value={profileForm.companyName} onChange={e => setProfileForm({...profileForm, companyName: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
         </div>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Tax Registration No.</label>
+          <label className="block mb-2 font-semibold">Tax Registration No.</label>
           <input type="text" value={profileForm.taxId} onChange={e => setProfileForm({...profileForm, taxId: e.target.value})} style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Primary Contact Email</label>
+          <label className="block mb-2 font-semibold">Primary Contact Email</label>
           <input type="email" value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
         </div>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Primary Contact Phone</label>
+          <label className="block mb-2 font-semibold">Primary Contact Phone</label>
           <input type="text" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
         </div>
       </div>
       <div>
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Website URL</label>
+        <label className="block mb-2 font-semibold">Website URL</label>
         <input type="url" value={profileForm.website} onChange={e => setProfileForm({...profileForm, website: e.target.value})} style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
       </div>
       <div>
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>HQ Physical Address</label>
+        <label className="block mb-2 font-semibold">HQ Physical Address</label>
         <textarea rows={3} value={profileForm.address} onChange={e => setProfileForm({...profileForm, address: e.target.value})} style={{ resize: 'vertical', width: '100%', padding: '14px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
       </div>
-      <div style={{ marginTop: '12px' }}>
-        <button type="submit" className="primary-btn" style={{ padding: '10px 24px' }}>
+      <div className="mt-3">
+        <button type="submit" className="primary-btn" className="px-6 py-2.5">
           💾 Save Profile
         </button>
       </div>
@@ -314,21 +314,21 @@ export default function SettingsClient({ branches, locations, users: initialUser
   );
 
   const renderBranding = () => (
-    <form onSubmit={handleBrandingSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <form onSubmit={handleBrandingSave} className="flex flex-col gap-5">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <div>
-          <h3 style={{ fontSize: '1rem', marginBottom: '14px' }}>Color Palette</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 className="text-base mb-3.5">Color Palette</h3>
+          <div className="flex flex-col gap-3">
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem' }}>Primary Theme Color</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <label className="block mb-1.5 text-[0.85rem]">Primary Theme Color</label>
+              <div className="flex gap-2 items-center">
                 <input type="color" value={brandingForm.primary} onChange={e => setBrandingForm({...brandingForm, primary: e.target.value})} style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', cursor: 'pointer', background: 'transparent' }} />
                 <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{brandingForm.primary}</span>
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem' }}>Accent Highlight Color</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <label className="block mb-1.5 text-[0.85rem]">Accent Highlight Color</label>
+              <div className="flex gap-2 items-center">
                 <input type="color" value={brandingForm.accent} onChange={e => setBrandingForm({...brandingForm, accent: e.target.value})} style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', cursor: 'pointer', background: 'transparent' }} />
                 <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{brandingForm.accent}</span>
               </div>
@@ -337,11 +337,11 @@ export default function SettingsClient({ branches, locations, users: initialUser
         </div>
 
         <div>
-          <h3 style={{ fontSize: '1rem', marginBottom: '14px' }}>Corner Radius & Styling</h3>
+          <h3 className="text-base mb-3.5">Corner Radius & Styling</h3>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Border Radius: <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{brandingForm.radius}px</span></label>
             <input type="range" min="4" max="24" step="2" value={brandingForm.radius} onChange={e => setBrandingForm({...brandingForm, radius: Number(e.target.value)})} style={{ width: '100%', padding: 0 }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+            <div className="flex justify-between text-[0.75rem] opacity-50 mt-1">
               <span>Sharp (4px)</span>
               <span>Default (14px)</span>
               <span>Rounded (24px)</span>
@@ -351,18 +351,18 @@ export default function SettingsClient({ branches, locations, users: initialUser
       </div>
 
       <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', marginTop: '12px' }}>
-        <h4 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Visual Theme Live Preview</h4>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <h4 className="text-[0.9rem] mb-2.5">Visual Theme Live Preview</h4>
+        <div className="flex gap-2.5 flex-wrap">
           <button type="button" style={{ background: brandingForm.primary, color: '#fff', fontSize: '0.8rem', minHeight: '38px', borderRadius: `${brandingForm.radius}px`, padding: '6px 14px', border: 'none' }}>Primary Button</button>
           <button type="button" style={{ background: 'transparent', border: `1px solid ${brandingForm.primary}`, color: brandingForm.primary, fontSize: '0.8rem', minHeight: '38px', borderRadius: `${brandingForm.radius}px`, padding: '6px 14px' }}>Outline Button</button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-        <button type="submit" className="primary-btn" style={{ padding: '10px 24px' }}>
+      <div className="flex gap-2.5 mt-3">
+        <button type="submit" className="primary-btn" className="px-6 py-2.5">
           💾 Save Branding Configuration
         </button>
-        <button type="button" className="outline-btn" style={{ padding: '10px 24px' }} onClick={handleResetBranding}>
+        <button type="button" className="outline-btn" className="px-6 py-2.5" onClick={handleResetBranding}>
           🔄 Reset Default
         </button>
       </div>
@@ -371,7 +371,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
 
   const renderLocations = () => (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
+      <div className="flex justify-between items-center mb-4 gap-3">
         <div style={{ position: 'relative', flex: 1, maxWidth: '300px' }}>
           <input
             type="search"
@@ -384,17 +384,17 @@ export default function SettingsClient({ branches, locations, users: initialUser
         <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Total Branches: {branches.length}</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="flex flex-col gap-5">
         {filteredLocationsWithBranches.map((loc) => (
           <div key={loc.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)', padding: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '12px' }}>
+            <div className="flex justify-between items-center border-b border-[var(--border)] pb-2.5 mb-3">
               <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', margin: 0 }}>
                 📍 {loc.name}
               </h3>
               <span style={{ fontSize: '0.75rem', opacity: 0.5, fontStyle: 'italic' }}>{loc.address}</span>
             </div>
             {loc.branches.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', opacity: 0.4, margin: 0 }}>No branches under this location match the query.</p>
+              <p className="text-[0.8rem] opacity-40 m-0">No branches under this location match the query.</p>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {loc.branches.map((b: any) => (
@@ -408,7 +408,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
           </div>
         ))}
         {filteredLocationsWithBranches.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '30px', opacity: 0.5 }}>No locations or branches found matching the query.</div>
+          <div className="text-center p-7 opacity-50">No locations or branches found matching the query.</div>
         )}
       </div>
     </div>
@@ -416,8 +416,8 @@ export default function SettingsClient({ branches, locations, users: initialUser
 
   const renderUsers = () => (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '280px' }}>
+      <div className="flex flex-wrap gap-2.5 mb-4 items-center justify-between">
+        <div className="flex gap-2 flex-1 min-w-[280px]">
           <input
             type="search"
             placeholder="Search name, email, user..."
@@ -439,15 +439,15 @@ export default function SettingsClient({ branches, locations, users: initialUser
         <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Total Users: {filteredUsers.length}</span>
       </div>
 
-      <div className="table-wrapper" style={{ margin: 0 }}>
-        <table style={{ minWidth: '600px' }}>
+      <div className="table-wrapper" className="m-0">
+        <table className="min-w-[600px]">
           <thead>
             <tr>
               <th>User Profile</th>
               <th>Role</th>
               <th>Branch</th>
               <th>Status</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -460,7 +460,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
                 return (
                   <tr key={u.id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="flex items-center gap-2.5">
                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-gradient)', color: '#fff', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {u.name?.charAt(0).toUpperCase()}
                         </div>
@@ -483,8 +483,8 @@ export default function SettingsClient({ branches, locations, users: initialUser
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontSize: '0.82rem' }}>
-                        <div style={{ color: '#fff' }}>{branchName}</div>
+                      <div className="text-[0.82rem]">
+                        <div className="text-white">{branchName}</div>
                       </div>
                     </td>
                     <td>
@@ -505,7 +505,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
                         {isActive ? 'Active' : 'Suspended'}
                       </button>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="text-right">
                       <button
                         type="button"
                         onClick={() => showToast(`Password reset link sent to ${u.email}`)}
@@ -537,7 +537,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
     };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="flex flex-col gap-4">
         {roles.map((role) => (
           <div key={role.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)', padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '12px' }}>
@@ -564,8 +564,8 @@ export default function SettingsClient({ branches, locations, users: initialUser
   };
 
   const renderAIPreferences = () => (
-    <form onSubmit={handleAiSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <form onSubmit={handleAiSave} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: '4px', color: '#fff' }}>Queue Management Automation</h3>
           <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: 0 }}>Automate assignments and queue routing using intelligence models.</p>
@@ -612,7 +612,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
         ))}
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '4px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', fontWeight: 600 }}>Model Confidence Threshold: <span style={{ color: 'var(--primary)' }}>{aiForm.confidenceThreshold}%</span></label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', fontWeight: 600 }}>Model Confidence Threshold: <span className="text-[var(--primary)]">{aiForm.confidenceThreshold}%</span></label>
           <input
             type="range"
             min="50"
@@ -626,8 +626,8 @@ export default function SettingsClient({ branches, locations, users: initialUser
         </div>
       </div>
 
-      <div style={{ marginTop: '12px' }}>
-        <button type="submit" className="primary-btn" style={{ padding: '10px 24px' }}>
+      <div className="mt-3">
+        <button type="submit" className="primary-btn" className="px-6 py-2.5">
           💾 Save AI Preferences
         </button>
       </div>
@@ -636,7 +636,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
 
   const renderFallback = () => (
     <div style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>
-      <p style={{ margin: '0 0 12px 0' }}>This settings subsection is fully configured and ready for production deployment.</p>
+      <p className="m-0 mb-3">This settings subsection is fully configured and ready for production deployment.</p>
       <button type="button" className="outline-btn" style={{ fontSize: '0.82rem', padding: '6px 16px', minHeight: '36px' }} onClick={() => showToast('Action applied successfully!')}>
         Initialize {activeSubsection} subsection
       </button>
@@ -1040,7 +1040,7 @@ export default function SettingsClient({ branches, locations, users: initialUser
               <p style={{ margin: '0 0 24px', fontSize: '0.84rem', color: 'var(--muted)' }}>
                 Configure preferences and settings for this section.
               </p>
-              <div style={{ marginTop: '16px' }}>
+              <div className="mt-4">
                 {renderSubsectionContent()}
               </div>
             </div>

@@ -61,7 +61,7 @@ export default function PhoneInput({ id, value, onChange, required, disabled, pl
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+    <div className="flex flex-col gap-1">
       {label && (
         <label htmlFor={id} style={{
           fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase',

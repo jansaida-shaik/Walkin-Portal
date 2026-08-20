@@ -6,24 +6,14 @@ interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export default function InputField({ label, id, ...props }: InputFieldProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <label htmlFor={id} style={{ fontSize: '0.85rem', fontWeight: 600, opacity: 0.85 }}>
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-[0.85rem] font-semibold opacity-85">
         {label}
       </label>
       <input
         id={id}
         {...props}
-        style={{
-          width: '100%',
-          padding: '10px 14px',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-          color: 'var(--text)',
-          fontSize: '0.9rem',
-          outline: 'none',
-          transition: 'var(--transition)'
-        }}
+        className="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] text-[var(--text)] text-[0.9rem] outline-none transition-[var(--transition)] focus:border-[var(--primary)]"
       />
     </div>
   );

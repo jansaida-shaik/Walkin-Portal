@@ -61,7 +61,7 @@ function CustomDropdown({ value, onChange, isOpen, onToggle, onClose, disabled }
   }, [isOpen, onClose]);
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div className="relative w-full">
       {/* ── Trigger ── */}
       <button
         ref={triggerRef}
@@ -562,7 +562,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
 
                     {/* Timer */}
                     {isInSes && (
-                      <div className="sc-timer" style={{ cursor: 'pointer' }} onClick={() => setActiveCounsellingStudent(student)} title="Click to open workspace">
+                      <div className="sc-timer" className="cursor-pointer" onClick={() => setActiveCounsellingStudent(student)} title="Click to open workspace">
                         <div>
                           <div style={{ fontSize:'.72rem', fontWeight:800, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(245,158,11,.6)', marginBottom:3 }}>
                             ⏱ Active Time
@@ -682,7 +682,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               background: 'rgba(255,255,255,0.01)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="flex items-center gap-3.5">
                 <div style={{
                   width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -720,7 +720,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
 
             {/* Scrollable CRM Page Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'var(--card-bg)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="flex flex-col gap-2">
                 <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--text)' }}>
                   Lead Record Sheet
                 </h3>

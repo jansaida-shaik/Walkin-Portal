@@ -353,7 +353,7 @@ export default function DashboardClient({
     }
 
     return (
-      <span className={styleClass} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      <span className={styleClass} className="inline-flex items-center gap-1.5">
         <span aria-hidden="true">{icon}</span>
         <span>{label}</span>
       </span>
@@ -578,12 +578,12 @@ export default function DashboardClient({
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', display: 'block', letterSpacing: '0.04em' }}>
                   My Workspace Desk
                 </span>
-                <div style={{ marginTop: '8px' }}>
+                <div className="mt-2">
                   {myStudents.length > 0 ? (
                     myStudents.map(student => {
                       const activeSession = student.sessions.find(s => s.status === 'IN_SESSION');
                       return (
-                        <div key={student.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={student.id} className="flex justify-between items-center">
                           <div>
                             <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text)' }}>{student.name}</span>
                             <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Course: {student.course}</span>
@@ -661,10 +661,10 @@ export default function DashboardClient({
             
             {/* Critical SLA alerts banner container */}
             {slaAlerts.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div className="flex flex-col gap-1">
                 {/* A4 fix: promote to h3 for correct document heading outline */}
                 <h3 style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--danger)', letterSpacing: '0.04em', margin: 0 }}>SLA Warnings</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div className="flex flex-col gap-1">
                   {slaAlerts.slice(0, 4).map(alert => (
                     // A1 fix: breach = role="alert" (live), warning = role="status" (polite)
                     <div
@@ -674,7 +674,7 @@ export default function DashboardClient({
                       aria-live={alert.type === 'breach' ? 'assertive' : 'polite'}
                       aria-label={alert.message}
                     >
-                      <span aria-hidden="true" style={{ fontWeight: 800 }}>{alert.type === 'breach' ? '🚨' : '⚠️'}</span>
+                      <span aria-hidden="true" className="font-extrabold">{alert.type === 'breach' ? '🚨' : '⚠️'}</span>
                       <span>{alert.message}</span>
                     </div>
                   ))}
@@ -724,7 +724,7 @@ export default function DashboardClient({
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               background: 'rgba(255,255,255,0.01)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="flex items-center gap-3.5">
                 <div style={{
                   width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -763,7 +763,7 @@ export default function DashboardClient({
 
             {/* Modal Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'var(--card-bg)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="flex flex-col gap-2">
                 <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--text)' }}>
                   Lead Record Sheet
                 </h3>

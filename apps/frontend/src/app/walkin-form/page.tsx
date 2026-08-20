@@ -380,13 +380,13 @@ export default function WalkinForm() {
                   A{result.token?.id}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="flex justify-between">
                 <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Assigned Counsellor</span>
-                <span style={{ fontWeight: 700 }}>{result.walkin?.counselorName || 'Waitlist'}</span>
+                <span className="font-bold">{result.walkin?.counselorName || 'Waitlist'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="flex justify-between">
                 <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Branch</span>
-                <span style={{ fontWeight: 700 }}>{result.walkin?.branchName}</span>
+                <span className="font-bold">{result.walkin?.branchName}</span>
               </div>
             </div>
             <p style={{ margin: '14px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>

@@ -413,7 +413,7 @@ export default function StudentContextDrawer({
                             )}
                             {sess.followUpStatus && (
                               <div style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
-                                Follow-up: <strong style={{ color: 'var(--text)' }}>{sess.followUpStatus}</strong>
+                                Follow-up: <strong className="text-[var(--text)]">{sess.followUpStatus}</strong>
                               </div>
                             )}
                           </div>

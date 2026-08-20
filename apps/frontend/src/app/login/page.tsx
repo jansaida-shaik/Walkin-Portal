@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '../../actions/authActions';
 
@@ -16,7 +16,7 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setErrorMsg('');
-    
+
     const formData = new FormData();
     formData.append('username', username);
     formData.append('password', password);
@@ -27,7 +27,6 @@ export default function LoginPage() {
       setLoading(false);
     } else if (res && res.success) {
       router.push('/dashboard');
-      // Trigger a soft-refresh of root layout so the sidebar shows user details
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 100);
@@ -116,12 +115,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="login-submit" disabled={loading} style={{ width: '100%' }}>
+            <button type="submit" className="login-submit w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
 
-          {errorMsg && <div className="login-message" style={{ background: 'var(--danger-glow)', border: '1px solid var(--border)', color: 'var(--danger)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: 600, marginTop: '16px' }}>{errorMsg}</div>}
+          {errorMsg && (
+            <div className="login-message mt-4 px-3.5 py-2.5 rounded-[var(--radius-sm)] text-[0.82rem] font-semibold bg-[var(--danger-glow)] border border-[var(--border)] text-[var(--danger)]">
+              {errorMsg}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -258,7 +258,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
               </span>
             </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="overflow-x-auto">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
                 <tr style={{ background: 'rgba(239,68,68,0.04)' }}>
@@ -521,7 +521,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
               {/* Phone + country code */}
               <div>
                 <label htmlFor="add-phone" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-                  Phone Number <span style={{ color: 'var(--danger)' }} aria-hidden="true">*</span>
+                  Phone Number <span className="text-[var(--danger)]" aria-hidden="true">*</span>
                 </label>
                 <div style={{ display: 'flex' }}>
                   <select
@@ -548,7 +548,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
               {/* Email */}
               <div>
                 <label htmlFor="add-email" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-                  Email Address <span style={{ color: 'var(--danger)' }} aria-hidden="true">*</span>
+                  Email Address <span className="text-[var(--danger)]" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="add-email"

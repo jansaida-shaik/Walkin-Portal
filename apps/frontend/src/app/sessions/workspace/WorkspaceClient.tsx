@@ -74,7 +74,7 @@ function CustomDropdown({ value, onChange, isOpen, onToggle, onClose, disabled }
   }, [isOpen, onClose]);
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div className="relative w-full">
       <button
         ref={triggerRef}
         type="button"
@@ -116,7 +116,7 @@ function CustomDropdown({ value, onChange, isOpen, onToggle, onClose, disabled }
             boxShadow: '0 16px 48px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)',
           }}
         >
-          <div style={{ padding: '5px' }}>
+          <div className="p-1.5">
             {options.map(opt => {
               const isSel = opt.value === value;
               return (
@@ -689,7 +689,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
   }
 
   return (
-    <section className="dash-page" style={{ paddingBottom: 40 }}>
+    <section className="dash-page" className="pb-10">
       {/* Toast Alert */}
       {toastMsg && (
         <div style={{
@@ -710,7 +710,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
         padding: '20px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between',
         alignItems: 'center', flexWrap: 'wrap', gap: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div className="flex items-center gap-3.5">
           <div style={{
             width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -732,7 +732,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3">
           {/* Microphone Status Banner */}
           {student.status === 'In Session' && (
             micWarning ? (
@@ -821,7 +821,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px',
           boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
         }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="flex items-center gap-2">
             <span>⚠️</span>
             <span>You have unsaved changes in your counselling notes draft.</span>
           </span>
@@ -864,7 +864,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
         {/* Left Column: Student Academic History and Intake Profile Context */}
         <div className="workspace-left-panel">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="flex items-center gap-2.5">
               <div style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--primary)', flexShrink: 0 }} />
               <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)' }}>
                 Student Submission Record Sheet
@@ -888,7 +888,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
               {/* Counselling Notes Textarea */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="flex flex-col gap-2">
                 <label style={{ display: 'block', fontSize: '.74rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
                   Counselling Notes
                 </label>
@@ -933,7 +933,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
             {/* Audio Session Summary block */}
             {student.status === 'In Session' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="flex justify-between items-center">
                   <label style={{ display: 'block', fontSize: '.74rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--primary)' }}>
                     🎙️ Audio Session Summary
                   </label>
@@ -1005,7 +1005,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
                   paddingBottom: '14px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div className="flex flex-col gap-1">
                       <span style={{ fontSize: '0.74rem', color: 'var(--primary)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block', animation: 'pulseDot 1.4s infinite' }} />
                         🎙️ Voice Processing & Transcription
@@ -1015,7 +1015,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
                       </span>
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="flex items-center gap-2">
                       <label style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         Language:
                       </label>
@@ -1116,8 +1116,8 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
                 </div>
 
                 {/* Bottom Row: Speech transcript text container */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
                     <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       📝 Live Speech Transcription
                     </span>

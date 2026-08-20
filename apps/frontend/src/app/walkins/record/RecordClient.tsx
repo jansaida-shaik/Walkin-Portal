@@ -430,19 +430,19 @@ export default function RecordClient({ student, counselors, user }: RecordClient
               <StatusPill status={student.status} />
             </h1>
             <p style={{ margin: '5px 0 0 0', fontSize: '0.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-              <span>Record ID: <strong style={{ color: 'var(--text)' }}>#{student.id}</strong></span>
+              <span>Record ID: <strong className="text-[var(--text)]">#{student.id}</strong></span>
               <span style={{ color: 'var(--border)' }}>|</span>
-              <span>Course: <strong style={{ color: 'var(--text)' }}>{student.course}</strong></span>
+              <span>Course: <strong className="text-[var(--text)]">{student.course}</strong></span>
               {student.phone && (
                 <>
                   <span style={{ color: 'var(--border)' }}>|</span>
-                  <strong style={{ color: 'var(--text)' }}>{student.phone}</strong>
+                  <strong className="text-[var(--text)]">{student.phone}</strong>
                 </>
               )}
               {student.branchName && (
                 <>
                   <span style={{ color: 'var(--border)' }}>|</span>
-                  <span>Branch: <strong style={{ color: 'var(--text)' }}>{student.branchName}</strong></span>
+                  <span>Branch: <strong className="text-[var(--text)]">{student.branchName}</strong></span>
                 </>
               )}
             </p>
@@ -613,7 +613,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
           borderRadius: '16px', padding: '24px', marginBottom: '24px',
           display: 'flex', flexDirection: 'column', gap: '20px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="flex items-center gap-2.5">
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b', animation: 'pulseDot 1.4s infinite' }} />
             <h2 style={{
               margin: 0, fontSize: '0.83rem', fontWeight: 800,
@@ -625,7 +625,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             {/* Notes */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               <label style={{
                 fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.07em',
                 textTransform: 'uppercase', color: 'var(--muted)',
@@ -649,7 +649,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
             </div>
 
             {/* Follow-up + Remarks */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex flex-col gap-5">
               <div>
                 <label style={{
                   display: 'block', fontSize: '0.7rem', fontWeight: 800,
@@ -706,7 +706,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
           STUDENT SUBMISSION RECORD SHEET
       ══════════════════════════════════════════════════ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="flex items-center gap-2.5">
           <div style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--primary)', flexShrink: 0 }} />
           <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)' }}>
             Student Submission Record Sheet
@@ -725,7 +725,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
       ══════════════════════════════════════════════════ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {/* Section header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="flex items-center gap-2.5">
           <div style={{ width: 3, height: 22, borderRadius: 2, background: '#6366f1', flexShrink: 0 }} />
           <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)' }}>
             Counsellor Session History
@@ -773,7 +773,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     flexWrap: 'wrap', gap: '10px',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div className="flex items-center gap-3.5">
                       {/* Counsellor avatar */}
                       <div style={{
                         width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
@@ -907,7 +907,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
                         flexWrap: 'wrap',
                         gap: '16px',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="flex items-center gap-3">
                           <span style={{
                             fontSize: '1.2rem',
                             background: 'rgba(99,102,241,0.08)',
@@ -1068,7 +1068,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
                           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                           paddingBottom: '12px'
                         }}>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="flex gap-2">
                             {sess.summary && (
                               <button
                                 type="button"
