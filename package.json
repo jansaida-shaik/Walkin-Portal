@@ -6,12 +6,6 @@
     "dev": "pnpm --filter walkin-portal-frontend dev",
     "build": "pnpm --filter walkin-portal-frontend build",
     "start": "pnpm --filter walkin-portal-frontend start",
-    "dev:backend": "pnpm --filter walkin-portal-backend dev",
     "dev:all": "pnpm --filter walkin-portal-backend dev & pnpm --filter walkin-portal-frontend dev"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }
