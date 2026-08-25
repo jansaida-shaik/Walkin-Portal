@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { branches, COURSES } from '@/lib/constants';
+import { branches } from '@/lib/constants';
 
 // Helper to look up key in payload case-insensitively with alias support
 function getField(payload: Record<string, any>, aliases: string[], fallback: string = ''): string {
@@ -37,11 +37,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // 1. Primary Identification
-    const phone = getField(payload, ['phone', 'Phone', 'contact', 'Contact', 'mobile', 'Mobile', 'phoneNumber', 'Phone Number', 'Parent Number']);
+    // 1. Primary Identification - Clearly separated Student Phone vs Parent Phone
+    const phone = getField(payload, [
+      'phone', 'Phone', 'student_phone', 'Student Phone', 'studentPhone',
+      'mobile', 'Mobile', 'student_mobile', 'Student Mobile',
+      'contact', 'Contact', 'phoneNumber', 'Phone Number'
+    ]);
+    
     if (!phone) {
-      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Student phone number is required (field: phone or student_phone)' }, { status: 400 });
     }
+
+    const parentPhone = getField(payload, [
+      'parent_phone', 'Parent Phone', 'parentPhone',
+      'Parent Number', 'parent_number', 'parentNumber',
+      'parent_mobile', 'Parent Mobile', 'parentMobile',
+      'guardian_phone', 'guardianPhone', 'Guardian Phone',
+      'father_phone', 'Father Phone', 'mother_phone', 'Mother Phone'
+    ]);
 
     const name = getField(payload, ['name', 'Name', 'studentName', 'Student Name', 'fullName', 'Full Name'], 'Unknown Lead');
     const email = getField(payload, ['email', 'Email', 'email_id', 'Email Address', 'emailAddress']) || null;
@@ -89,6 +102,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Standardized Normalized Keys for Portal UI
       name,
       phone,
+      parent_phone: parentPhone,
+      'Parent Number': parentPhone,
       email,
       course,
       branchId,
@@ -112,8 +127,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       pg_percentage: getField(payload, ['pg_percentage', 'Post Graduation %', 'pgPercentage']),
       'Post Graduation %': getField(payload, ['pg_percentage', 'Post Graduation %', 'pgPercentage']),
       // Personal
-      parent_phone: getField(payload, ['parent_phone', 'Parent Number', 'parentPhone', 'guardianPhone']),
-      'Parent Number': getField(payload, ['parent_phone', 'Parent Number', 'parentPhone', 'guardianPhone']),
       dob: getField(payload, ['dob', 'Date of Birth', 'birthDate', 'dateOfBirth']),
       'Date of Birth': getField(payload, ['dob', 'Date of Birth', 'birthDate', 'dateOfBirth']),
       gender: getField(payload, ['gender', 'Gender', 'sex']),
