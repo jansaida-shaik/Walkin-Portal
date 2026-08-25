@@ -219,3 +219,55 @@ export const COUNTRY_CODES: CountryCode[] = [
   { code: '+52', country: 'Mexico', flag: '🇲🇽' },
 ];
 
+
+
+// ─── Referral Channels ───────────────────────────────────────────────────
+export const KNOW_US_OPTIONS: { value: string; label: string }[] = [
+  { value: 'Google Search / Website', label: 'Google Search / Website' },
+  { value: 'Instagram', label: 'Instagram' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'YouTube', label: 'YouTube' },
+  { value: 'LinkedIn', label: 'LinkedIn' },
+  { value: 'Friend / Referral', label: 'Friend / Referral' },
+  { value: 'College / Campus Seminar', label: 'College / Campus Seminar' },
+  { value: 'Poster / Banner / Hoarding', label: 'Poster / Banner / Hoarding' },
+  { value: 'WhatsApp', label: 'WhatsApp' },
+  { value: 'Walk-by / Direct Campus Visit', label: 'Walk-by / Direct Campus Visit' },
+  { value: 'Other', label: 'Other' },
+];
+
+
+// ─── Passout Years ────────────────────────────────────────────────────────
+export const PASSOUT_YEAR_OPTIONS: { value: string; label: string }[] = [
+  { value: '2030', label: '2030' },
+  { value: '2029', label: '2029' },
+  { value: '2028', label: '2028' },
+  { value: '2027', label: '2027' },
+  { value: '2026', label: '2026' },
+  { value: '2025', label: '2025' },
+  { value: '2024', label: '2024' },
+  { value: '2023', label: '2023' },
+  { value: '2022', label: '2022' },
+  { value: '2021', label: '2021' },
+  { value: '2020', label: '2020' },
+  { value: '2019', label: '2019' },
+  { value: '2018', label: '2018' },
+  { value: '2017', label: '2017' },
+  { value: '2016', label: '2016' },
+  { value: '2015', label: '2015' },
+  { value: 'Before 2015', label: 'Before 2015' },
+  { value: 'Other', label: 'Other' },
+];
+
+// ─── Why this Course (Reasons) ───────────────────────────────────────────
+export const WHY_COURSE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'To Upskill', label: 'To Upskill' },
+  { value: 'Job Placement', label: 'Job Placement' },
+  { value: 'Career Switch', label: 'Career Switch' },
+  { value: 'College Project / Academic Requirement', label: 'College Project / Academic Requirement' },
+  { value: 'Higher Studies Preparation', label: 'Higher Studies Preparation' },
+  { value: 'Certification / Industry Skills', label: 'Certification / Industry Skills' },
+  { value: 'Freelancing / Startup', label: 'Freelancing / Startup' },
+  { value: 'Personal Interest', label: 'Personal Interest' },
+  { value: 'Other', label: 'Other' },
+];

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const result = await prisma.$transaction(async (tx: any) => {
       const user = await tx.user.create({ data: { id: cId, username, password: `${cId}123`, name, email, roleId: 'role_counselor', branchId, locationId: location, departmentId } });
-      const profile = await tx.counselorProfile.create({ data: { id: cId, availability: ['09:00', '12:00', '15:00'], status: 'Available' } });
+      const profile = await tx.counselorProfile.create({ data: { id: cId, availability: ['09:00', '12:00', '15:00'], status: 'Offline' } });
       return { user, profile };
     });
 

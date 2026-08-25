@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
 import StatusBadge from '../../components/StatusBadge';
 import InputField from '../../components/InputField';
+import CustomSelect from '../../components/CustomSelect';
 import StudentContextDrawer, { DrawerStudent } from '../../components/StudentContextDrawer';
 import { COURSES, COUNTRY_CODES, branches as BRANCHES } from '../../lib/constants';
 import { createWalkin } from '../../actions/walkinActions';
@@ -166,6 +167,15 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
 
   const canManage = ['role_super_admin', 'role_admin', 'role_frontdesk', 'role_manager'].includes(user?.roleId || '');
 
+  const totalCount = initialWalkins.length;
+  const waitingCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'waiting').length;
+  const assignedCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'assigned').length;
+  const inSessionCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'in session' || (w.status || '').toLowerCase() === 'in_session').length;
+  const completedCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'completed').length;
+  const followUpCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'follow-up' || (w.status || '').toLowerCase() === 'followup').length;
+  const cancelledCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'cancelled').length;
+  const noShowCount = initialWalkins.filter(w => (w.status || '').toLowerCase() === 'no show' || (w.status || '').toLowerCase() === 'no_show').length;
+
   // Counselor data for drawer (simplified interface)
   const drawerCounselors = counselors.map(c => ({ id: c.id, name: c.name, branchName: c.branchName }));
 
@@ -308,6 +318,276 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
         </div>
       )}
 
+            {/* ── Real-time Counselling Status Bubbles ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        margin: 'var(--space-4) 0 var(--space-2) 0',
+        flexWrap: 'wrap',
+      }}>
+        {/* TOTAL */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === '' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+            background: statusFilter === '' ? 'rgba(99, 102, 241, 0.15)' : 'var(--surface)',
+            color: statusFilter === '' ? 'var(--primary)' : 'var(--muted)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <span>TOTAL</span>
+          <span style={{
+            background: statusFilter === '' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.08)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+          }}>{totalCount}</span>
+        </button>
+
+        {/* WAITING */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'Waiting' ? '' : 'Waiting')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'Waiting' ? '1.5px solid #0ea5e9' : '1.5px solid rgba(14, 165, 233, 0.3)',
+            background: 'rgba(14, 165, 233, 0.12)',
+            color: '#0284c7',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'Waiting' ? '0 0 10px rgba(14, 165, 233, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0ea5e9', boxShadow: '0 0 6px #0ea5e9', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>WAITING</span>
+          <span style={{
+            background: 'rgba(14, 165, 233, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#0284c7',
+          }}>{waitingCount}</span>
+        </button>
+
+        {/* ASSIGNED */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'Assigned' ? '' : 'Assigned')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'Assigned' ? '1.5px solid #6366f1' : '1.5px solid rgba(99, 102, 241, 0.3)',
+            background: 'rgba(99, 102, 241, 0.12)',
+            color: '#6366f1',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'Assigned' ? '0 0 10px rgba(99, 102, 241, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 6px #6366f1' }} />
+          <span>ASSIGNED</span>
+          <span style={{
+            background: 'rgba(99, 102, 241, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#6366f1',
+          }}>{assignedCount}</span>
+        </button>
+
+        {/* IN SESSION */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'In Session' ? '' : 'In Session')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'In Session' ? '1.5px solid #f59e0b' : '1.5px solid rgba(245, 158, 11, 0.3)',
+            background: 'rgba(245, 158, 11, 0.12)',
+            color: '#d97706',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'In Session' ? '0 0 10px rgba(245, 158, 11, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>IN SESSION</span>
+          <span style={{
+            background: 'rgba(245, 158, 11, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#d97706',
+          }}>{inSessionCount}</span>
+        </button>
+
+        {/* COMPLETED */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'Completed' ? '' : 'Completed')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'Completed' ? '1.5px solid #10b981' : '1.5px solid rgba(16, 185, 129, 0.3)',
+            background: 'rgba(16, 185, 129, 0.12)',
+            color: '#059669',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'Completed' ? '0 0 10px rgba(16, 185, 129, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+          <span>COMPLETED</span>
+          <span style={{
+            background: 'rgba(16, 185, 129, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#059669',
+          }}>{completedCount}</span>
+        </button>
+
+        {/* FOLLOW-UP */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'Follow-up' ? '' : 'Follow-up')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'Follow-up' ? '1.5px solid #8b5cf6' : '1.5px solid rgba(139, 92, 246, 0.3)',
+            background: 'rgba(139, 92, 246, 0.12)',
+            color: '#7c3aed',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'Follow-up' ? '0 0 10px rgba(139, 92, 246, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', boxShadow: '0 0 6px #8b5cf6' }} />
+          <span>FOLLOW-UP</span>
+          <span style={{
+            background: 'rgba(139, 92, 246, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#7c3aed',
+          }}>{followUpCount}</span>
+        </button>
+
+        {/* CANCELLED */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'Cancelled' ? '' : 'Cancelled')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'Cancelled' ? '1.5px solid #ef4444' : '1.5px solid rgba(239, 68, 68, 0.3)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            color: '#dc2626',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'Cancelled' ? '0 0 10px rgba(239, 68, 68, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+          <span>CANCELLED</span>
+          <span style={{
+            background: 'rgba(239, 68, 68, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#dc2626',
+          }}>{cancelledCount}</span>
+        </button>
+
+        {/* NO SHOW */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'No Show' ? '' : 'No Show')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: statusFilter === 'No Show' ? '1.5px solid #94a3b8' : '1.5px solid rgba(100, 116, 139, 0.3)',
+            background: 'rgba(100, 116, 139, 0.12)',
+            color: '#64748b',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: statusFilter === 'No Show' ? '0 0 10px rgba(100, 116, 139, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} />
+          <span>NO SHOW</span>
+          <span style={{
+            background: 'rgba(100, 116, 139, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#64748b',
+          }}>{noShowCount}</span>
+        </button>
+      </div>
+
       {/* ── Search + Filters ── */}
       <div
         role="search"
@@ -347,32 +627,24 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
 
         {/* Status filter */}
         <div style={{ flex: '0 1 175px' }}>
-          <label htmlFor="walkins-status-filter" className="sr-only">Filter by status</label>
-          <select
+          <CustomSelect
             id="walkins-status-filter"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            style={fieldStyle}
-          >
-            <option value="">All Statuses</option>
-            {['Waiting', 'Assigned', 'In Session', 'Completed', 'Follow-up', 'No Show', 'Cancelled'].map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            placeholder="All Statuses"
+            options={['Waiting', 'Assigned', 'In Session', 'Completed', 'Follow-up', 'No Show', 'Cancelled']}
+          />
         </div>
 
         {/* Branch filter */}
         <div style={{ flex: '0 1 200px' }}>
-          <label htmlFor="walkins-branch-filter" className="sr-only">Filter by branch</label>
-          <select
+          <CustomSelect
             id="walkins-branch-filter"
             value={branchFilter}
             onChange={e => setBranchFilter(e.target.value)}
-            style={fieldStyle}
-          >
-            <option value="">All Branches</option>
-            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+            placeholder="All Branches"
+            options={branches.map(b => ({ value: b.id, label: b.name }))}
+          />
         </div>
 
         {/* Results count */}
@@ -393,7 +665,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
                 <th scope="col">Email</th>
                 <th scope="col">Course</th>
                 <th scope="col">Walk-in Date</th>
-                <th scope="col">Status</th>
+                <th scope="col">Counselling Status</th>
                 <th scope="col">Source</th>
                 <th scope="col">Actions</th>
               </tr>

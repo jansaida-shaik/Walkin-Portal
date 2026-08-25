@@ -1,4 +1,6 @@
 'use client';
+import CustomSelect from '../../components/CustomSelect';
+
 
 import StatusBadge from '../../components/StatusBadge';
 
@@ -199,6 +201,9 @@ interface SessionsClientProps {
 export default function SessionsClient({ initialWalkins, counselors, user }: SessionsClientProps) {
   const router = useRouter();
   const [walkins]           = useState<Student[]>(initialWalkins);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_session' | 'assigned' | 'completed' | 'cancelled'>('all');
+  const [searchQuery, setSearchQuery]   = useState<string>('');
+  const [branchFilter, setBranchFilter] = useState<string>('');
   const [currentTime, setCurrentTime]   = useState<number>(Date.now());
   const [message, setMessage]           = useState('');
   const [msgType, setMsgType]           = useState<'success'|'error'|'info'>('info');
@@ -285,12 +290,52 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
 
   const isCounselor = user?.roleId === 'role_counselor';
   const myId = isCounselor ? user?.id : null;
-  const active = walkins.filter(w =>
-    (w.status === 'Assigned' || w.status === 'In Session') &&
-    (myId ? w.sessions.some(s => s.counselorId === myId && s.status !== 'COMPLETED' && s.status !== 'CANCELLED') : true)
+
+  // Filter based on counselor scope
+  const scopedWalkins = walkins.filter(w =>
+    myId ? w.sessions.some(s => s.counselorId === myId) : true
   );
-  const inSessionCount = active.filter(w => w.status === 'In Session').length;
-  const assignedCount  = active.filter(w => w.status === 'Assigned').length;
+
+  const totalCount = scopedWalkins.length;
+  const inSessionCount = scopedWalkins.filter(w => w.status === 'In Session' || w.sessions.some(s => s.status === 'IN_SESSION')).length;
+  const assignedCount  = scopedWalkins.filter(w => w.status === 'Assigned' || (w.status !== 'In Session' && w.sessions.some(s => s.status === 'ASSIGNED'))).length;
+  const completedCount = scopedWalkins.filter(w => w.status === 'Completed' || w.sessions.some(s => s.status === 'COMPLETED')).length;
+  const cancelledCount = scopedWalkins.filter(w => w.status === 'Cancelled' || w.sessions.some(s => s.status === 'CANCELLED')).length;
+
+  const filteredStudents = scopedWalkins.filter(w => {
+    // 1. Status Filter
+    let matchStatus = true;
+    if (statusFilter === 'all') {
+      matchStatus = (w.status === 'Assigned' || w.status === 'In Session');
+    } else if (statusFilter === 'in_session') {
+      matchStatus = (w.status === 'In Session' || w.sessions.some(s => s.status === 'IN_SESSION'));
+    } else if (statusFilter === 'assigned') {
+      matchStatus = (w.status === 'Assigned');
+    } else if (statusFilter === 'completed') {
+      matchStatus = (w.status === 'Completed' || w.sessions.some(s => s.status === 'COMPLETED'));
+    } else if (statusFilter === 'cancelled') {
+      matchStatus = (w.status === 'Cancelled' || w.sessions.some(s => s.status === 'CANCELLED'));
+    }
+
+    // 2. Search Query Filter
+    const name = w.name || '';
+    const phone = w.phone || '';
+    const course = w.course || '';
+    const branch = w.branchName || '';
+    const matchSearch = searchQuery.trim() ? (
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phone.includes(searchQuery) ||
+      course.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      branch.toLowerCase().includes(searchQuery.toLowerCase())
+    ) : true;
+
+    // 3. Branch Filter
+    const matchBranch = branchFilter ? (w.branchName === branchFilter || w.details?.branchId === branchFilter) : true;
+
+    return matchStatus && matchSearch && matchBranch;
+  });
+
+  const active = filteredStudents;
 
   return (
     <>
@@ -460,18 +505,6 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
             </p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            {inSessionCount > 0 && (
-              <div className="sc-stat sc-stat-session">
-                <span style={{ width:7, height:7, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 6px #f59e0b', animation:'pulseDot 1.4s infinite', display:'inline-block' }}/>
-                {inSessionCount} In Session
-              </div>
-            )}
-            {assignedCount > 0 && (
-              <div className="sc-stat sc-stat-assigned">
-                <span style={{ width:7, height:7, borderRadius:'50%', background:'#6366f1', display:'inline-block' }}/>
-                {assignedCount} Assigned
-              </div>
-            )}
             <button type="button" className="sc-refresh" onClick={() => window.location.reload()} disabled={loading}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
@@ -479,6 +512,234 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
               Refresh
             </button>
           </div>
+        </div>
+
+                {/* ── Real-time Session Status Bubbles ── */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '18px 0 14px 0',
+          flexWrap: 'wrap',
+        }}>
+          {/* TOTAL ACTIVE */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              border: statusFilter === 'all' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+              background: statusFilter === 'all' ? 'rgba(99, 102, 241, 0.15)' : 'var(--surface)',
+              color: statusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span>ACTIVE QUEUE</span>
+            <span style={{
+              background: statusFilter === 'all' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.08)',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+            }}>{inSessionCount + assignedCount}</span>
+          </button>
+
+          {/* IN SESSION */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'in_session' ? 'all' : 'in_session')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              border: statusFilter === 'in_session' ? '1.5px solid #f59e0b' : '1.5px solid rgba(245, 158, 11, 0.3)',
+              background: 'rgba(245, 158, 11, 0.12)',
+              color: '#d97706',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: statusFilter === 'in_session' ? '0 0 10px rgba(245, 158, 11, 0.35)' : 'none',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+            <span>IN SESSION</span>
+            <span style={{
+              background: 'rgba(245, 158, 11, 0.22)',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#d97706',
+            }}>{inSessionCount}</span>
+          </button>
+
+          {/* ASSIGNED */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'assigned' ? 'all' : 'assigned')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              border: statusFilter === 'assigned' ? '1.5px solid #6366f1' : '1.5px solid rgba(99, 102, 241, 0.3)',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: '#6366f1',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: statusFilter === 'assigned' ? '0 0 10px rgba(99, 102, 241, 0.35)' : 'none',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 6px #6366f1' }} />
+            <span>ASSIGNED</span>
+            <span style={{
+              background: 'rgba(99, 102, 241, 0.22)',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#6366f1',
+            }}>{assignedCount}</span>
+          </button>
+
+          {/* COMPLETED */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              border: statusFilter === 'completed' ? '1.5px solid #10b981' : '1.5px solid rgba(16, 185, 129, 0.3)',
+              background: 'rgba(16, 185, 129, 0.12)',
+              color: '#059669',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: statusFilter === 'completed' ? '0 0 10px rgba(16, 185, 129, 0.35)' : 'none',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+            <span>COMPLETED</span>
+            <span style={{
+              background: 'rgba(16, 185, 129, 0.22)',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#059669',
+            }}>{completedCount}</span>
+          </button>
+
+          {/* CANCELLED */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'cancelled' ? 'all' : 'cancelled')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              border: statusFilter === 'cancelled' ? '1.5px solid #ef4444' : '1.5px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.12)',
+              color: '#dc2626',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: statusFilter === 'cancelled' ? '0 0 10px rgba(239, 68, 68, 0.35)' : 'none',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+            <span>CANCELLED</span>
+            <span style={{
+              background: 'rgba(239, 68, 68, 0.22)',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#dc2626',
+            }}>{cancelledCount}</span>
+          </button>
+        </div>
+
+        {/* ── Search + Filter Bar ── */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          margin: '0 0 20px 0',
+          background: 'var(--surface)',
+          padding: '10px 16px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--border)',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}>
+          <div style={{
+            flex: '1 1 260px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'var(--surface-alt)',
+            borderRadius: '8px',
+            border: '1px solid var(--border)',
+            padding: '0 12px',
+          }}>
+            <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Search session by student name, phone, course..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                width: '100%',
+                fontSize: '0.86rem',
+                color: 'var(--text)',
+                outline: 'none',
+                padding: '8px 0',
+                fontFamily: 'inherit',
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+            {active.length} session{active.length !== 1 ? 's' : ''} shown
+          </span>
         </div>
 
         {/* ── Toast ── */}

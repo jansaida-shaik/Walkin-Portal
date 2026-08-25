@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
 import StudentContextDrawer, { DrawerStudent } from '../../components/StudentContextDrawer';
+import CustomSelect from '../../components/CustomSelect';
 import { updateStudentDetails } from '../../actions/walkinActions';
 
 interface Branch {
@@ -56,48 +57,18 @@ interface QueueClientProps {
 
 type PriorityLevel = 'Urgent' | 'High' | 'Medium' | 'Low';
 
-const PRIORITY_ICONS: Record<PriorityLevel, string> = {
-  Urgent: '🔴',
-  High: '🟠',
-  Medium: '🔵',
-  Low: '⚪',
-};
-
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function getWaitMinutes(walkinDate: Date | string): number {
-  return Math.floor((Date.now() - new Date(walkinDate).getTime()) / 60000);
-}
-
-function formatWaitTime(mins: number): string {
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${m}m`;
-}
-
-function getSLAClass(waitMins: number, priority: PriorityLevel): string {
-  const breachThreshold = priority === 'Urgent' ? 10 : priority === 'High' ? 20 : 30;
-  const warnThreshold = breachThreshold - 10;
-  if (waitMins >= breachThreshold) return 'sla-breach';
-  if (waitMins >= warnThreshold) return 'sla-warning';
-  return '';
-}
-
-function getWaitBadgeClass(waitMins: number, priority: PriorityLevel): string {
-  const breachThreshold = priority === 'Urgent' ? 10 : priority === 'High' ? 20 : 30;
-  const warnThreshold = breachThreshold - 10;
-  if (waitMins >= breachThreshold) return 'breach';
-  if (waitMins >= warnThreshold) return 'warn';
-  return '';
 }
 
 export default function QueueClient({ initialWalkins, branches, counselors, user }: QueueClientProps) {
   const router = useRouter();
   const [walkins, setWalkins] = useState<Student[]>(initialWalkins);
   const [branchFilter, setBranchFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [counselorFilter, setCounselorFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [queueStatusFilter, setQueueStatusFilter] = useState<string>('all');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -121,7 +92,6 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
     setDrawerOpen(true);
   }, []);
 
-  // Existing business logic — untouched
   const handleReassign = async (walkinId: string, counselorId: string) => {
     setLoading(true);
     setMessage('Reassigning counselor…');
@@ -159,20 +129,49 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
     return w.details?.branchId || 'branch_jntu1';
   };
 
-  const getEstimatedWaitTime = (position: number, priority: string) => {
-    let baseMins = 15;
-    if (priority === 'Urgent') return '5 mins';
-    if (priority === 'High') baseMins = 8;
-    if (priority === 'Low') baseMins = 20;
-    return `${position * baseMins} mins`;
-  };
+  const rawQueue = walkins.filter(w => w.status === 'Waiting' || w.status === 'Assigned');
+  const totalWaitingCount = rawQueue.filter(w => w.status === 'Waiting').length;
+  const totalAssignedCount = rawQueue.filter(w => w.status === 'Assigned').length;
+  const totalUrgentCount = rawQueue.filter(w => (w.details?.priority || 'Medium') === 'Urgent').length;
+  const totalHighCount = rawQueue.filter(w => (w.details?.priority || 'Medium') === 'High').length;
 
-  const waitingQueue = walkins
+  const waitingQueue = rawQueue
     .filter(w => {
-      const statusMatch = w.status === 'Waiting' || w.status === 'Assigned';
       const branchId = getBranchId(w);
       const branchMatch = branchFilter ? branchId === branchFilter : true;
-      return statusMatch && branchMatch;
+
+      const p = (w.details?.priority || 'Medium');
+      const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
+      const cId = activeSession ? activeSession.counselorId : 'unassigned';
+
+      // Status bubble filter
+      let statusMatch = true;
+      if (queueStatusFilter === 'waiting') statusMatch = w.status === 'Waiting';
+      else if (queueStatusFilter === 'assigned') statusMatch = w.status === 'Assigned';
+      else if (queueStatusFilter === 'urgent') statusMatch = p === 'Urgent';
+      else if (queueStatusFilter === 'high') statusMatch = p === 'High';
+      else if (queueStatusFilter === 'medium') statusMatch = p === 'Medium';
+      else if (queueStatusFilter === 'low') statusMatch = p === 'Low';
+
+      // Priority dropdown filter
+      const priorityMatch = priorityFilter ? p === priorityFilter : true;
+
+      // Counselor dropdown filter
+      const counselorMatch = counselorFilter ? (
+        counselorFilter === 'unassigned' ? cId === 'unassigned' : cId === counselorFilter
+      ) : true;
+
+      // Search query
+      const name = w.name || '';
+      const phone = w.phone || '';
+      const course = w.course || '';
+      const searchMatch = searchQuery.trim() ? (
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        phone.includes(searchQuery) ||
+        course.toLowerCase().includes(searchQuery.toLowerCase())
+      ) : true;
+
+      return branchMatch && statusMatch && priorityMatch && counselorMatch && searchMatch;
     })
     .sort((a, b) => {
       const getPriorityVal = (p: string) => {
@@ -189,18 +188,6 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
       return new Date(a.walkinDate).getTime() - new Date(b.walkinDate).getTime();
     });
 
-  // Queue summary metrics
-  const urgentCount = waitingQueue.filter(w => (w.details?.priority || 'Medium') === 'Urgent').length;
-  const avgWait = mounted && waitingQueue.length > 0
-    ? Math.round(waitingQueue.reduce((sum, w) => sum + getWaitMinutes(w.walkinDate), 0) / waitingQueue.length)
-    : 0;
-  const breachCount = mounted ? waitingQueue.filter(w => {
-    const mins = getWaitMinutes(w.walkinDate);
-    const p = (w.details?.priority || 'Medium') as PriorityLevel;
-    const threshold = p === 'Urgent' ? 10 : p === 'High' ? 20 : 30;
-    return mins >= threshold;
-  }).length : 0;
-
   const drawerCounselors = counselors.map(c => ({ id: c.id, name: c.name, branchName: c.branchName || '' }));
 
   return (
@@ -212,31 +199,6 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
           <p className="small-text">Live waiting list — priority routing and counselor assignment.</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <label htmlFor="queue-branch-filter" className="sr-only">Filter by branch</label>
-          <select
-            id="queue-branch-filter"
-            value={branchFilter}
-            onChange={e => setBranchFilter(e.target.value)}
-            style={{
-              padding: '0 var(--space-4)',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              outline: 'none',
-              boxSizing: 'border-box',
-              fontFamily: 'var(--font-sans)',
-            }}
-          >
-            <option value="">All Branches</option>
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
           <button
             type="button"
             className="sc-refresh"
@@ -258,194 +220,514 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
         </div>
       )}
 
-      {/* ── Queue Summary Strip ── */}
-      <div className="queue-summary-strip" role="region" aria-label="Queue summary metrics">
-        <div className="queue-summary-card">
-          <span className="queue-summary-label">Total Waiting</span>
-          <span className="queue-summary-value">{waitingQueue.length}</span>
-        </div>
-        <div className="queue-summary-card">
-          <span className="queue-summary-label">Urgent</span>
-          <span className="queue-summary-value" style={{ color: urgentCount > 0 ? 'var(--danger)' : 'var(--text)' }}>
-            {urgentCount}
-          </span>
-        </div>
-        <div className="queue-summary-card">
-          <span className="queue-summary-label">SLA Breaches</span>
-          <span className="queue-summary-value" style={{ color: breachCount > 0 ? 'var(--danger)' : 'var(--text)' }}>
-            {mounted ? breachCount : '—'}
-          </span>
-        </div>
-        <div className="queue-summary-card">
-          <span className="queue-summary-label">Avg Wait</span>
-          <span className="queue-summary-value" style={{ fontFamily: 'var(--font-mono)', fontSize: '1.1rem' }}>
-            {mounted && waitingQueue.length > 0 ? formatWaitTime(avgWait) : '—'}
-          </span>
-        </div>
+      {/* ── Real-time Queue Status Bubbles ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        margin: 'var(--space-4) 0 var(--space-3) 0',
+        flexWrap: 'wrap',
+      }}>
+        {/* TOTAL */}
+        <button
+          type="button"
+          onClick={() => setQueueStatusFilter('all')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: queueStatusFilter === 'all' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+            background: queueStatusFilter === 'all' ? 'rgba(99, 102, 241, 0.15)' : 'var(--surface)',
+            color: queueStatusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <span>TOTAL QUEUE</span>
+          <span style={{
+            background: queueStatusFilter === 'all' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.08)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+          }}>{rawQueue.length}</span>
+        </button>
+
+        {/* WAITING */}
+        <button
+          type="button"
+          onClick={() => setQueueStatusFilter(queueStatusFilter === 'waiting' ? 'all' : 'waiting')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: queueStatusFilter === 'waiting' ? '1.5px solid #0ea5e9' : '1.5px solid rgba(14, 165, 233, 0.3)',
+            background: 'rgba(14, 165, 233, 0.12)',
+            color: '#0284c7',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: queueStatusFilter === 'waiting' ? '0 0 10px rgba(14, 165, 233, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0ea5e9', boxShadow: '0 0 6px #0ea5e9', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>WAITING</span>
+          <span style={{
+            background: 'rgba(14, 165, 233, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#0284c7',
+          }}>{totalWaitingCount}</span>
+        </button>
+
+        {/* ASSIGNED */}
+        <button
+          type="button"
+          onClick={() => setQueueStatusFilter(queueStatusFilter === 'assigned' ? 'all' : 'assigned')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: queueStatusFilter === 'assigned' ? '1.5px solid #6366f1' : '1.5px solid rgba(99, 102, 241, 0.3)',
+            background: 'rgba(99, 102, 241, 0.12)',
+            color: '#6366f1',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: queueStatusFilter === 'assigned' ? '0 0 10px rgba(99, 102, 241, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 6px #6366f1' }} />
+          <span>ASSIGNED</span>
+          <span style={{
+            background: 'rgba(99, 102, 241, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#6366f1',
+          }}>{totalAssignedCount}</span>
+        </button>
+
+        {/* URGENT */}
+        <button
+          type="button"
+          onClick={() => setQueueStatusFilter(queueStatusFilter === 'urgent' ? 'all' : 'urgent')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: queueStatusFilter === 'urgent' ? '1.5px solid #ef4444' : '1.5px solid rgba(239, 68, 68, 0.3)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            color: '#dc2626',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: queueStatusFilter === 'urgent' ? '0 0 10px rgba(239, 68, 68, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>URGENT</span>
+          <span style={{
+            background: 'rgba(239, 68, 68, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#dc2626',
+          }}>{totalUrgentCount}</span>
+        </button>
+
+        {/* HIGH PRIORITY */}
+        <button
+          type="button"
+          onClick={() => setQueueStatusFilter(queueStatusFilter === 'high' ? 'all' : 'high')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            border: queueStatusFilter === 'high' ? '1.5px solid #f59e0b' : '1.5px solid rgba(245, 158, 11, 0.3)',
+            background: 'rgba(245, 158, 11, 0.12)',
+            color: '#d97706',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: queueStatusFilter === 'high' ? '0 0 10px rgba(245, 158, 11, 0.35)' : 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+          <span>HIGH</span>
+          <span style={{
+            background: 'rgba(245, 158, 11, 0.22)',
+            padding: '1px 7px',
+            borderRadius: '9999px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#d97706',
+          }}>{totalHighCount}</span>
+        </button>
       </div>
 
-      {/* ── Queue Card Board ── */}
-      <div className="dash-table-card">
-        <div className="dash-table-header">
-          <h2>Waiting Queue ({waitingQueue.length} Students)</h2>
+      {/* ── Search + Multi-Filters Bar ── */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        margin: '0 0 16px 0',
+        background: 'var(--surface)',
+        padding: '12px 18px',
+        borderRadius: '12px',
+        border: '1.5px solid var(--border)',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+      }}>
+        {/* Search */}
+        <div style={{
+          flex: '1 1 240px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'var(--surface-alt)',
+          borderRadius: '8px',
+          border: '1.5px solid var(--border)',
+          padding: '0 12px',
+        }}>
+          <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Search queue by student name, phone, course..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              width: '100%',
+              fontSize: '0.86rem',
+              color: 'var(--text)',
+              outline: 'none',
+              padding: '9px 0',
+              fontFamily: 'inherit',
+            }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {waitingQueue.length === 0 ? (
-          <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 'var(--space-3)' }}>✅</div>
-            <strong>Queue is clear</strong>
-            <p style={{ fontSize: '0.88rem', marginTop: 'var(--space-2)' }}>No students are currently waiting.</p>
-          </div>
-        ) : (
-          <div className="queue-board-grid" style={{ padding: 'var(--space-4)' }} role="list" aria-label="Queue board">
-            {waitingQueue.map((w, index) => {
-              const position = index + 1;
-              const priority = (w.details?.priority || 'Medium') as PriorityLevel;
-              const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
-              const counselorId = activeSession ? activeSession.counselorId : 'unassigned';
-              const counselorName = activeSession
-                ? counselors.find(c => c.id === activeSession.counselorId)?.name || 'Unassigned'
-                : 'Unassigned';
-              const branchId = getBranchId(w);
-              const waitMins = mounted ? getWaitMinutes(w.walkinDate) : 0;
-              const slaClass = mounted ? getSLAClass(waitMins, priority) : '';
-              const waitBadgeClass = mounted ? getWaitBadgeClass(waitMins, priority) : '';
-              const estWait = getEstimatedWaitTime(position, priority);
+        {/* Priority Filter */}
+        <div style={{ flex: '0 1 160px' }}>
+          <CustomSelect
+            value={priorityFilter}
+            onChange={e => setPriorityFilter(e.target.value)}
+            placeholder="All Priorities"
+            options={[
+              { value: 'Urgent', label: '🔴 Urgent' },
+              { value: 'High', label: '🟠 High' },
+              { value: 'Medium', label: '🔵 Medium' },
+              { value: 'Low', label: '⚪ Low' },
+            ]}
+          />
+        </div>
 
-              return (
-                <div
-                  key={w.id}
-                  className={`queue-card ${slaClass}`}
-                  role="listitem"
-                  aria-label={`Position ${position}: ${w.name}, ${priority} priority, waiting ${mounted ? formatWaitTime(waitMins) : '—'}`}
-                >
-                  {/* Position Badge */}
-                  <div className="queue-position-badge" aria-hidden="true">
-                    #{position}
-                  </div>
+        {/* Counselor Filter */}
+        <div style={{ flex: '0 1 180px' }}>
+          <CustomSelect
+            value={counselorFilter}
+            onChange={e => setCounselorFilter(e.target.value)}
+            placeholder="All Counselors"
+            options={[
+              { value: 'unassigned', label: '👤 Unassigned' },
+              ...counselors.map(c => ({ value: c.id, label: `👤 ${c.name}` }))
+            ]}
+          />
+        </div>
 
-                  {/* Student Info */}
-                  <div className="queue-card-body">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                      <button
-                        type="button"
-                        className="queue-student-name"
-                        onClick={() => openDrawer(w)}
-                        style={{
-                          background: 'none', border: 'none', padding: 0,
-                          cursor: 'pointer', fontWeight: 800, fontSize: '0.92rem',
-                          color: 'var(--text)', fontFamily: 'var(--font-sans)',
-                          textAlign: 'left', transition: 'color var(--transition-fast)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text)')}
-                        aria-label={`View profile for ${w.name}`}
-                      >
-                        {w.name}
-                      </button>
-                      <span className={`priority-badge ${priority}`} aria-label={`Priority: ${priority}`}>
-                        <span aria-hidden="true">{PRIORITY_ICONS[priority]}</span>
-                        {priority}
-                      </span>
-                    </div>
+        {/* Branch Filter */}
+        <div style={{ flex: '0 1 180px' }}>
+          <CustomSelect
+            value={branchFilter}
+            onChange={e => setBranchFilter(e.target.value)}
+            placeholder="All Branches"
+            options={branches.map(b => ({ value: b.id, label: b.name }))}
+          />
+        </div>
 
-                    <div className="queue-student-meta">
-                      <span>{w.course}</span>
-                      <span aria-label={`Assigned counselor: ${counselorName}`}>
-                        👤 {counselorName}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--muted)' }}>
-                        #{w.id.slice(-6).toUpperCase()}
-                      </span>
-                    </div>
+        <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+          {waitingQueue.length} student{waitingQueue.length !== 1 ? 's' : ''} in view
+        </span>
+      </div>
 
-                    {/* Inline controls */}
-                    <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                      {/* Priority selector */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                        <label htmlFor={`priority-${w.id}`} style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>Priority</label>
+      {/* ── Modern Queue Directory Table ── */}
+      <div className="dash-table-card">
+        <div className="table-wrapper">
+          <table style={{ minWidth: '950px', borderCollapse: 'collapse', width: '100%' }} aria-label="Waiting Queue">
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', width: '70px', textAlign: 'center' }}>Token</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Student</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Course</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Priority</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Assigned Counselor</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Queue Status</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {waitingQueue.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--muted)' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✅</div>
+                    <strong style={{ fontSize: '1rem', color: 'var(--text)' }}>Queue is clear</strong>
+                    <p style={{ fontSize: '0.86rem', marginTop: '4px' }}>No students currently matching queue filters.</p>
+                  </td>
+                </tr>
+              ) : (
+                waitingQueue.map((w, index) => {
+                  const position = index + 1;
+                  const priority = (w.details?.priority || 'Medium') as PriorityLevel;
+                  const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
+                  const counselorId = activeSession ? activeSession.counselorId : 'unassigned';
+
+                  return (
+                    <tr
+                      key={w.id}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.15s ease',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt, rgba(255,255,255,0.02))')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {/* Token / Position */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: position <= 3 ? 'rgba(99, 102, 241, 0.15)' : 'var(--surface-alt)',
+                          border: position <= 3 ? '1.5px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--border)',
+                          color: position <= 3 ? 'var(--primary)' : 'var(--muted)',
+                          fontWeight: 900,
+                          fontSize: '0.84rem',
+                          fontFamily: 'var(--font-mono)',
+                        }}>
+                          #{position.toString().padStart(2, '0')}
+                        </span>
+                      </td>
+
+                      {/* Student Info */}
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'var(--primary-glow)', color: 'var(--primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.72rem', fontWeight: 800, flexShrink: 0,
+                            border: '1px solid rgba(99,102,241,0.2)',
+                          }}>
+                            {getInitials(w.name)}
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => openDrawer(w)}
+                              style={{
+                                background: 'none', border: 'none', padding: 0,
+                                cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
+                                color: 'var(--primary)', fontFamily: 'inherit', textAlign: 'left',
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                            >
+                              {w.name}
+                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '0.76rem', color: 'var(--muted)' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)' }}>{w.phone}</span>
+                              <span>•</span>
+                              <span style={{ fontFamily: 'var(--font-mono)' }}>#{w.id.slice(-6).toUpperCase()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Course */}
+                      <td style={{ padding: '14px 16px', fontSize: '0.86rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {w.course}
+                      </td>
+
+                      {/* Priority Select */}
+                      <td style={{ padding: '14px 16px' }}>
                         <select
                           id={`priority-${w.id}`}
                           value={priority}
                           onChange={e => handlePriorityChange(w.id, e.target.value)}
                           aria-label={`Change priority for ${w.name}`}
                           style={{
-                            padding: '3px var(--space-2)',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border)',
-                            background: 'var(--surface-alt)',
-                            color: 'var(--text)',
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            border: priority === 'Urgent' ? '1.5px solid rgba(239,68,68,0.4)' : (priority === 'High' ? '1.5px solid rgba(245,158,11,0.4)' : '1px solid var(--border)'),
+                            background: priority === 'Urgent' ? 'rgba(239,68,68,0.1)' : (priority === 'High' ? 'rgba(245,158,11,0.1)' : 'var(--surface-alt)'),
+                            color: priority === 'Urgent' ? 'var(--danger)' : (priority === 'High' ? '#d97706' : 'var(--text)'),
                             fontWeight: 700,
                             fontSize: '0.78rem',
                             cursor: 'pointer',
-                            fontFamily: 'var(--font-sans)',
                             outline: 'none',
                           }}
                         >
-                          <option value="Low">Low</option>
-                          <option value="Medium">Medium</option>
-                          <option value="High">High</option>
-                          <option value="Urgent">Urgent</option>
+                          <option value="Urgent">🔴 Urgent</option>
+                          <option value="High">🟠 High</option>
+                          <option value="Medium">🔵 Medium</option>
+                          <option value="Low">⚪ Low</option>
                         </select>
-                      </div>
+                      </td>
 
-                      {/* Counselor reassign */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                        <label htmlFor={`counselor-${w.id}`} style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>Assign</label>
+                      {/* Assigned Counselor Select */}
+                      <td style={{ padding: '14px 16px' }}>
                         <select
                           id={`counselor-${w.id}`}
                           value={counselorId}
                           onChange={e => handleReassign(w.id, e.target.value)}
                           aria-label={`Assign counselor for ${w.name}`}
                           style={{
-                            padding: '3px var(--space-2)',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border)',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: counselorId === 'unassigned' ? '1.5px dashed rgba(245,158,11,0.5)' : '1px solid var(--border)',
                             background: 'var(--surface-alt)',
-                            color: 'var(--text)',
-                            fontSize: '0.78rem',
+                            color: counselorId === 'unassigned' ? '#d97706' : 'var(--text)',
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
                             cursor: 'pointer',
-                            fontFamily: 'var(--font-sans)',
                             outline: 'none',
-                            maxWidth: '160px',
+                            minWidth: '160px',
                           }}
                         >
-                          <option value="unassigned">Unassigned (Waitlist)</option>
-                          {counselors.filter(c => c.branchId === branchId).map(c => (
-                            <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                          <option value="unassigned">⏳ Unassigned (Waitlist)</option>
+                          {counselors.map(c => (
+                            <option key={c.id} value={c.id}>
+                              👤 {c.name} {c.status ? `(${c.status})` : ''}
+                            </option>
                           ))}
                         </select>
-                      </div>
-                    </div>
-                  </div>
+                      </td>
 
-                  {/* Right Column: Wait time + quick view */}
-                  <div className="queue-card-actions">
-                    <span
-                      className={`queue-wait-badge ${waitBadgeClass}`}
-                      aria-label={`Waiting for ${mounted ? formatWaitTime(waitMins) : '—'}`}
-                      title={`Estimated wait: ${estWait}`}
-                    >
-                      ⏱ {mounted ? formatWaitTime(waitMins) : '—'}
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                      Est: {estWait}
-                    </span>
-                    <button
-                      type="button"
-                      className="outline-btn"
-                      onClick={() => openDrawer(w)}
-                      style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: 'var(--radius-sm)', marginTop: 'var(--space-1)' }}
-                      aria-label={`Quick view profile for ${w.name}`}
-                    >
-                      Profile
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      {/* Queue Status (clean without running timer or false SLA breach) */}
+                      <td style={{ padding: '14px 16px' }}>
+                        {w.status === 'Assigned' ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            background: 'rgba(99, 102, 241, 0.12)',
+                            color: '#6366f1',
+                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1' }} />
+                            ASSIGNED
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            background: 'rgba(14, 165, 233, 0.12)',
+                            color: '#0284c7',
+                            border: '1px solid rgba(14, 165, 233, 0.3)',
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0ea5e9', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+                            WAITING
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => openDrawer(w)}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface-alt)',
+                              color: 'var(--text)',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                          >
+                            Quick View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/walkins/record?studentId=${w.id}`)}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: '1.5px solid var(--primary)',
+                              background: 'rgba(99,102,241,0.1)',
+                              color: 'var(--primary)',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            Full Record
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ── Student Context Drawer ── */}

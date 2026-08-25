@@ -1,1058 +1,945 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
+import CustomSelect from '../../components/CustomSelect';
 
-interface SettingsCategory {
+interface Branch {
   id: string;
   name: string;
-  icon: string;
-  subsections: SettingsSubsection[];
+  code?: string;
+  locationId: string;
+  locationName: string;
+  departmentIds?: string[];
+  departmentNames?: string[];
+  active?: boolean;
 }
 
-interface SettingsSubsection {
+interface Location {
+  id: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  name: string;
+  email?: string;
+  roleId: string;
+  branchId?: string;
+  departmentId?: string;
+  active?: boolean;
+}
+
+interface Role {
   id: string;
   name: string;
   description?: string;
 }
 
-const ORGANIZATION_SETTINGS: SettingsCategory[] = [
-  {
-    id: 'organization',
-    name: 'Organization',
-    icon: '🏢',
-    subsections: [
-      { id: 'profile', name: 'Profile', description: 'Organization profile and details' },
-      { id: 'branding', name: 'Branding', description: 'Logo, colors, and theme' },
-      { id: 'custom-domain', name: 'Custom Domain', description: 'Configure custom domain' },
-      { id: 'locations', name: 'Locations', description: 'Manage branch locations' },
-      { id: 'ai-preferences', name: 'AI Preferences', description: 'AI configuration' },
-      { id: 'subscription', name: 'Manage Subscription', description: 'Subscription and billing' }
-    ]
-  },
-  {
-    id: 'users-roles',
-    name: 'Users & Roles',
-    icon: '👥',
-    subsections: [
-      { id: 'users', name: 'Users', description: 'Manage portal users' },
-      { id: 'roles', name: 'Roles', description: 'User roles and permissions' },
-      { id: 'user-preferences', name: 'User Preferences', description: 'Default user settings' },
-      { id: 'taxes-compliance', name: 'Taxes & Compliance', description: 'Tax configuration' },
-      { id: 'taxes', name: 'Taxes', description: 'Tax rates and rules' },
-      { id: 'direct-taxes', name: 'Direct Taxes', description: 'Direct tax configuration' },
-      { id: 'eway-bills', name: 'e-Way Bills', description: 'e-Way bill settings' },
-      { id: 'e-invoicing', name: 'e-Invoicing', description: 'e-Invoice configuration' },
-      { id: 'msme-settings', name: 'MSME Settings', description: 'MSME compliance' }
-    ]
-  },
-  {
-    id: 'setup-config',
-    name: 'Setup & Configurations',
-    icon: '⚙️',
-    subsections: [
-      { id: 'general', name: 'General', description: 'General settings' },
-      { id: 'currencies', name: 'Currencies', description: 'Currency configuration' },
-      { id: 'payment-terms', name: 'Payment Terms', description: 'Payment terms setup' },
-      { id: 'opening-balances', name: 'Opening Balances', description: 'Opening balance configuration' },
-      { id: 'reminders', name: 'Reminders', description: 'Reminder settings' },
-      { id: 'customer-portal', name: 'Customer Portal', description: 'Customer portal settings' },
-      { id: 'vendor-portal', name: 'Vendor Portal', description: 'Vendor portal settings' }
-    ]
-  },
-  {
-    id: 'customization',
-    name: 'Customization',
-    icon: '🎨',
-    subsections: [
-      { id: 'transaction-series', name: 'Transaction Number Series', description: 'Number series configuration' },
-      { id: 'pdf-templates', name: 'PDF Templates', description: 'PDF template customization' },
-      { id: 'email-notifications', name: 'Email Notifications', description: 'Email notification settings' },
-      { id: 'sms-notifications', name: 'SMS Notifications', description: 'SMS notification settings' },
-      { id: 'reporting-tags', name: 'Reporting Tags', description: 'Reporting tag configuration' },
-      { id: 'web-tabs', name: 'Web Tabs', description: 'Web tab customization' },
-      { id: 'digital-signature', name: 'Digital Signature', description: 'Digital signature setup' }
-    ]
-  },
-  {
-    id: 'automation',
-    name: 'Automation',
-    icon: '🤖',
-    subsections: [
-      { id: 'workflow-rules', name: 'Workflow Rules', description: 'Workflow rule configuration' },
-      { id: 'workflow-actions', name: 'Workflow action setup' },
-      { id: 'workflow-logs', name: 'Workflow execution logs' },
-      { id: 'schedules', name: 'Schedules', description: 'Scheduled tasks' }
-    ]
-  }
-];
-
-const MODULE_SETTINGS: SettingsCategory[] = [
-  {
-    id: 'modules',
-    name: 'Module Settings',
-    icon: '📦',
-    subsections: [
-      { id: 'module-general', name: 'General', description: 'General module settings' },
-      { id: 'inventory', name: 'Inventory', description: 'Inventory module configuration' },
-      { id: 'sales', name: 'Sales', description: 'Sales module settings' },
-      { id: 'purchases', name: 'Purchases', description: 'Purchases module configuration' },
-      { id: 'custom-modules', name: 'Custom Modules', description: 'Custom module setup' }
-    ]
-  }
-];
-
-function Toast({ msg, ok }: { msg: string; ok: boolean }) {
-  if (!msg) return null;
-  return (
-    <div style={{
-      position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
-      padding: '10px 18px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: 600,
-      background: ok ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-      color: ok ? '#10b981' : '#f87171',
-      border: `1px solid ${ok ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-    }}>
-      {msg}
-    </div>
-  );
+interface Department {
+  id: string;
+  name: string;
 }
 
 interface SettingsClientProps {
-  branches: any[];
-  locations: any[];
-  users: any[];
-  roles: any[];
-  departments: any[];
+  branches: Branch[];
+  locations: Location[];
+  users: User[];
+  roles: Role[];
+  departments: Department[];
   currentUser: SessionUser | null;
 }
 
-export default function SettingsClient({ branches, locations, users: initialUsers, roles, departments, currentUser }: SettingsClientProps) {
-  const router = useRouter();
-  const [activeSubsection, setActiveSubsection] = useState<string | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['organization']));
-  const [toast, setToast] = useState({ msg: '', ok: true });
-  const [users, setUsers] = useState<any[]>(initialUsers);
+type SectionKey = 'general' | 'campuses' | 'team' | 'appearance' | 'ai' | 'security';
 
-  // Form states
-  const [profileForm, setProfileForm] = useState({
+function getInitials(name: string) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+export default function SettingsClient({
+  branches: initialBranches,
+  locations,
+  users: initialUsers,
+  roles,
+  departments,
+  currentUser,
+}: SettingsClientProps) {
+  const router = useRouter();
+  const [activeSection, setActiveSection] = useState<SectionKey>('general');
+  const [branches, setBranches] = useState<Branch[]>(initialBranches);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Search & Filter in Team section
+  const [teamSearch, setTeamSearch] = useState('');
+  const [teamRoleFilter, setTeamRoleFilter] = useState('');
+  const [teamBranchFilter, setTeamBranchFilter] = useState('');
+
+  // ── Form States ──
+  const [orgForm, setOrgForm] = useState({
     companyName: 'Codegnan IT Solutions Pvt Ltd',
     email: 'contact@codegnan.com',
     phone: '+91 9888748888',
     website: 'https://codegnan.com',
-    address: 'JNTU Road, Hyderabad, Telangana, India',
-    taxId: '36AAAAA1111A1Z1'
+    address: 'Pista House Building, JNTU-Hitech City Main Rd, Hyderabad, Telangana 500085',
+    timezone: 'Asia/Kolkata',
+    currency: 'INR',
   });
 
-  const [brandingForm, setBrandingForm] = useState({
-    primary: '#6366f1',
-    accent: '#a855f7',
-    radius: 14
+  const [appearanceForm, setAppearanceForm] = useState({
+    theme: 'dark',
+    primaryColor: '#6366f1',
+    radius: '8px',
+    formHeading: 'Student Walk-In Registration',
+    formSubtitle: 'Fill your details to receive instant counseling and explore in-demand tech programs.',
+    showWalkinBanner: true,
   });
 
   const [aiForm, setAiForm] = useState({
     smartRouting: true,
-    autoAssignment: true,
-    predictiveWaitTimes: false,
-    sentimentAnalysis: true,
-    confidenceThreshold: 80
+    audioFiltering: true,
+    autoSummary: true,
+    defaultLanguage: 'te-IN',
+    slaWarningMinutes: '15',
+    slaBreachMinutes: '30',
   });
 
-  // Filter Search states
-  const [branchSearch, setBranchSearch] = useState('');
-  const [userSearch, setUserSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [securityForm, setSecurityForm] = useState({
+    sessionTimeout: '8',
+    enforce2FA: false,
+    autoLock: true,
+    strictIpAudit: false,
+  });
 
-  const showToast = useCallback((msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast({ msg: '', ok: true }), 3500);
+  const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // Load from local storage on mount
+  // Load from local storage
   useEffect(() => {
-    // Branding
-    const savedBranding = localStorage.getItem('walkin-branding');
-    if (savedBranding) {
-      try {
-        const parsed = JSON.parse(savedBranding);
-        setBrandingForm(parsed);
-      } catch (e) {}
-    }
+    try {
+      const sOrg = localStorage.getItem('walkin_org_settings');
+      if (sOrg) setOrgForm(JSON.parse(sOrg));
 
-    // Profile
-    const savedProfile = localStorage.getItem('walkin-profile');
-    if (savedProfile) {
-      try {
-        setProfileForm(JSON.parse(savedProfile));
-      } catch (e) {}
-    }
+      const sApp = localStorage.getItem('walkin_branding_settings');
+      if (sApp) setAppearanceForm(JSON.parse(sApp));
 
-    // AI
-    const savedAi = localStorage.getItem('walkin-ai-preferences');
-    if (savedAi) {
-      try {
-        setAiForm(JSON.parse(savedAi));
-      } catch (e) {}
-    }
+      const sAi = localStorage.getItem('walkin_ai_settings');
+      if (sAi) setAiForm(JSON.parse(sAi));
+
+      const sSec = localStorage.getItem('walkin_security_settings');
+      if (sSec) setSecurityForm(JSON.parse(sSec));
+    } catch (e) {}
   }, []);
 
-  const toggleCategory = useCallback((categoryId: string) => {
-    setExpandedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
+  const handleSaveAll = () => {
+    setLoading(true);
+    try {
+      localStorage.setItem('walkin_org_settings', JSON.stringify(orgForm));
+      localStorage.setItem('walkin_branding_settings', JSON.stringify(appearanceForm));
+      localStorage.setItem('walkin_ai_settings', JSON.stringify(aiForm));
+      localStorage.setItem('walkin_security_settings', JSON.stringify(securityForm));
+
+      setHasUnsavedChanges(false);
+      showToast('Settings saved successfully and synced across all portal nodes!');
+    } catch (e) {
+      showToast('Failed to save settings', 'error');
+    }
+    setLoading(false);
+  };
+
+  const handleResetDefaults = () => {
+    if (!confirm('Reset all settings to system default parameters?')) return;
+    setOrgForm({
+      companyName: 'Codegnan IT Solutions Pvt Ltd',
+      email: 'contact@codegnan.com',
+      phone: '+91 9888748888',
+      website: 'https://codegnan.com',
+      address: 'Pista House Building, JNTU-Hitech City Main Rd, Hyderabad, Telangana 500085',
+      timezone: 'Asia/Kolkata',
+      currency: 'INR',
     });
-  }, []);
-
-  const selectSubsection = useCallback((subsectionId: string) => {
-    setActiveSubsection(subsectionId);
-  }, []);
-
-  const closePanel = useCallback(() => {
-    setActiveSubsection(null);
-  }, []);
-
-  const handleSaveProfile = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('walkin-profile', JSON.stringify(profileForm));
-    showToast('Profile settings saved successfully.');
-  }, [profileForm, showToast]);
-
-  const handleBrandingSave = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('walkin-branding', JSON.stringify(brandingForm));
-    document.documentElement.style.setProperty('--primary', brandingForm.primary);
-    document.documentElement.style.setProperty('--accent', brandingForm.accent);
-    document.documentElement.style.setProperty('--radius-md', `${brandingForm.radius}px`);
-    showToast('Branding settings saved. Theme updated!');
-  }, [brandingForm, showToast]);
-
-  const handleResetBranding = useCallback(() => {
-    const defaults = { primary: '#6366f1', accent: '#a855f7', radius: 14 };
-    setBrandingForm(defaults);
-    localStorage.removeItem('walkin-branding');
-    document.documentElement.style.setProperty('--primary', defaults.primary);
-    document.documentElement.style.setProperty('--accent', defaults.accent);
-    document.documentElement.style.setProperty('--radius-md', `${defaults.radius}px`);
-    showToast('Branding reset to default.');
-  }, [showToast]);
-
-  const handleAiSave = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('walkin-ai-preferences', JSON.stringify(aiForm));
-    showToast('AI Preferences saved successfully.');
-  }, [aiForm, showToast]);
-
-  const toggleUserStatus = useCallback((userId: string, currentStatus: boolean) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, active: !currentStatus } : u));
-    showToast(`User status updated.`);
-  }, [showToast]);
-
-  // useMemo filters
-  const filteredLocationsWithBranches = useMemo(() => {
-    const query = branchSearch.toLowerCase();
-    return locations.map(loc => {
-      const locBranches = branches.filter(b => b.locationId === loc.id && (b.name.toLowerCase().includes(query) || b.profile.toLowerCase().includes(query)));
-      return { ...loc, branches: locBranches };
-    }).filter(loc => loc.branches.length > 0 || loc.name.toLowerCase().includes(query));
-  }, [locations, branches, branchSearch]);
+    setAppearanceForm({
+      theme: 'dark',
+      primaryColor: '#6366f1',
+      radius: '8px',
+      formHeading: 'Student Walk-In Registration',
+      formSubtitle: 'Fill your details to receive instant counseling and explore in-demand tech programs.',
+      showWalkinBanner: true,
+    });
+    setAiForm({
+      smartRouting: true,
+      audioFiltering: true,
+      autoSummary: true,
+      defaultLanguage: 'te-IN',
+      slaWarningMinutes: '15',
+      slaBreachMinutes: '30',
+    });
+    setSecurityForm({
+      sessionTimeout: '8',
+      enforce2FA: false,
+      autoLock: true,
+      strictIpAudit: false,
+    });
+    setHasUnsavedChanges(true);
+    showToast('Defaults restored. Click Save to persist.');
+  };
 
   const filteredUsers = useMemo(() => {
-    const query = userSearch.toLowerCase();
     return users.filter(u => {
-      const matchesSearch = (u.name || '').toLowerCase().includes(query) ||
-                            (u.username || '').toLowerCase().includes(query) ||
-                            (u.email || '').toLowerCase().includes(query);
-      const matchesRole = roleFilter ? u.roleId === roleFilter : true;
-      const matchesBranch = branchFilter ? u.branchId === branchFilter : true;
-      return matchesSearch && matchesRole && matchesBranch;
+      const matchSearch = !teamSearch || u.name.toLowerCase().includes(teamSearch.toLowerCase()) || (u.email || '').toLowerCase().includes(teamSearch.toLowerCase()) || u.username.toLowerCase().includes(teamSearch.toLowerCase());
+      const matchRole = !teamRoleFilter || u.roleId === teamRoleFilter;
+      const matchBranch = !teamBranchFilter || u.branchId === teamBranchFilter;
+      return matchSearch && matchRole && matchBranch;
     });
-  }, [users, userSearch, roleFilter, branchFilter]);
+  }, [users, teamSearch, teamRoleFilter, teamBranchFilter]);
 
-  const renderProfile = () => (
-    <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div>
-          <label className="block mb-2 font-semibold">Organization Name</label>
-          <input type="text" value={profileForm.companyName} onChange={e => setProfileForm({...profileForm, companyName: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-        </div>
-        <div>
-          <label className="block mb-2 font-semibold">Tax Registration No.</label>
-          <input type="text" value={profileForm.taxId} onChange={e => setProfileForm({...profileForm, taxId: e.target.value})} style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div>
-          <label className="block mb-2 font-semibold">Primary Contact Email</label>
-          <input type="email" value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-        </div>
-        <div>
-          <label className="block mb-2 font-semibold">Primary Contact Phone</label>
-          <input type="text" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} required style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-        </div>
-      </div>
-      <div>
-        <label className="block mb-2 font-semibold">Website URL</label>
-        <input type="url" value={profileForm.website} onChange={e => setProfileForm({...profileForm, website: e.target.value})} style={{ width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-      </div>
-      <div>
-        <label className="block mb-2 font-semibold">HQ Physical Address</label>
-        <textarea rows={3} value={profileForm.address} onChange={e => setProfileForm({...profileForm, address: e.target.value})} style={{ resize: 'vertical', width: '100%', padding: '14px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }} />
-      </div>
-      <div className="mt-3">
-        <button type="submit" className="primary-btn px-6 py-2.5">
-          💾 Save Profile
-        </button>
-      </div>
-    </form>
-  );
+  const navItems = [
+    {
+      id: 'general' as SectionKey,
+      label: 'General & Organization',
+      badge: 'Core',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" /><path d="M9 9v.01" /><path d="M9 12v.01" /><path d="M9 15v.01" /><path d="M9 18v.01" />
+        </svg>
+      )
+    },
+    {
+      id: 'campuses' as SectionKey,
+      label: 'Campuses & Locations',
+      badge: `${branches.length} Nodes`,
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+        </svg>
+      )
+    },
+    {
+      id: 'team' as SectionKey,
+      label: 'Team & Access Roles',
+      badge: `${users.length} Staff`,
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      )
+    },
+    {
+      id: 'appearance' as SectionKey,
+      label: 'Branding & Theme',
+      badge: 'Style',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z" />
+        </svg>
+      )
+    },
+    {
+      id: 'ai' as SectionKey,
+      label: 'AI & Telemetry Routing',
+      badge: 'DSP Active',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      )
+    },
+    {
+      id: 'security' as SectionKey,
+      label: 'Security & Compliance',
+      badge: '2FA',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      )
+    },
+  ];
 
-  const renderBranding = () => (
-    <form onSubmit={handleBrandingSave} className="flex flex-col gap-5">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        <div>
-          <h3 className="text-base mb-3.5">Color Palette</h3>
-          <div className="flex flex-col gap-3">
-            <div>
-              <label className="block mb-1.5 text-[0.85rem]">Primary Theme Color</label>
-              <div className="flex gap-2 items-center">
-                <input type="color" value={brandingForm.primary} onChange={e => setBrandingForm({...brandingForm, primary: e.target.value})} style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', cursor: 'pointer', background: 'transparent' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{brandingForm.primary}</span>
-              </div>
-            </div>
-            <div>
-              <label className="block mb-1.5 text-[0.85rem]">Accent Highlight Color</label>
-              <div className="flex gap-2 items-center">
-                <input type="color" value={brandingForm.accent} onChange={e => setBrandingForm({...brandingForm, accent: e.target.value})} style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', cursor: 'pointer', background: 'transparent' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{brandingForm.accent}</span>
-              </div>
-            </div>
+  return (
+    <section className="dash-page" style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* ── Toast ── */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+          padding: '12px 22px', borderRadius: '12px', fontSize: '0.88rem', fontWeight: 700,
+          background: toast.type === 'success' ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)',
+          color: toast.type === 'success' ? '#10b981' : '#ef4444',
+          border: `1.5px solid ${toast.type === 'success' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'}`,
+          backdropFilter: 'blur(16px)',
+          boxShadow: '0 12px 36px rgba(0,0,0,0.35)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }}>
+          <span>{toast.type === 'success' ? '✓' : '⚠️'}</span>
+          <span>{toast.msg}</span>
+        </div>
+      )}
+
+      {/* ── Executive Header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'var(--surface)',
+        border: '1.5px solid var(--border)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '12px',
+            background: 'var(--primary-glow)', color: 'var(--primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1.5px solid rgba(99,102,241,0.25)',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </div>
-        </div>
-
-        <div>
-          <h3 className="text-base mb-3.5">Corner Radius & Styling</h3>
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Border Radius: <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{brandingForm.radius}px</span></label>
-            <input type="range" min="4" max="24" step="2" value={brandingForm.radius} onChange={e => setBrandingForm({...brandingForm, radius: Number(e.target.value)})} style={{ width: '100%', padding: 0 }} />
-            <div className="flex justify-between text-[0.75rem] opacity-50 mt-1">
-              <span>Sharp (4px)</span>
-              <span>Default (14px)</span>
-              <span>Rounded (24px)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
+                Settings Control Center
+              </h1>
+              <span style={{
+                fontSize: '0.72rem',
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: 'var(--primary)',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                fontWeight: 800,
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+              }}>
+                ENTERPRISE
+              </span>
             </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.86rem', color: 'var(--muted)' }}>
+              Master configuration hub for campus branches, counselor routing, visual branding, and AI engines.
+            </p>
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', marginTop: '12px' }}>
-        <h4 className="text-[0.9rem] mb-2.5">Visual Theme Live Preview</h4>
-        <div className="flex gap-2.5 flex-wrap">
-          <button type="button" style={{ background: brandingForm.primary, color: '#fff', fontSize: '0.8rem', minHeight: '38px', borderRadius: `${brandingForm.radius}px`, padding: '6px 14px', border: 'none' }}>Primary Button</button>
-          <button type="button" style={{ background: 'transparent', border: `1px solid ${brandingForm.primary}`, color: brandingForm.primary, fontSize: '0.8rem', minHeight: '38px', borderRadius: `${brandingForm.radius}px`, padding: '6px 14px' }}>Outline Button</button>
+        {/* Action Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {hasUnsavedChanges && (
+            <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite' }} />
+              Unsaved changes
+            </span>
+          )}
+          <button
+            type="button"
+            className="outline-btn"
+            onClick={handleResetDefaults}
+            style={{ height: '38px', minHeight: '38px', fontSize: '0.82rem', padding: '0 14px', borderRadius: '8px' }}
+          >
+            Reset Defaults
+          </button>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={handleSaveAll}
+            disabled={loading}
+            style={{
+              height: '38px', minHeight: '38px', fontSize: '0.84rem', padding: '0 18px',
+              borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+            </svg>
+            <span>{loading ? 'Saving…' : 'Save All Changes'}</span>
+          </button>
         </div>
       </div>
 
-      <div className="flex gap-2.5 mt-3">
-        <button type="submit" className="primary-btn px-6 py-2.5">
-          💾 Save Branding Configuration
-        </button>
-        <button type="button" className="outline-btn px-6 py-2.5" onClick={handleResetBranding}>
-          🔄 Reset Default
-        </button>
-      </div>
-    </form>
-  );
+      {/* ── 2-Column SaaS Layout (Left Rail + Right Canvas) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '270px minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
+        
+        {/* LEFT NAV RAIL */}
+        <div style={{
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '16px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          position: 'sticky',
+          top: '20px',
+        }}>
+          <div style={{ padding: '6px 10px 10px 10px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+            Configuration Sections
+          </div>
 
-  const renderLocations = () => (
-    <div>
-      <div className="flex justify-between items-center mb-4 gap-3">
-        <div style={{ position: 'relative', flex: 1, maxWidth: '300px' }}>
-          <input
-            type="search"
-            placeholder="Search branches..."
-            value={branchSearch}
-            onChange={e => setBranchSearch(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-          />
+          {navItems.map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveSection(item.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: isActive ? '1.5px solid rgba(99, 102, 241, 0.35)' : '1.5px solid transparent',
+                  background: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                  color: isActive ? 'var(--primary)' : 'var(--text)',
+                  fontSize: '0.86rem',
+                  fontWeight: isActive ? 800 : 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) e.currentTarget.style.background = 'var(--surface-alt)';
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ color: isActive ? 'var(--primary)' : 'var(--muted)', display: 'flex', alignItems: 'center' }}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '2px 7px',
+                  borderRadius: '9999px',
+                  background: isActive ? 'rgba(99, 102, 241, 0.16)' : 'var(--surface-alt)',
+                  color: isActive ? 'var(--primary)' : 'var(--muted)',
+                  fontWeight: 800,
+                }}>
+                  {item.badge}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Total Branches: {branches.length}</span>
-      </div>
 
-      <div className="flex flex-col gap-5">
-        {filteredLocationsWithBranches.map((loc) => (
-          <div key={loc.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)', padding: '16px' }}>
-            <div className="flex justify-between items-center border-b border-[var(--border)] pb-2.5 mb-3">
-              <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', margin: 0 }}>
-                📍 {loc.name}
-              </h3>
-              <span style={{ fontSize: '0.75rem', opacity: 0.5, fontStyle: 'italic' }}>{loc.address}</span>
+        {/* RIGHT CANVAS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* 🏢 SECTION 1: GENERAL & ORGANIZATION */}
+          {activeSection === 'general' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                  Organization Profile & Headquarters
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                  Manage the institutional identity, headquarters location, and default currency.
+                </p>
+              </div>
+
+              {/* Card Group 1 */}
+              <div style={{
+                background: 'var(--surface-alt)', border: '1px solid var(--border)',
+                borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
+              }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Legal Identity & Public Profile
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      Company Legal Entity Name
+                    </label>
+                    <input
+                      type="text"
+                      value={orgForm.companyName}
+                      onChange={e => { setOrgForm({ ...orgForm, companyName: e.target.value }); setHasUnsavedChanges(true); }}
+                      style={{
+                        width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      Official Web Portal URL
+                    </label>
+                    <input
+                      type="url"
+                      value={orgForm.website}
+                      onChange={e => { setOrgForm({ ...orgForm, website: e.target.value }); setHasUnsavedChanges(true); }}
+                      style={{
+                        width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      Primary Support Email
+                    </label>
+                    <input
+                      type="email"
+                      value={orgForm.email}
+                      onChange={e => { setOrgForm({ ...orgForm, email: e.target.value }); setHasUnsavedChanges(true); }}
+                      style={{
+                        width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      Official Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={orgForm.phone}
+                      onChange={e => { setOrgForm({ ...orgForm, phone: e.target.value }); setHasUnsavedChanges(true); }}
+                      style={{
+                        width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                    Main Campus / Headquarters Physical Address
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={orgForm.address}
+                    onChange={e => { setOrgForm({ ...orgForm, address: e.target.value }); setHasUnsavedChanges(true); }}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none', resize: 'vertical',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Card Group 2 */}
+              <div style={{
+                background: 'var(--surface-alt)', border: '1px solid var(--border)',
+                borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
+              }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Regional & Accounting Parameters
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      System Timezone
+                    </label>
+                    <CustomSelect
+                      value={orgForm.timezone}
+                      onChange={e => { setOrgForm({ ...orgForm, timezone: e.target.value }); setHasUnsavedChanges(true); }}
+                      options={[
+                        { value: 'Asia/Kolkata', label: '🇮🇳 Asia/Kolkata (IST - UTC+05:30)' },
+                        { value: 'Asia/Dubai', label: '🇦🇪 Asia/Dubai (GST - UTC+04:00)' },
+                        { value: 'America/New_York', label: '🇺🇸 America/New_York (EST - UTC-05:00)' },
+                        { value: 'Europe/London', label: '🇬🇧 Europe/London (GMT - UTC+00:00)' },
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                      Base Accounting Currency
+                    </label>
+                    <CustomSelect
+                      value={orgForm.currency}
+                      onChange={e => { setOrgForm({ ...orgForm, currency: e.target.value }); setHasUnsavedChanges(true); }}
+                      options={[
+                        { value: 'INR', label: 'INR (₹ - Indian Rupee)' },
+                        { value: 'USD', label: 'USD ($ - US Dollar)' },
+                        { value: 'EUR', label: 'EUR (€ - Euro)' },
+                        { value: 'AED', label: 'AED (د.إ - UAE Dirham)' },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            {loc.branches.length === 0 ? (
-              <p className="text-[0.8rem] opacity-40 m-0">No branches under this location match the query.</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {loc.branches.map((b: any) => (
-                  <div key={b.id} className="location-branch-card">
-                    <strong style={{ fontSize: '0.88rem', color: '#fff' }}>{b.name}</strong>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '2px 0', lineHeight: 1.4 }}>{b.profile}</p>
+          )}
+
+          {/* 📍 SECTION 2: CAMPUSES & LOCATIONS */}
+          {activeSection === 'campuses' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                    Active Campus Branch Nodes
+                  </h2>
+                  <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                    Physical institutional centers configured for walk-in queues and counseling sessions.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {branches.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      background: 'var(--surface-alt)', border: '1.5px solid var(--border)',
+                      borderRadius: '14px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text)' }}>
+                          {b.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--primary)', marginTop: '2px' }}>
+                          #{b.id}
+                        </div>
+                      </div>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: '9999px',
+                        background: 'rgba(16,185,129,0.12)', color: '#10b981',
+                        fontSize: '0.7rem', fontWeight: 800,
+                      }}>
+                        ACTIVE
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                      <span>📍</span>
+                      <span>{b.locationName || 'Hyderabad Region'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--surface)', border: '1px solid var(--border)', fontWeight: 600 }}>
+                        Technical Training
+                      </span>
+                      <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--surface)', border: '1px solid var(--border)', fontWeight: 600 }}>
+                        Admissions Desk
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        ))}
-        {filteredLocationsWithBranches.length === 0 && (
-          <div className="text-center p-7 opacity-50">No locations or branches found matching the query.</div>
-        )}
-      </div>
-    </div>
-  );
+            </div>
+          )}
 
-  const renderUsers = () => (
-    <div>
-      <div className="flex flex-wrap gap-2.5 mb-4 items-center justify-between">
-        <div className="flex gap-2 flex-1 min-w-[280px]">
-          <input
-            type="search"
-            placeholder="Search name, email, user..."
-            value={userSearch}
-            onChange={e => setUserSearch(e.target.value)}
-            style={{ padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-          />
-          <select
-            value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
-            style={{ width: 'auto', padding: '8px 12px', fontSize: '0.82rem', height: '40px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text)' }}
-          >
-            <option value="">All Roles</option>
-            {roles.map(r => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
-        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Total Users: {filteredUsers.length}</span>
-      </div>
+          {/* 👥 SECTION 3: TEAM & ACCESS ROLES */}
+          {activeSection === 'team' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                  Team Directory & Role Allocations
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                  Assigned staff members, counselor credentials, and campus permissions.
+                </p>
+              </div>
 
-      <div className="table-wrapper m-0">
-        <table className="min-w-[600px]">
-          <thead>
-            <tr>
-              <th>User Profile</th>
-              <th>Role</th>
-              <th>Branch</th>
-              <th>Status</th>
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.length ? (
-              filteredUsers.map((u) => {
-                const branchName = branches.find(b => b.id === u.branchId)?.name || 'All Branches';
-                const roleName = roles.find(r => r.id === u.roleId)?.name || u.roleId;
-                const isActive = u.active !== false;
+              {/* Search & Filter Bar */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{
+                  flex: '1 1 240px', display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'var(--surface-alt)', borderRadius: '8px', border: '1.5px solid var(--border)', padding: '0 12px',
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--muted)' }}>
+                    <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
+                  </svg>
+                  <input
+                    type="search"
+                    placeholder="Search staff by name or email…"
+                    value={teamSearch}
+                    onChange={e => setTeamSearch(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', width: '100%', fontSize: '0.84rem', color: 'var(--text)', outline: 'none', padding: '8px 0' }}
+                  />
+                </div>
+                <div style={{ width: '180px' }}>
+                  <CustomSelect
+                    value={teamRoleFilter}
+                    onChange={e => setTeamRoleFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'All Roles' },
+                      { value: 'role_super_admin', label: 'Super Admin' },
+                      { value: 'role_admin', label: 'Admin' },
+                      { value: 'role_counselor', label: 'Counselor' },
+                      { value: 'role_front_desk', label: 'Front Desk' },
+                    ]}
+                  />
+                </div>
+              </div>
 
-                return (
-                  <tr key={u.id}>
-                    <td>
-                      <div className="flex items-center gap-2.5">
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-gradient)', color: '#fff', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {u.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <strong style={{ fontSize: '0.88rem', display: 'block', color: '#fff' }}>{u.name}</strong>
-                          <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>@{u.username} | {u.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{
-                        fontSize: '0.72rem',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        background: u.roleId === 'role_super_admin' ? 'rgba(239,68,68,0.12)' : (u.roleId === 'role_admin' ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)'),
-                        color: u.roleId === 'role_super_admin' ? '#f87171' : (u.roleId === 'role_admin' ? '#fbbf24' : '#818cf8'),
-                        fontWeight: 700
-                      }}>
-                        {roleName}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="text-[0.82rem]">
-                        <div className="text-white">{branchName}</div>
-                      </div>
-                    </td>
-                    <td>
+              {/* Table */}
+              <div className="table-wrapper">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt)' }}>
+                      <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Member</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Role</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Assigned Campus</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => {
+                      const branch = branches.find(b => b.id === u.branchId);
+                      return (
+                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: 32, height: 32, borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                color: '#fff', fontWeight: 800, fontSize: '0.8rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                              }}>
+                                {getInitials(u.name)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.86rem' }}>{u.name}</div>
+                                <div style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>{u.email || `@${u.username}`}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{
+                              fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase',
+                              background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)',
+                              padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(99, 102, 241, 0.25)',
+                            }}>
+                              {u.roleId?.replace('role_', '').replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                            📍 {branch?.name || 'All Campuses'}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{
+                              fontSize: '0.72rem', fontWeight: 800,
+                              color: '#10b981', background: 'rgba(16,185,129,0.12)',
+                              padding: '2px 8px', borderRadius: '9999px',
+                            }}>
+                              ACTIVE
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 🎨 SECTION 4: BRANDING & THEME */}
+          {activeSection === 'appearance' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                  Branding, Color Tokens & Walk-in Form Customizer
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                  Customize the visual identity, student self-registration form banners, and accent themes.
+                </p>
+              </div>
+
+              {/* Accent Colors */}
+              <div style={{ background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', marginBottom: '12px' }}>
+                  Primary Accent Theme
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                  {[
+                    { name: 'Electric Indigo', hex: '#6366f1' },
+                    { name: 'Neon Violet', hex: '#8b5cf6' },
+                    { name: 'Cyber Emerald', hex: '#10b981' },
+                    { name: 'Sky Cyan', hex: '#0ea5e9' },
+                    { name: 'Vibrant Amber', hex: '#f59e0b' },
+                    { name: 'Hyper Rose', hex: '#f43f5e' },
+                  ].map((color) => {
+                    const isSelected = appearanceForm.primaryColor === color.hex;
+                    return (
                       <button
+                        key={color.hex}
                         type="button"
-                        onClick={() => toggleUserStatus(u.id, isActive)}
-                        className="outline-btn"
+                        onClick={() => { setAppearanceForm({ ...appearanceForm, primaryColor: color.hex }); setHasUnsavedChanges(true); }}
                         style={{
-                          background: isActive ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.05)',
-                          color: isActive ? '#10b981' : 'var(--muted)',
-                          border: isActive ? '1px solid rgba(16,185,129,0.25)' : '1px solid var(--border)',
-                          padding: '4px 10px',
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                          minHeight: '30px'
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                          padding: '14px', borderRadius: '10px',
+                          border: isSelected ? `2px solid ${color.hex}` : '1.5px solid var(--border)',
+                          background: isSelected ? `${color.hex}14` : 'var(--surface)',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
                         }}
                       >
-                        {isActive ? 'Active' : 'Suspended'}
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: color.hex, boxShadow: `0 2px 8px ${color.hex}66` }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>{color.name}</span>
                       </button>
-                    </td>
-                    <td className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => showToast(`Password reset link sent to ${u.email}`)}
-                        className="outline-btn"
-                        style={{ padding: '4px 8px', fontSize: '0.74rem', minHeight: '30px' }}
-                      >
-                        Reset PW
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr><td colSpan={5} className="empty-row" style={{ textAlign: 'center', opacity: 0.5 }}>No users matched the criteria.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+                    );
+                  })}
+                </div>
+              </div>
 
-  const renderRoles = () => {
-    const rolePermissions: Record<string, string[]> = {
-      role_super_admin: ['Dashboard View', 'Add Walk-ins', 'Delete Walk-ins', 'Manage Queue', 'Counsellor Assignments', 'Reports & Analytics', 'Modify Configurations', 'Webhook Control center'],
-      role_admin: ['Dashboard View', 'Add Walk-ins', 'Edit Walk-ins', 'Manage Queue', 'Counsellor Assignments', 'Reports & Analytics', 'Edit Setup Settings', 'Webhook Control center'],
-      role_manager: ['Dashboard View', 'View Walk-ins', 'Queue Board', 'Branch Analytics', 'Export Reports', 'Webhook Delivery Monitor'],
-      role_frontdesk: ['Dashboard View', 'Add Walk-ins', 'Queue Check-in', 'Assigned Student view'],
-      role_counselor: ['Dashboard View', 'Personal Assigned Queue', 'Session Management (Start/End)', 'Update Availability status']
-    };
+              {/* Form Customizer */}
+              <div style={{ background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase' }}>
+                  Walk-in Self Registration Page Customizer (/walkin-form)
+                </div>
 
-    return (
-      <div className="flex flex-col gap-4">
-        {roles.map((role) => (
-          <div key={role.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)', padding: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                    Registration Page Heading
+                  </label>
+                  <input
+                    type="text"
+                    value={appearanceForm.formHeading}
+                    onChange={e => { setAppearanceForm({ ...appearanceForm, formHeading: e.target.value }); setHasUnsavedChanges(true); }}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                    Registration Page Subtitle & Instructions
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={appearanceForm.formSubtitle}
+                    onChange={e => { setAppearanceForm({ ...appearanceForm, formSubtitle: e.target.value }); setHasUnsavedChanges(true); }}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600, outline: 'none', resize: 'vertical',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🤖 SECTION 5: AI & TELEMETRY */}
+          {activeSection === 'ai' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '1.05rem', color: '#fff', margin: 0 }}>🛡️ {role.name}</h3>
-                <span style={{ fontSize: '0.74rem', opacity: 0.5, fontFamily: 'monospace' }}>Role Key: {role.id}</span>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                  AI Routing & Audio DSP Telemetry
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                  Configure real-time counselor speech processing and queue load balancers.
+                </p>
               </div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textAlign: 'right' }}>{role.description}</span>
-            </div>
-            <div>
-              <p style={{ fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.4, letterSpacing: '0.05em', marginBottom: '8px' }}>Allowed Capabilities</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {rolePermissions[role.id]?.map((perm) => (
-                  <span key={perm} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '4px', background: 'var(--primary-glow)', color: 'var(--primary)', border: '1px solid rgba(99,102,241,0.15)', fontWeight: 600 }}>
-                    ✓ {perm}
-                  </span>
-                )) || <span style={{ fontSize: '0.76rem', opacity: 0.4 }}>No capabilities mapped.</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
-  const renderAIPreferences = () => (
-    <form onSubmit={handleAiSave} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-4">
-        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-          <h3 style={{ fontSize: '1rem', marginBottom: '4px', color: '#fff' }}>Queue Management Automation</h3>
-          <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: 0 }}>Automate assignments and queue routing using intelligence models.</p>
-        </div>
-
-        {[
-          {
-            title: 'Smart Queue Routing',
-            desc: 'Automatically routes student walk-ins to the counselor with the shortest queue or matching course expertise.',
-            key: 'smartRouting'
-          },
-          {
-            title: 'Counsellor Auto-Assignment',
-            desc: 'Immediately assigns an available counselor upon student check-in, bypassing manual intake approval.',
-            key: 'autoAssignment'
-          },
-          {
-            title: 'Predictive Wait Times',
-            desc: 'Forecasts estimated wait times for students dynamically based on historical processing times.',
-            key: 'predictiveWaitTimes'
-          },
-          {
-            title: 'Queue Sentiment Analysis',
-            desc: 'Analyzes student remarks and follow-up remarks to gauge counselor session performance.',
-            key: 'sentimentAnalysis'
-          }
-        ].map((item) => (
-          <div key={item.key} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-              <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>{item.title}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 400, lineHeight: '1.4' }}>{item.desc}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: '4px' }}>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={(aiForm as any)[item.key]}
-                  onChange={e => setAiForm({...aiForm, [item.key]: e.target.checked})}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-        ))}
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '4px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', fontWeight: 600 }}>Model Confidence Threshold: <span className="text-[var(--primary)]">{aiForm.confidenceThreshold}%</span></label>
-          <input
-            type="range"
-            min="50"
-            max="95"
-            step="5"
-            value={aiForm.confidenceThreshold}
-            onChange={e => setAiForm({...aiForm, confidenceThreshold: Number(e.target.value)})}
-            style={{ width: '100%', padding: 0 }}
-          />
-          <span style={{ fontSize: '0.74rem', opacity: 0.45 }}>Minimum confidence level for smart auto-assignment routing.</span>
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <button type="submit" className="primary-btn px-6 py-2.5">
-          💾 Save AI Preferences
-        </button>
-      </div>
-    </form>
-  );
-
-  const renderFallback = () => (
-    <div style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>
-      <p className="m-0 mb-3">This settings subsection is fully configured and ready for production deployment.</p>
-      <button type="button" className="outline-btn" style={{ fontSize: '0.82rem', padding: '6px 16px', minHeight: '36px' }} onClick={() => showToast('Action applied successfully!')}>
-        Initialize {activeSubsection} subsection
-      </button>
-    </div>
-  );
-
-  const renderHubDashboard = () => {
-    const totalUsers = users.length;
-    const totalBranches = branches.length;
-    const activeAIModules = Object.values(aiForm).filter(v => v === true && typeof v === 'boolean').length;
-
-    return (
-      <div style={{ animation: 'fadeIn 0.35s ease both' }}>
-        {/* Hub Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-            Settings Control Hub
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
-            Manage organization configurations, portal users, branch networks, and automation preferences.
-          </p>
-        </div>
-
-        {/* Stats Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '36px' }}>
-          <div style={{ background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '2rem', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', width: '54px', height: '54px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>👥</div>
-            <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>Portal Users</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{totalUsers}</div>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '2rem', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success)', width: '54px', height: '54px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📍</div>
-            <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>Campuses & Branches</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{totalBranches}</div>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '2rem', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning)', width: '54px', height: '54px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎨</div>
-            <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>Brand Color</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: brandingForm.primary, border: '1px solid rgba(255,255,255,0.2)' }} />
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'monospace', color: '#fff' }}>{brandingForm.primary}</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '2rem', background: 'rgba(168, 85, 247, 0.12)', color: 'var(--accent)', width: '54px', height: '54px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div>
-            <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>AI Optimizers</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{activeAIModules} Active</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Shortcuts Section */}
-        <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-          Quick Configuration Shortcuts
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginBottom: '36px' }}>
-          <div className="hub-shortcut" onClick={() => selectSubsection('profile')}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>🏢</div>
-            <strong style={{ color: '#fff', fontSize: '0.95rem' }}>Organization Profile</strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4' }}>Update physical HQ address, website URL, and primary contact registrations.</span>
-          </div>
-
-          <div className="hub-shortcut" onClick={() => selectSubsection('branding')}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>🎨</div>
-            <strong style={{ color: '#fff', fontSize: '0.95rem' }}>Visual Branding</strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4' }}>Modify brand theme colors, card rounding, layouts, and button aesthetics.</span>
-          </div>
-
-          <div className="hub-shortcut" onClick={() => selectSubsection('users')}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>👥</div>
-            <strong style={{ color: '#fff', fontSize: '0.95rem' }}>User Profiles</strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4' }}>Review active portals members, passwords resets, and statuses.</span>
-          </div>
-
-          <div className="hub-shortcut" onClick={() => selectSubsection('ai-preferences')}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>🤖</div>
-            <strong style={{ color: '#fff', fontSize: '0.95rem' }}>AI Queue Routings</strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4' }}>Manage smart queue models, auto-assignments, and confidence threshold.</span>
-          </div>
-        </div>
-
-        {/* System Overview Card */}
-        <div style={{ background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '18px', padding: '24px' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.06em', margin: '0 0 16px 0' }}>
-            System Infrastructure Overview
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-            <div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Active Headquarters</div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginTop: '4px' }}>{profileForm.companyName}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Domain Name</div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary)', marginTop: '4px' }}>{profileForm.website.replace('https://', '')}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Active Counselor Branch Network</div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginTop: '4px' }}>JNTU-HYD, Vijayawada, Visakhapatnam</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderSubsectionContent = () => {
-    switch (activeSubsection) {
-      case 'profile':
-        return renderProfile();
-      case 'branding':
-        return renderBranding();
-      case 'locations':
-        return renderLocations();
-      case 'ai-preferences':
-        return renderAIPreferences();
-      case 'users':
-        return renderUsers();
-      case 'roles':
-        return renderRoles();
-      default:
-        return renderFallback();
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 84px)', overflow: 'hidden' }}>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideIn {
-          from { transform: translateX(-15px); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .settings-sidebar-btn {
-          width: 100%;
-          padding: 11px 18px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: var(--text);
-          font-size: 0.85rem;
-          font-weight: 600;
-          border-radius: 10px;
-          transition: all 0.2s ease;
-        }
-        .settings-sidebar-btn:hover {
-          background: rgba(255, 255, 255, 0.03);
-          color: var(--primary);
-        }
-        
-        .settings-sub-btn {
-          width: 100%;
-          padding: 9px 16px;
-          text-align: left;
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: var(--muted);
-          font-size: 0.82rem;
-          font-weight: 500;
-          border-radius: 8px;
-          margin: 2px 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          transition: all 0.2s ease;
-        }
-        .settings-sub-btn:hover {
-          color: var(--text);
-          background: rgba(255, 255, 255, 0.02);
-          padding-left: 20px;
-        }
-        .settings-sub-btn.active {
-          background: var(--primary-glow);
-          color: var(--primary);
-          font-weight: 700;
-          border-left: 3px solid var(--primary);
-          padding-left: 18px;
-        }
-        
-        .settings-card {
-          background: var(--card-bg);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1.5px solid var(--border);
-          border-radius: 16px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-          padding: 28px;
-          animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
-        }
-        
-        /* Custom styled switch/toggle instead of checkbox */
-        .toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
-        }
-        .toggle-switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .toggle-slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background-color: var(--border);
-          transition: .3s;
-          border-radius: 24px;
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .toggle-slider:before {
-          position: absolute;
-          content: "";
-          height: 16px;
-          width: 16px;
-          left: 3px;
-          bottom: 3px;
-          background-color: #fff;
-          transition: .3s;
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .toggle-switch input:checked + .toggle-slider {
-          background-color: var(--primary);
-        }
-        .toggle-switch input:checked + .toggle-slider:before {
-          transform: translateX(20px);
-        }
-        
-        /* Hub Dashboard Shortcut Cards */
-        .hub-shortcut {
-          background: rgba(255, 255, 255, 0.015);
-          border: 1.5px solid var(--border);
-          border-radius: 14px;
-          padding: 20px;
-          cursor: pointer;
-          transition: all 0.25s ease;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .hub-shortcut:hover {
-          border-color: rgba(99, 102, 241, 0.3);
-          background: rgba(99, 102, 241, 0.03);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(99, 102, 241, 0.1);
-        }
-
-        .location-branch-card {
-          padding: 14px 18px;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.015);
-          border: 1.5px solid var(--border);
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          transition: all 0.25s ease;
-        }
-        .location-branch-card:hover {
-          border-color: rgba(99, 102, 241, 0.25);
-          background: rgba(99, 102, 241, 0.03);
-          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
-          transform: translateY(-1px);
-        }
-      `}</style>
-
-      {/* Sidebar Navigation */}
-      <div style={{
-        width: '280px',
-        background: 'var(--card-bg)',
-        borderRight: '1px solid var(--border)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflowY: 'auto'
-      }}>
-        {/* Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
-          <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>All Settings</h1>
-          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
-            {profileForm.companyName}
-          </p>
-        </div>
-
-        {/* Organization Settings */}
-        <div style={{ padding: '12px 0' }}>
-          <div style={{ padding: '8px 16px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5 }}>
-            Organization Settings
-          </div>
-          {ORGANIZATION_SETTINGS.map(category => (
-            <div key={category.id}>
-              <button
-                onClick={() => toggleCategory(category.id)}
-                className="settings-sidebar-btn"
-              >
-                <span style={{ fontSize: '1.1rem' }}>{category.icon}</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>{category.name}</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>
-                  {expandedCategories.has(category.id) ? '▼' : '▶'}
-                </span>
-              </button>
-              {expandedCategories.has(category.id) && (
-                <div style={{ paddingLeft: '24px', paddingRight: '12px' }}>
-                  {category.subsections.map(subsection => (
-                    <button
-                      key={subsection.id}
-                      onClick={() => selectSubsection(subsection.id)}
-                      className={`settings-sub-btn ${activeSubsection === subsection.id ? 'active' : ''}`}
-                    >
-                      <span>{subsection.name}</span>
-                      <span style={{ fontSize: '0.8rem', opacity: 0.35 }}>›</span>
-                    </button>
-                  ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{
+                  padding: '16px 20px', borderRadius: '12px', background: 'var(--surface-alt)',
+                  border: '1.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)' }}>Real-Time Audio DSP Noise Suppression</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '2px' }}>
+                      Removes ambient classroom background noise during counseling session recording.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={aiForm.audioFiltering}
+                    onChange={e => { setAiForm({ ...aiForm, audioFiltering: e.target.checked }); setHasUnsavedChanges(true); }}
+                    style={{ width: 20, height: 20, accentColor: 'var(--primary)' }}
+                  />
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
 
-        {/* Module Settings */}
-        <div style={{ padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-          <div style={{ padding: '8px 16px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5 }}>
-            Module Settings
-          </div>
-          {MODULE_SETTINGS.map(category => (
-            <div key={category.id}>
-              <button
-                onClick={() => toggleCategory(category.id)}
-                className="settings-sidebar-btn"
-              >
-                <span style={{ fontSize: '1.1rem' }}>{category.icon}</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>{category.name}</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>
-                  {expandedCategories.has(category.id) ? '▼' : '▶'}
-                </span>
-              </button>
-              {expandedCategories.has(category.id) && (
-                <div style={{ paddingLeft: '24px', paddingRight: '12px' }}>
-                  {category.subsections.map(subsection => (
-                    <button
-                      key={subsection.id}
-                      onClick={() => selectSubsection(subsection.id)}
-                      className={`settings-sub-btn ${activeSubsection === subsection.id ? 'active' : ''}`}
-                    >
-                      <span>{subsection.name}</span>
-                      <span style={{ fontSize: '0.8rem', opacity: 0.35 }}>›</span>
-                    </button>
-                  ))}
+                <div style={{
+                  padding: '16px 20px', borderRadius: '12px', background: 'var(--surface-alt)',
+                  border: '1.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)' }}>Automated Gemini AI Session Summarizer</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '2px' }}>
+                      Generates instant executive counseling notes and next-steps upon session completion.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={aiForm.autoSummary}
+                    onChange={e => { setAiForm({ ...aiForm, autoSummary: e.target.checked }); setHasUnsavedChanges(true); }}
+                    style={{ width: 20, height: 20, accentColor: 'var(--primary)' }}
+                  />
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '36px' }}>
-        {activeSubsection ? (
-          <div style={{ maxWidth: '1000px' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <button
-                onClick={closePanel}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text)',
-                  fontSize: '0.85rem',
-                  opacity: 0.7,
-                  padding: '4px 8px',
-                  minHeight: '28px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                ← Back to Control Hub
-              </button>
-            </div>
-            <div className="settings-card">
-              <h2 style={{ margin: '0 0 6px', fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-                {activeSubsection.charAt(0).toUpperCase() + activeSubsection.slice(1).replace(/-/g, ' ')}
-              </h2>
-              <p style={{ margin: '0 0 24px', fontSize: '0.84rem', color: 'var(--muted)' }}>
-                Configure preferences and settings for this section.
-              </p>
-              <div className="mt-4">
-                {renderSubsectionContent()}
               </div>
             </div>
-          </div>
-        ) : (
-          <div style={{ maxWidth: '1000px' }}>
-            {renderHubDashboard()}
-          </div>
-        )}
+          )}
+
+          {/* 🔒 SECTION 6: SECURITY & COMPLIANCE */}
+          {activeSection === 'security' && (
+            <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px 0' }}>
+                  Security, Session Timeout & Compliance
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--muted)' }}>
+                  Manage idle session expiry durations and staff authorization policies.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '600px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                    Idle Session Expiry Duration
+                  </label>
+                  <CustomSelect
+                    value={securityForm.sessionTimeout}
+                    onChange={e => { setSecurityForm({ ...securityForm, sessionTimeout: e.target.value }); setHasUnsavedChanges(true); }}
+                    options={[
+                      { value: '4', label: '4 Hours (High Security)' },
+                      { value: '8', label: '8 Hours (Standard Shift)' },
+                      { value: '12', label: '12 Hours (Extended)' },
+                      { value: '24', label: '24 Hours (Full Day)' },
+                    ]}
+                  />
+                </div>
+
+                <div style={{
+                  padding: '16px 20px', borderRadius: '12px', background: 'var(--surface-alt)',
+                  border: '1.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)' }}>Enforce 2FA for Super Admin & Admin Roles</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '2px' }}>
+                      Requires authenticator TOTP token verification on login.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={securityForm.enforce2FA}
+                    onChange={e => { setSecurityForm({ ...securityForm, enforce2FA: e.target.checked }); setHasUnsavedChanges(true); }}
+                    style={{ width: 20, height: 20, accentColor: 'var(--primary)' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
       </div>
 
-      <Toast msg={toast.msg} ok={toast.ok} />
-    </div>
+    </section>
   );
 }

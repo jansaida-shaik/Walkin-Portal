@@ -423,3 +423,28 @@ textarea:disabled {
   background: var(--surface-alt);
   transform: translateY(-1px);
 }
+
+
+/* ==========================================================================
+/* ==========================================================================
+   UNIFIED GLOBAL PORTAL DROPDOWN STYLING
+   ========================================================================== */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans, inherit);
+  border-radius: var(--radius-sm, 8px);
+  border: 1.5px solid var(--border);
+  outline: none;
+  transition: all var(--transition-fast, 0.18s ease);
+}
+
+select option {
+  background: var(--surface, #1e293b);
+  color: var(--text, #f8fafc);
+  font-size: 0.88rem;
+  padding: 10px;
+}

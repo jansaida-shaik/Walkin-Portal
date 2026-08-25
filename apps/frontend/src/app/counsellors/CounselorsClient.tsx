@@ -1,4 +1,5 @@
 'use client';
+import CustomSelect from '../../components/CustomSelect';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,16 +15,18 @@ interface Branch {
 
 interface Counselor {
   id: string;
-  name: string;
-  roleId: string;
-  roleName: string;
-  departmentId: string;
-  departmentName: string;
-  branchId: string;
-  branchName: string;
-  location: string;
-  availability: string[];
-  status: string;
+  name?: string;
+  email?: string;
+  user?: { name?: string; email?: string };
+  roleId?: string;
+  roleName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  branchId?: string;
+  branchName?: string;
+  location?: string;
+  availability?: string[];
+  status?: string;
 }
 
 interface CounselorsClientProps {
@@ -33,23 +36,50 @@ interface CounselorsClientProps {
 }
 
 const statusOptions = [
-  { value: 'available', label: 'Available' },
-  { value: 'busy', label: 'Busy' },
-  { value: 'offline', label: 'Offline' },
-  { value: 'break', label: 'Break' }
+  { value: 'Available', label: 'Available' },
+  { value: 'Busy', label: 'Busy' },
+  { value: 'Break', label: 'Break' },
+  { value: 'Offline', label: 'Offline' }
 ];
 
 const locationOptions = ['Hyderabad', 'Vijayawada', 'Visakhapatnam'];
 
-const mapLocationIdToName = (locId: string) => {
-  if (locId === 'loc_vij') return 'Vijayawada';
-  if (locId === 'loc_vsp') return 'Visakhapatnam';
-  return 'Hyderabad';
+export const mapLocationIdToName = (locId: string) => {
+  if (!locId) return 'Hyderabad';
+  if (locId === 'loc_vij' || locId.toLowerCase() === 'vijayawada') return 'Vijayawada';
+  if (locId === 'loc_vsp' || locId.toLowerCase() === 'visakhapatnam') return 'Visakhapatnam';
+  if (locId === 'loc_hyd' || locId.toLowerCase() === 'hyderabad') return 'Hyderabad';
+  return locId;
 };
+
+
+interface TableSelectProps {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  style?: React.CSSProperties;
+}
+
+function TableSelect({ value, onChange, options, placeholder, style }: TableSelectProps) {
+  return (
+    <CustomSelect
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      style={{ minWidth: '150px', height: '36px', minHeight: '36px', ...style }}
+    />
+  );
+}
 
 export default function CounselorsClient({ initialCounselors, branches, user }: CounselorsClientProps) {
   const router = useRouter();
   const [counselors, setCounselors] = useState<Counselor[]>(initialCounselors);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'busy' | 'break' | 'offline'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('');
+  const [branchFilter, setBranchFilter] = useState<string>('');
   const [message, setMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -62,24 +92,25 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
   });
 
   async function handleBranchChange(counselorId: string, branchId: string) {
-    setMessage('Updating branch...');
+    const bName = branches.find(b => b.id === branchId)?.name || '';
+    setMessage(`Updating branch to ${bName}...`);
+    setCounselors(prev => prev.map(c => c.id === counselorId ? { ...c, branchId, branchName: bName } : c));
     const res = await updateCounselorDetails(counselorId, { branchId });
     if (res.success) {
-      setMessage(`Branch updated for counselor.`);
+      setMessage(`Branch updated to ${bName}.`);
       router.refresh();
-      window.location.reload();
     } else {
       setMessage(res.error || 'Failed to update branch.');
     }
   }
 
   async function handleLocationChange(counselorId: string, location: string) {
-    setMessage('Updating location...');
+    setMessage(`Updating location to ${location}...`);
+    setCounselors(prev => prev.map(c => c.id === counselorId ? { ...c, location } : c));
     const res = await updateCounselorDetails(counselorId, { location });
     if (res.success) {
-      setMessage(`Location updated for counselor.`);
+      setMessage(`Location updated to ${location}.`);
       router.refresh();
-      window.location.reload();
     } else {
       setMessage(res.error || 'Failed to update location.');
     }
@@ -126,6 +157,49 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
 
   const canManage = user?.roleId === 'role_super_admin' || user?.roleId === 'role_admin' || user?.roleId === 'role_manager';
 
+  const totalCount = counselors.length;
+  const availableCount = counselors.filter(c => (c.status || '').toLowerCase() === 'available').length;
+  const busyCount = counselors.filter(c => (c.status || '').toLowerCase() === 'busy' || (c.status || '').toLowerCase() === 'in session' || (c.status || '').toLowerCase() === 'in_session').length;
+  const breakCount = counselors.filter(c => (c.status || '').toLowerCase() === 'break').length;
+  const offlineCount = counselors.filter(c => (c.status || '').toLowerCase() === 'offline').length;
+
+  const filteredCounselors = counselors.filter((c) => {
+    const name = c.name || '';
+    const email = c.email || c.user?.email || '';
+    const branch = c.branchName || branches.find(b => b.id === c.branchId)?.name || '';
+    const location = mapLocationIdToName(c.location || '');
+    const department = c.departmentName || '';
+    const status = (c.status || 'available').toLowerCase();
+
+    // 1. Search Query Filter
+    const matchSearch = searchQuery.trim() ? (
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      branch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      department.toLowerCase().includes(searchQuery.toLowerCase())
+    ) : true;
+
+    // 2. Status Bubble Filter
+    const matchStatus = statusFilter !== 'all' ? (
+      statusFilter === 'available' ? status === 'available' :
+      statusFilter === 'busy' ? (status === 'busy' || status === 'in session' || status === 'in_session') :
+      statusFilter === 'break' ? status === 'break' :
+      statusFilter === 'offline' ? status === 'offline' : true
+    ) : true;
+
+    // 3. Location Filter
+    const matchLocation = locationFilter ? (
+      location.toLowerCase() === locationFilter.toLowerCase() ||
+      (c.location || '').toLowerCase() === locationFilter.toLowerCase()
+    ) : true;
+
+    // 4. Branch Filter
+    const matchBranch = branchFilter ? (c.branchId === branchFilter) : true;
+
+    return matchSearch && matchStatus && matchLocation && matchBranch;
+  });
+
   return (
     <section className="dash-page">
       <div className="page-title-row flex justify-between items-center">
@@ -143,8 +217,261 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
       {message && <div className="inline-message" style={{ margin: '14px 0' }}>{message}</div>}
 
       <div className="dash-table-card">
-        <div className="dash-table-header">
-          <h2>All Counselors ({counselors.length})</h2>
+        <div className="dash-table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800 }}>
+              All Counselors
+            </h2>
+          </div>
+
+          {/* Real-time Status Counter Bubbles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Total */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'all' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                background: statusFilter === 'all' ? 'rgba(99, 102, 241, 0.15)' : 'var(--surface)',
+                color: statusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span>TOTAL</span>
+              <span style={{
+                background: 'rgba(255,255,255,0.08)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+              }}>{totalCount}</span>
+            </button>
+
+            {/* Available */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'available' ? 'all' : 'available')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'available' ? '1.5px solid #10b981' : '1.5px solid rgba(16, 185, 129, 0.3)',
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#059669',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: statusFilter === 'available' ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none',
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+              <span>AVAILABLE</span>
+              <span style={{
+                background: 'rgba(16, 185, 129, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#059669',
+              }}>{availableCount}</span>
+            </button>
+
+            {/* Busy */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'busy' ? 'all' : 'busy')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'busy' ? '1.5px solid #f59e0b' : '1.5px solid rgba(245, 158, 11, 0.3)',
+                background: 'rgba(245, 158, 11, 0.12)',
+                color: '#d97706',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: statusFilter === 'busy' ? '0 0 10px rgba(245, 158, 11, 0.3)' : 'none',
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+              <span>BUSY</span>
+              <span style={{
+                background: 'rgba(245, 158, 11, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#d97706',
+              }}>{busyCount}</span>
+            </button>
+
+            {/* Break */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'break' ? 'all' : 'break')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'break' ? '1.5px solid #f97316' : '1.5px solid rgba(249, 115, 22, 0.3)',
+                background: 'rgba(249, 115, 22, 0.12)',
+                color: '#ea580c',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: statusFilter === 'break' ? '0 0 10px rgba(249, 115, 22, 0.3)' : 'none',
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f97316' }} />
+              <span>BREAK</span>
+              <span style={{
+                background: 'rgba(249, 115, 22, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#ea580c',
+              }}>{breakCount}</span>
+            </button>
+
+            {/* Offline */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'offline' ? 'all' : 'offline')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'offline' ? '1.5px solid #94a3b8' : '1.5px solid rgba(100, 116, 139, 0.3)',
+                background: 'rgba(100, 116, 139, 0.12)',
+                color: '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: statusFilter === 'offline' ? '0 0 10px rgba(100, 116, 139, 0.3)' : 'none',
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} />
+              <span>OFFLINE</span>
+              <span style={{
+                background: 'rgba(100, 116, 139, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#64748b',
+              }}>{offlineCount}</span>
+            </button>
+          </div>
+        </div>
+                {/* ── Global Search + Filters Bar ── */}
+        <div
+          role="search"
+          aria-label="Filter counselors"
+          style={{
+            display: 'flex',
+            gap: '12px',
+            padding: '12px 20px',
+            background: 'var(--surface-alt, rgba(255, 255, 255, 0.02))',
+            borderBottom: '1px solid var(--border)',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          {/* Search Input */}
+          <div style={{
+            flex: '1 1 260px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'var(--surface)',
+            borderRadius: '8px',
+            border: '1.5px solid var(--border)',
+            padding: '0 12px',
+          }}>
+            <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              id="counselors-search"
+              type="search"
+              placeholder="Search by name, branch, location, or email…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              aria-label="Search counselors"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                width: '100%',
+                fontSize: '0.86rem',
+                color: 'var(--text)',
+                outline: 'none',
+                padding: '9px 0',
+                fontFamily: 'inherit',
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Location filter */}
+          <div style={{ flex: '0 1 180px' }}>
+            <TableSelect
+              value={locationFilter}
+              onChange={e => setLocationFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Locations' },
+                ...locationOptions.map(l => ({ value: l, label: l }))
+              ]}
+              style={{ background: 'var(--surface)' }}
+            />
+          </div>
+
+          {/* Branch filter */}
+          <div style={{ flex: '0 1 210px' }}>
+            <TableSelect
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Branches' },
+                ...branches.map(b => ({ value: b.id, label: b.name }))
+              ]}
+              style={{ background: 'var(--surface)' }}
+            />
+          </div>
+
+          {/* Results count */}
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+            {filteredCounselors.length} counselor{filteredCounselors.length !== 1 ? 's' : ''}
+          </span>
         </div>
         <div className="table-wrapper">
           <table>
@@ -159,65 +486,58 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
               </tr>
             </thead>
             <tbody>
-              {counselors.length ? (
-                counselors.map((c) => (
+              {filteredCounselors.length ? (
+                filteredCounselors.map((c) => (
                   <tr key={c.id}>
                     <td className="counselor-name-cell">
-                      <div className="counselor-avatar">
-                        {c.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span>{c.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text)' }}>
+                        {c.name || 'Counselor'}
+                      </span>
                     </td>
                     <td>
                       {canManage ? (
-                        <select
-                          className="inline-select"
+                        <TableSelect
                           value={mapLocationIdToName(c.location)}
                           onChange={(e) => handleLocationChange(c.id, e.target.value)}
-                        >
-                          {locationOptions.map((loc) => (
-                            <option key={loc} value={loc}>{loc}</option>
-                          ))}
-                        </select>
+                          options={locationOptions.map((loc) => ({ value: loc, label: loc }))}
+                        />
                       ) : (
                         <span>{mapLocationIdToName(c.location)}</span>
                       )}
                     </td>
                     <td>
                       {canManage ? (
-                        <select
-                          className="inline-select"
-                          value={c.branchId}
+                        <TableSelect
+                          value={c.branchId || ''}
                           onChange={(e) => handleBranchChange(c.id, e.target.value)}
-                        >
-                          {branches.map((b) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
+                          options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                        />
                       ) : (
                         <span>{c.branchName}</span>
                       )}
                     </td>
-                    <td>{c.departmentName}</td>
+                    <td>{c.departmentName || "Sales"}</td>
                     <td>
-                      {canManage || user?.id === c.id ? (
-                        <select
-                          className="inline-select"
-                          value={c.status.toLowerCase()}
-                          onChange={(e) => handleStatusChange(c.id, e.target.value)}
-                        >
-                          {statusOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <StatusBadge status={c.status} />
-                      )}
+                      <StatusBadge status={c.status || 'Available'} />
                     </td>
                     <td className="availability-cell">
-                      {c.availability.map((slot) => (
-                        <span key={slot} className="time-tag">{slot}</span>
-                      ))}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {(c.availability && c.availability.length > 0 ? c.availability : ["09:00 AM - 06:00 PM"]).map((slot) => (
+                          <span key={slot} style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 10px',
+                            background: 'rgba(99, 102, 241, 0.08)',
+                            border: '1px solid rgba(99, 102, 241, 0.2)',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: 'var(--text)',
+                          }}>
+                            {slot}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 ))

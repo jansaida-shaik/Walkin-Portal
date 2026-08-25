@@ -1,8 +1,6 @@
 'use client';
 
 import StatusBadge from '../../components/StatusBadge';
-
-
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
@@ -79,31 +77,6 @@ interface ActivityItem {
   type: 'check_in' | 'assigned' | 'started' | 'completed' | 'alert';
 }
 
-interface SLAAlert {
-  id: string;
-  studentName: string;
-  type: 'warning' | 'breach';
-  message: string;
-  duration: number;
-}
-
-function formatHHMMSS(seconds: number) {
-  if (isNaN(seconds) || seconds < 0) return '00:00:00';
-  const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
-  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-function getWaitTimeStr(w: Student, currentTime: number) {
-  const created = new Date(w.walkinDate).getTime();
-  const activeSession = w.sessions.find(s => s.status === 'IN_SESSION' || s.status === 'COMPLETED');
-  const end = activeSession && activeSession.startTime ? new Date(activeSession.startTime).getTime() : currentTime;
-  const diffMs = Math.max(0, end - created);
-  const diffMins = Math.floor(diffMs / 60000);
-  return `${diffMins}m`;
-}
-
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -118,8 +91,6 @@ export default function DashboardClient({
   const router = useRouter();
   const [walkins, setWalkins] = useState<Student[]>(initialWalkins);
   const [counselors, setCounselors] = useState<Counselor[]>(initialCounselors);
-  // ⚠️ Initialize to 0 (not Date.now()) to avoid SSR/client hydration mismatch.
-  // The real timestamp is set inside useEffect, which only runs on the client.
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDetailsStudent, setSelectedDetailsStudent] = useState<Student | null>(null);
@@ -127,14 +98,14 @@ export default function DashboardClient({
   const [counselorStatus, setCounselorStatus] = useState<string>(() => {
     if (user && user.roleId === 'role_counselor') {
       const self = initialCounselors.find(c => c.id === user.id);
-      return self?.status || 'Available';
+      return self?.status || 'Offline';
     }
-    return 'Available';
+    return 'Offline';
   });
 
   const [mounted, setMounted] = useState(false);
 
-  // Context Drawer state for student quick-view from dashboard
+  // Context Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerStudent, setDrawerStudent] = useState<DrawerStudent | null>(null);
 
@@ -162,7 +133,6 @@ export default function DashboardClient({
 
   useEffect(() => {
     setMounted(true);
-    // Set the real time immediately on mount, then tick every second
     setCurrentTime(Date.now());
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
@@ -173,89 +143,31 @@ export default function DashboardClient({
   // Role detection
   const roleId = user?.roleId || 'role_frontdesk';
   const isCounselor = roleId === 'role_counselor';
-  const isManager = roleId === 'role_manager';
-  const isAdmin = roleId === 'role_super_admin' || roleId === 'role_admin';
   const isFrontDesk = roleId === 'role_frontdesk';
 
-  // State derivations for active queues
+  // State derivations
   const activeQueue = walkins.filter(w => w.status === 'Waiting' || w.status === 'Assigned' || w.status === 'In Session');
   const waitingStudents = walkins.filter(w => w.status === 'Waiting');
-  
+  const assignedStudents = walkins.filter(w => w.status === 'Assigned');
+  const inSessionStudents = walkins.filter(w => w.status === 'In Session');
+  const completedStudents = walkins.filter(w => w.status === 'Completed');
+  const availableCounselors = counselors.filter(c => (c.status || '').toLowerCase() === 'available');
+  const offlineCounselors = counselors.filter(c => (c.status || '').toLowerCase() === 'offline');
+
   // Counselor assigned students
   const myStudents = walkins.filter(w => 
     (w.status === 'Assigned' || w.status === 'In Session') && 
     (isCounselor ? w.sessions.some(s => s.counselorId === user?.id && s.status !== 'COMPLETED') : true)
   );
 
-  // Performance: memoized walkin index for O(1) counselor lookups
-  const walkinById = useMemo(() => {
-    const map = new Map<string, typeof walkins[0]>();
-    walkins.forEach(w => map.set(w.id, w));
-    return map;
-  }, [walkins]);
-
-  // Dynamic SLA Violations and warnings calculations — memoized for perf
-  const slaAlerts: SLAAlert[] = useMemo(() => {
-    if (!mounted || currentTime === 0) return [];
-    const alerts: SLAAlert[] = [];
-    walkins.forEach(w => {
-      if (w.status === 'Waiting' || w.status === 'Assigned') {
-        const created = new Date(w.walkinDate).getTime();
-        const waitMins = Math.floor((currentTime - created) / 60000);
-        if (waitMins >= 30) {
-          alerts.push({
-            id: `q-breach-${w.id}`,
-            studentName: w.name,
-            type: 'breach',
-            message: `Queue Breach: ${w.name} is waiting for ${waitMins}m in queue.`,
-            duration: waitMins
-          });
-        } else if (waitMins >= 20) {
-          alerts.push({
-            id: `q-warning-${w.id}`,
-            studentName: w.name,
-            type: 'warning',
-            message: `Queue Warning: ${w.name} waiting time exceeded ${waitMins}m.`,
-            duration: waitMins
-          });
-        }
-      } else if (w.status === 'In Session') {
-        const session = w.sessions.find(s => s.status === 'IN_SESSION');
-        if (session && session.startTime) {
-          const start = new Date(session.startTime).getTime();
-          const sessionMins = Math.floor((currentTime - start) / 60000);
-          if (sessionMins >= 60) {
-            alerts.push({
-              id: `s-breach-${w.id}`,
-              studentName: w.name,
-              type: 'breach',
-              message: `Session Breach: Session with ${w.name} exceeded ${sessionMins}m limit.`,
-              duration: sessionMins
-            });
-          } else if (sessionMins >= 45) {
-            alerts.push({
-              id: `s-warning-${w.id}`,
-              studentName: w.name,
-              type: 'warning',
-              message: `Session Warning: Session with ${w.name} is at ${sessionMins}m.`,
-              duration: sessionMins
-            });
-          }
-        }
-      }
-    });
-    return alerts;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkins, currentTime, mounted]);
-
-  // Memoized activity log feed — sorted newest-first, limited to 10 items
+  // Memoized activity log feed
   const recentActivities = useMemo(() => {
     const activities: ActivityItem[] = [];
     walkins.forEach(w => {
       activities.push({
         timestamp: new Date(w.walkinDate),
         title: 'Student Checked In',
-        description: `${w.name} checked in for ${w.course}`,
+        description: `${w.name} registered for ${w.course}`,
         type: 'check_in'
       });
       w.sessions.forEach(s => {
@@ -264,21 +176,15 @@ export default function DashboardClient({
           activities.push({
             timestamp: new Date(s.startTime),
             title: 'Session Started',
-            description: `Counseling session started for ${w.name} by ${counselorName}`,
+            description: `Session started for ${w.name} by ${counselorName}`,
             type: 'started'
-          });
-          activities.push({
-            timestamp: new Date(new Date(s.startTime).getTime() - 2 * 60 * 1000),
-            title: 'Counselor Assigned',
-            description: `${counselorName} assigned to student ${w.name}`,
-            type: 'assigned'
           });
         }
         if (s.status === 'COMPLETED' && s.endTime) {
           activities.push({
             timestamp: new Date(s.endTime),
             title: 'Session Completed',
-            description: `Session completed for ${w.name} by ${counselorName} (${s.duration ? Math.round(s.duration / 60) : 0}m)`,
+            description: `Session completed for ${w.name}`,
             type: 'completed'
           });
         }
@@ -286,11 +192,9 @@ export default function DashboardClient({
     });
     return activities
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, 10);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .slice(0, 8);
   }, [walkins, counselors]);
 
-  // Actions overrides
   const handleOpenAndStartWorkspace = async (student: Student) => {
     setLoading(true);
     const res = await startCounsellingSession(student.id);
@@ -317,437 +221,436 @@ export default function DashboardClient({
     setLoading(false);
   };
 
-  // Rendering Helper Components
-  const renderStatusPill = (status: string, waitTimeSecs?: number) => <StatusBadge status={status} waitTimeSecs={waitTimeSecs} />;
-  const _oldRenderStatusPill = (status: string, waitTimeSecs?: number) => {
-    let styleClass = 'status-chip offline';
-    let label = status;
-    let icon = '⚫';
-
-    if (status === 'Available') {
-      styleClass = 'status-chip available';
-      icon = '🟢';
-    } else if (status === 'Busy') {
-      styleClass = 'status-chip busy';
-      icon = '🔴';
-    } else if (status === 'Break') {
-      styleClass = 'status-chip break';
-      icon = '☕';
-    } else if (status === 'Offline') {
-      styleClass = 'status-chip offline';
-      icon = '⚫';
-    } else if (status === 'Waiting') {
-      const isBreached = waitTimeSecs && waitTimeSecs >= 1800; // 30m
-      const isWarning = waitTimeSecs && waitTimeSecs >= 1200; // 20m
-      styleClass = isBreached ? 'status-chip unavailable' : isWarning ? 'status-chip busy' : 'status-chip pending';
-      label = isBreached ? 'Breached' : isWarning ? 'Delayed' : 'Waiting';
-      icon = isBreached ? '🚨' : isWarning ? '⚠️' : '⏳';
-    } else if (status === 'Assigned') {
-      styleClass = 'status-chip assigned';
-      icon = '👤';
-    } else if (status === 'In Session') {
-      const isBreached = waitTimeSecs && waitTimeSecs >= 3600; // 60m
-      const isWarning = waitTimeSecs && waitTimeSecs >= 2700; // 45m
-      styleClass = isBreached ? 'status-chip unavailable' : isWarning ? 'status-chip busy' : 'status-chip in_session';
-      label = isBreached ? 'SLA Breach' : isWarning ? 'Overtime' : 'In Session';
-      icon = isBreached ? '🚨' : isWarning ? '⚠️' : '💬';
-    } else if (status === 'Completed') {
-      styleClass = 'status-chip completed';
-      icon = '✅';
-    }
-
-    return (
-      <span className={`${styleClass} inline-flex items-center gap-1.5`}>
-        <span aria-hidden="true">{icon}</span>
-        <span>{label}</span>
-      </span>
-    );
-  };
+  const drawerCounselors = counselors.map(c => ({ id: c.id, name: c.name, branchName: c.branchName || '' }));
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="dash-page" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* ─── Control Center Header ─── */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      <div className="page-title-row" style={{ marginBottom: 0 }}>
         <div>
-          <h1 className="page-title flex items-center gap-2">
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             Operations Control Center
-            <span className="text-[0.8rem] bg-indigo-500/10 text-[var(--primary)] px-2.5 py-1 rounded-md font-bold">
+            <span style={{
+              fontSize: '0.72rem',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: 'var(--primary)',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}>
               Live Telemetry
             </span>
           </h1>
-          <p className="text-muted text-[0.88rem] mt-1">
-            Role Context: <strong>{user?.role || 'Guest'}</strong> | Branch ID: <strong>{user?.branchId || 'All'}</strong>
+          <p className="small-text">
+            Real-time walk-in intake, student pipeline, and workforce availability.
           </p>
         </div>
 
         {/* Dynamic header toggles based on role */}
-        {isCounselor && (
-          <div className="flex items-center gap-3">
-            <label htmlFor="availability-status" className="text-[0.84rem] text-[var(--muted)] font-semibold mb-0">My Availability Status:</label>
-            <select
-              id="availability-status"
-              aria-label="My Availability Status"
-              value={counselorStatus}
-              onChange={(e) => handleUpdateAvailability(e.target.value)}
-              className="w-auto bg-[var(--surface-alt)] border border-[var(--border)] px-3 py-1.5 text-[0.82rem] h-9 rounded-sm"
-            >
-              <option value="Available">🟢 Available</option>
-              <option value="Busy">🔴 Busy</option>
-              <option value="Break">☕ Break</option>
-              <option value="Offline">⚫ Offline</option>
-            </select>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {isCounselor && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="availability-status" style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 700 }}>My Status:</label>
+              <select
+                id="availability-status"
+                aria-label="My Availability Status"
+                value={counselorStatus}
+                onChange={(e) => handleUpdateAvailability(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value="Available">🟢 Available</option>
+                <option value="Busy">🔴 Busy</option>
+                <option value="Break">☕ Break</option>
+                <option value="Offline">⚫ Offline</option>
+              </select>
+            </div>
+          )}
 
-        {isFrontDesk && (
+          {isFrontDesk && (
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => router.push('/walkins')}
+            >
+              + Register Walk-in
+            </button>
+          )}
+
           <button
             type="button"
-            className="primary-btn h-[38px] min-h-[38px] text-[0.82rem] px-4"
-            onClick={() => router.push('/walkins')}
+            className="sc-refresh"
+            onClick={() => window.location.reload()}
+            disabled={loading}
+            aria-label="Refresh Dashboard data"
           >
-            <span aria-hidden="true" className="mr-1">➕</span> Check-In Walk-in
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+            Refresh
           </button>
-        )}
-      </div>
-
-      {/* ─── Role-Aware Telemetry Highlights ─── */}
-      <div className="ops-metric-compact-grid">
-        {isFrontDesk && (
-          <>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">🎫</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">Waiting Students</span>
-                <span className="ops-metric-compact-value">{waitingStudents.length}</span>
-              </div>
-            </div>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--success-glow)] text-[var(--success)]">👥</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">Available Counselors</span>
-                <span className="ops-metric-compact-value">{counselors.filter(c => c.status === 'Available').length}</span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {isCounselor && (
-          <>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--warning-glow)] text-[var(--warning)]">🎙️</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">My Active Sessions</span>
-                <span className="ops-metric-compact-value">{myStudents.filter(w => w.status === 'In Session').length}</span>
-              </div>
-            </div>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">⏳</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">My Assigned Queue</span>
-                <span className="ops-metric-compact-value">{myStudents.filter(w => w.status === 'Assigned').length}</span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {isManager && (
-          <>
-            <div className={`ops-metric-compact ${slaAlerts.filter(a => a.type === 'breach').length > 0 ? 'border-l-[3px] border-[var(--danger)]' : ''}`}>
-              <div className="ops-metric-compact-icon bg-[var(--danger-glow)] text-[var(--danger)]">🚨</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">Critical SLA Alerts</span>
-                <span className="ops-metric-compact-value">{slaAlerts.filter(a => a.type === 'breach').length}</span>
-              </div>
-            </div>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--warning-glow)] text-[var(--warning)]">⚠️</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">Active Warnings</span>
-                <span className="ops-metric-compact-value">{slaAlerts.filter(a => a.type === 'warning').length}</span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {isAdmin && (
-          <>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--success-glow)] text-[var(--success)]">⚡</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">System State</span>
-                <span className={`ops-metric-compact-value text-base font-extrabold ${dbLatency !== null ? "text-[var(--success)]" : "text-[var(--muted)]"}`}>
-                  {dbLatency !== null ? `Healthy (${dbLatency}ms)` : 'Unavailable'}
-                </span>
-              </div>
-            </div>
-            <div className="ops-metric-compact">
-              <div className="ops-metric-compact-icon bg-[var(--primary-glow)] text-[var(--primary)]">🪝</div>
-              <div className="ops-metric-compact-details">
-                <span className="ops-metric-compact-label">Webhooks Status</span>
-                <span className={`ops-metric-compact-value text-base font-extrabold ${webhookStatus !== null ? "text-[var(--primary)]" : "text-[var(--muted)]"}`}>
-                  {webhookStatus !== null ? webhookStatus : 'Unavailable'}
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Global base indicators */}
-        <div className="ops-metric-compact">
-          <div className="ops-metric-compact-icon bg-[var(--border)] text-[var(--text)]">🎫</div>
-          <div className="ops-metric-compact-details">
-            <span className="ops-metric-compact-label">Checked-In Today</span>
-            <span className="ops-metric-compact-value">{walkins.length}</span>
-          </div>
         </div>
       </div>
 
-      {/* ─── Operations Command Center Grid Layout ─── */}
-      <div className="ops-deck-grid">
-        
-        {/* COLUMN 1: Active Queue / Assignments */}
-        <div className="ops-card">
-          <div className="ops-card-header">
-            <h2>Active Queue Board</h2>
-            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Total: {activeQueue.length}</span>
-          </div>
-          <div tabIndex={0} role="region" aria-label="Active Queue Board List" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-2 scroller">
-            {activeQueue.length > 0 ? (
-              activeQueue.map((w) => {
-                const created = new Date(w.walkinDate).getTime();
-                const waitSecs = Math.max(0, Math.floor((currentTime - created) / 1000));
-                
-                let sessionElapsedSecs = 0;
-                const activeSession = w.sessions.find(s => s.status === 'IN_SESSION');
-                if (activeSession && activeSession.startTime) {
-                  sessionElapsedSecs = Math.max(0, Math.floor((currentTime - new Date(activeSession.startTime).getTime()) / 1000));
-                }
+      {/* ─── Live Telemetry Status Bubbles ─── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        flexWrap: 'wrap',
+      }}>
+        {/* TOTAL WALK-INS */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid var(--border)',
+          background: 'var(--surface)',
+          color: 'var(--muted)',
+        }}>
+          <span>TODAY WALK-INS</span>
+          <span style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--text)' }}>
+            {walkins.length}
+          </span>
+        </div>
 
-                return (
-                  <div key={w.id} className="flex justify-between items-center p-3 border border-[var(--border)] rounded-sm bg-[var(--surface-alt)] shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="flex flex-col gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => openStudentDrawer(w)}
-                        className="bg-transparent border-none p-0 cursor-pointer text-[0.86rem] font-extrabold text-[var(--text)] font-sans text-left transition-colors duration-200 hover:text-[var(--primary)]"
-                        
-                        aria-label={`View profile for ${w.name}`}
+        {/* WAITING */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid rgba(14, 165, 233, 0.3)',
+          background: 'rgba(14, 165, 233, 0.12)',
+          color: '#0284c7',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0ea5e9', boxShadow: '0 0 6px #0ea5e9', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>WAITING</span>
+          <span style={{ background: 'rgba(14, 165, 233, 0.22)', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800 }}>
+            {waitingStudents.length}
+          </span>
+        </div>
+
+        {/* ASSIGNED */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid rgba(99, 102, 241, 0.3)',
+          background: 'rgba(99, 102, 241, 0.12)',
+          color: '#6366f1',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1' }} />
+          <span>ASSIGNED</span>
+          <span style={{ background: 'rgba(99, 102, 241, 0.22)', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800 }}>
+            {assignedStudents.length}
+          </span>
+        </div>
+
+        {/* IN SESSION */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid rgba(245, 158, 11, 0.3)',
+          background: 'rgba(245, 158, 11, 0.12)',
+          color: '#d97706',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b', animation: 'pulseDot 1.4s ease-in-out infinite' }} />
+          <span>IN SESSION</span>
+          <span style={{ background: 'rgba(245, 158, 11, 0.22)', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800 }}>
+            {inSessionStudents.length}
+          </span>
+        </div>
+
+        {/* COMPLETED */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid rgba(16, 185, 129, 0.3)',
+          background: 'rgba(16, 185, 129, 0.12)',
+          color: '#059669',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+          <span>COMPLETED</span>
+          <span style={{ background: 'rgba(16, 185, 129, 0.22)', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800 }}>
+            {completedStudents.length}
+          </span>
+        </div>
+
+        {/* COUNSELORS ONLINE */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          fontSize: '0.74rem',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          border: '1.5px solid rgba(100, 116, 139, 0.3)',
+          background: 'rgba(100, 116, 139, 0.12)',
+          color: '#64748b',
+          marginLeft: 'auto',
+        }}>
+          <span>COUNSELORS:</span>
+          <span style={{ color: 'var(--success)' }}>🟢 {availableCounselors.length} Available</span>
+          <span style={{ opacity: 0.4 }}>|</span>
+          <span style={{ color: '#94a3b8' }}>⚫ {offlineCounselors.length} Offline</span>
+        </div>
+      </div>
+
+      {/* ─── Main 2-Column Dashboard Grid ─── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.55fr) minmax(0, 1fr)',
+        gap: '20px',
+        alignItems: 'start',
+      }}>
+        {/* LEFT COLUMN: Active Student Pipeline */}
+        <div className="dash-table-card">
+          <div className="dash-table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2>Live Student Queue & Pipeline</h2>
+            <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
+              {activeQueue.length} Active Student{activeQueue.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="table-wrapper">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
+                  <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Student</th>
+                  <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Course</th>
+                  <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Assigned Counselor</th>
+                  <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeQueue.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
+                      <div style={{ fontSize: '1.8rem', marginBottom: '6px' }}>✅</div>
+                      <strong>No students waiting or in session</strong>
+                      <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>All daily registrations are currently processed.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  activeQueue.map((w) => {
+                    const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
+                    const counselorName = activeSession
+                      ? counselors.find(c => c.id === activeSession.counselorId)?.name || 'Unassigned'
+                      : 'Unassigned';
+
+                    return (
+                      <tr
+                        key={w.id}
+                        style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s ease' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt, rgba(255,255,255,0.02))')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
-                        {w.name}
-                      </button>
-                      <span className="text-[0.72rem] text-[var(--muted)]">
-                        Token: <strong>A{w.queueEntry ? w.queueEntry.position : w.id.slice(-3)}</strong> | Course: <strong>{w.course}</strong>
-                      </span>
-                      <span className="text-[0.72rem] text-[var(--muted)] font-mono">
-                        {mounted
-                          ? (w.status === 'In Session'
-                              ? `Session Time: ${formatHHMMSS(sessionElapsedSecs)}`
-                              : `Waiting: ${formatHHMMSS(waitSecs)}`)
-                          : '—'
-                        }
-                      </span>
-                    </div>
-                    <div>
-                      {renderStatusPill(w.status, w.status === 'In Session' ? sessionElapsedSecs : waitSecs)}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="p-6 text-center text-[var(--muted)] text-[0.84rem]">
-                No active students waiting or in session.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* COLUMN 2: Counselor Availability & Operations Workspace */}
-        <div className="ops-card">
-          <div className="ops-card-header">
-            <h2>Counselor Availability Roster</h2>
-            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Active: {counselors.length}</span>
-          </div>
-          <div tabIndex={0} role="region" aria-label="Counselor Availability Roster List" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-2 scroller">
-            
-            {/* If the user is a counselor, display their specific active desk workspace widget at the top */}
-            {isCounselor && (
-              <div className="border-[1.5px] border-[var(--primary)] rounded-sm p-3 bg-[var(--primary-glow)] mb-2 shadow-sm">
-                <span className="text-[0.68rem] font-extrabold uppercase text-[var(--primary)] block tracking-wide">
-                  My Workspace Desk
-                </span>
-                <div className="mt-2">
-                  {myStudents.length > 0 ? (
-                    myStudents.map(student => {
-                      const activeSession = student.sessions.find(s => s.status === 'IN_SESSION');
-                      return (
-                        <div key={student.id} className="flex justify-between items-center">
-                          <div>
-                            <span className="text-[0.88rem] font-extrabold text-[var(--text)]">{student.name}</span>
-                            <span className="text-[0.72rem] text-[var(--muted)] block">Course: {student.course}</span>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{
+                              width: 30, height: 30, borderRadius: '50%',
+                              background: 'var(--primary-glow)', color: 'var(--primary)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.7rem', fontWeight: 800, flexShrink: 0,
+                              border: '1px solid rgba(99,102,241,0.2)',
+                            }}>
+                              {getInitials(w.name)}
+                            </div>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => openStudentDrawer(w)}
+                                style={{
+                                  background: 'none', border: 'none', padding: 0,
+                                  cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+                                  color: 'var(--primary)', fontFamily: 'inherit', textAlign: 'left',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                              >
+                                {w.name}
+                              </button>
+                              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                                {w.phone}
+                              </div>
+                            </div>
                           </div>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: '0.84rem', fontWeight: 600, color: 'var(--text)' }}>
+                          {w.course}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: counselorName === 'Unassigned' ? '#d97706' : 'var(--text)', fontWeight: 600 }}>
+                          👤 {counselorName}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <StatusBadge status={w.status} />
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                           <button
                             type="button"
-                            className="primary-btn h-8 min-h-[32px] px-3 text-[0.78rem]"
-                            onClick={() => handleOpenAndStartWorkspace(student)}
-                            disabled={loading}
+                            onClick={() => router.push(`/walkins/record?studentId=${w.id}`)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface-alt)',
+                              color: 'var(--text)',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                           >
-                            {activeSession ? 'Open Desk' : 'Start Workspace'}
+                            Profile
                           </button>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <span className="text-[0.82rem] text-[var(--muted)]">No student currently assigned to your desk.</span>
-                  )}
-                </div>
-              </div>
-            )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-            {/* Counselors roster */}
-            {counselors.length > 0 ? (
-              counselors.map((c) => {
-                const activeWalkin = walkins.find(w => 
-                  w.status === 'In Session' && 
-                  w.sessions.some(s => s.counselorId === c.id && s.status === 'IN_SESSION')
-                );
-                const isAvailable = c.status === 'Available';
-                
-                let sessionSecs = 0;
-                if (activeWalkin) {
-                  const activeSession = activeWalkin.sessions.find(s => s.counselorId === c.id && s.status === 'IN_SESSION');
-                  if (activeSession && activeSession.startTime) {
-                    sessionSecs = Math.max(0, Math.floor((currentTime - new Date(activeSession.startTime).getTime()) / 1000));
-                  }
-                }
+        {/* RIGHT COLUMN: Counselor Roster & Activity Feed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Counselor Availability Roster */}
+          <div className="dash-table-card">
+            <div className="dash-table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2>Counselor Availability Roster</h2>
+              <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
+                {counselors.length} Team Members
+              </span>
+            </div>
 
-                return (
-                  <div key={c.id} className="flex justify-between items-center p-3 border border-[var(--border)] rounded-sm bg-[var(--surface-alt)] shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[0.86rem] font-extrabold text-[var(--text)]">{c.name || (c as any).user?.name}</span>
-                      <span className="text-[0.72rem] text-[var(--muted)]">
-                        Branch: <strong>{c.branchName}</strong> | Handled: <strong>{c.status}</strong>
-                      </span>
-                      {activeWalkin && (
-                        <span className="text-[0.72rem] text-[var(--muted)]">
-                          Session: <strong>{activeWalkin.name}</strong> ({mounted ? formatHHMMSS(sessionSecs) : '—'})
-                        </span>
-                      )}
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {counselors.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface-alt, rgba(255,255,255,0.02))',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>
+                      {c.name || (c as any).user?.name}
                     </div>
-                    <div>
-                      {renderStatusPill(c.status, activeWalkin ? sessionSecs : undefined)}
+                    <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '2px' }}>
+                      {c.branchName || 'Main Campus'} • {c.departmentName || 'Sales'}
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="p-6 text-center text-[var(--muted)] text-[0.84rem]">
-                No counselors loaded.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* COLUMN 3: SLA Alerts & Recent Activity Feed */}
-        <div className="ops-card">
-          <div className="ops-card-header">
-            <h2>Alerts & Activity Stream</h2>
-            <span className="text-[0.74rem] text-[var(--muted)] font-bold">Alarms: {slaAlerts.length}</span>
-          </div>
-          <div tabIndex={0} role="region" aria-label="Alerts and Activity Stream Timeline" className="flex-1 overflow-y-auto max-h-[520px] flex flex-col gap-4 scroller">
-            
-            {/* Critical SLA alerts banner container */}
-            {slaAlerts.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {/* A4 fix: promote to h3 for correct document heading outline */}
-                <h3 className="text-[0.68rem] font-extrabold uppercase text-[var(--danger)] tracking-wide m-0">SLA Warnings</h3>
-                <div className="flex flex-col gap-1">
-                  {slaAlerts.slice(0, 4).map(alert => (
-                    // A1 fix: breach = role="alert" (live), warning = role="status" (polite)
-                    <div
-                      key={alert.id}
-                      className={`ops-alert-item ${alert.type}`}
-                      role={alert.type === 'breach' ? 'alert' : 'status'}
-                      aria-live={alert.type === 'breach' ? 'assertive' : 'polite'}
-                      aria-label={alert.message}
-                    >
-                      <span aria-hidden="true" className="font-extrabold">{alert.type === 'breach' ? '🚨' : '⚠️'}</span>
-                      <span>{alert.message}</span>
-                    </div>
-                  ))}
+                  <div>
+                    <StatusBadge status={c.status || 'Offline'} />
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
 
-            {/* Vertical timeline activity stream */}
-            <div>
-              {/* A4 fix: h3 for correct document outline */}
-              <h3 className="text-[0.68rem] font-extrabold uppercase text-[var(--primary)] tracking-wide mb-2">Activity Stream</h3>
-              {/* A2 fix: semantic ol/li for screen reader navigation */}
-              <ol className="ops-activity-feed" aria-label="Recent activity events">
-                {recentActivities.map((act, index) => (
-                  <li key={index} className={`ops-activity-item ${act.type}`} aria-label={`${act.title}: ${act.description}`}>
-                    <time className="ops-activity-time" dateTime={act.timestamp.toISOString()}>
-                      {mounted ? act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
-                    </time>
-                    <div className="ops-activity-desc">
-                      <strong>{act.title}</strong>: {act.description}
+          {/* Activity Stream */}
+          <div className="dash-table-card">
+            <div className="dash-table-header">
+              <h2>Recent Activity Feed</h2>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {recentActivities.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.82rem' }}>
+                  No recent activity recorded today.
+                </div>
+              ) : (
+                recentActivities.map((act, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      paddingBottom: i !== recentActivities.length - 1 ? '10px' : '0',
+                      borderBottom: i !== recentActivities.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}
+                  >
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: act.type === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.12)',
+                      color: act.type === 'completed' ? '#10b981' : 'var(--primary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.7rem', flexShrink: 0, marginTop: '2px',
+                    }}>
+                      {act.type === 'completed' ? '✓' : '•'}
                     </div>
-                  </li>
-                ))}
-              </ol>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>
+                        {act.title}
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--muted)', marginTop: '1px' }}>
+                        {act.description}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                      {mounted ? act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
-
       </div>
 
-      {/* Legacy Details CRM Modal (Preserving functionality for student records lookup) */}
-      {showDetailsModal && selectedDetailsStudent && (
-        <div className="modal-overlay fixed inset-0 bg-[#060913cc] backdrop-blur-md flex items-center justify-center z-[10000]">
-          <div className="bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] rounded-[20px] w-[95vw] h-[90vh] max-w-[1200px] shadow-[0_24px_64px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-[18px] border-b-[1.5px] border-[var(--border)] flex justify-between items-center bg-white/1">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center font-extrabold text-base text-white bg-gradient-to-br from-indigo-500 to-purple-500 shadow-[0_3px_10px_rgba(99,102,241,0.3)]">
-                  {getInitials(selectedDetailsStudent.name)}
-                </div>
-                <div>
-                  <h2 className="m-0 text-xl font-extrabold text-[var(--text)] flex items-center gap-2">
-                    {selectedDetailsStudent.name}
-                    {renderStatusPill(selectedDetailsStudent.status)}
-                  </h2>
-                  <p className="mt-[2px] mb-0 text-[0.82rem] text-[var(--muted)]">
-                    Record ID: <strong>#{selectedDetailsStudent.id}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                aria-label="Close details modal"
-                className="bg-white/5 border-[1.5px] border-[var(--border)] rounded-full text-[var(--text)] cursor-pointer w-9 h-9 flex items-center justify-center text-base transition-all duration-200 outline-none hover:bg-red-500/10"
-                onClick={() => setShowDetailsModal(false)}
-                
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[var(--card-bg)]">
-              <div className="flex flex-col gap-2">
-                <h3 className="m-0 text-[0.98rem] font-extrabold text-[var(--text)]">
-                  Lead Record Sheet
-                </h3>
-                <StudentDetailsRecord student={selectedDetailsStudent} counselors={counselors} onClose={() => setShowDetailsModal(false)} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ── Student Context Drawer ── */}
+      {/* ─── Student Context Drawer ─── */}
       <StudentContextDrawer
         student={drawerStudent}
-        counselors={counselors.map(c => ({ id: c.id, name: c.name || (c as any).user?.name || 'Counselor', branchName: c.branchName || (c as any).user?.branchName }))}
+        counselors={drawerCounselors}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />

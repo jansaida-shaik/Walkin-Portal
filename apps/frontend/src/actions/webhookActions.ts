@@ -1,84 +1,177 @@
 'use server';
 
-const getBaseUrl = () => {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-};
+import { prisma } from '../lib/db';
+import { revalidatePath } from 'next/cache';
 
 export async function getSubscriptions() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/subscriptions`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch webhook subscriptions');
-    return await res.json();
-  } catch (err) { console.error('getSubscriptions error:', err); return []; }
+    const subs = await prisma.webhookSubscription.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    return subs;
+  } catch (err) {
+    console.error('getSubscriptions error:', err);
+    return [];
+  }
 }
 
 export async function getWebhookLogs() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/logs`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch webhook logs');
-    return await res.json();
-  } catch (err) { console.error('getWebhookLogs error:', err); return []; }
+    const logs = await prisma.webhookLog.findMany({
+      orderBy: { triggeredAt: 'desc' },
+      take: 100,
+    });
+    return logs;
+  } catch (err) {
+    console.error('getWebhookLogs error:', err);
+    return [];
+  }
 }
 
 export async function getWebhookConfig() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/config`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch webhook config');
-    return await res.json();
-  } catch (err) { return { customHeaders: [], globalPayloadFields: [], signingSecret: '', maxRetries: 1, retryDelayMs: 2000, timeoutMs: 5000 }; }
+    let config = await prisma.webhookConfig.findFirst();
+    if (!config) {
+      config = await prisma.webhookConfig.create({
+        data: {
+          id: 1,
+          signingSecret: 'whsec_' + Math.random().toString(36).substring(2, 15),
+          maxRetries: 2,
+          retryDelayMs: 2000,
+          timeoutMs: 5000,
+          customHeaders: [],
+          globalPayloadFields: [],
+        }
+      });
+    }
+    return config;
+  } catch (err) {
+    console.error('getWebhookConfig error:', err);
+    return {
+      customHeaders: [],
+      globalPayloadFields: [],
+      signingSecret: 'whsec_default',
+      maxRetries: 2,
+      retryDelayMs: 2000,
+      timeoutMs: 5000
+    };
+  }
 }
 
-export async function createSubscription(name: string, url: string, events: string[], method: string, conditions: any[]) {
+export async function createSubscription(
+  name: string,
+  url: string,
+  events: string[],
+  method: string,
+  conditions: any[]
+) {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/subscriptions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, url, events, method, conditions }) });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to create webhook subscription.' };
-    return { success: true, subscription: data.subscription };
-  } catch (err: any) { return { error: err.message || 'Failed to create webhook subscription.' }; }
+    const sub = await prisma.webhookSubscription.create({
+      data: {
+        name,
+        url,
+        events,
+        method: method || 'POST',
+        conditions: conditions || [],
+        enabled: true,
+      }
+    });
+    revalidatePath('/webhooks');
+    return { success: true, subscription: sub };
+  } catch (err: any) {
+    console.error('createSubscription error:', err);
+    return { error: err.message || 'Failed to create webhook subscription.' };
+  }
 }
 
-export async function updateSubscription(id: string, name: string, url: string, events: string[], method: string, conditions: any[], enabled: boolean) {
+export async function updateSubscription(
+  id: string,
+  name: string,
+  url: string,
+  events: string[],
+  method: string,
+  conditions: any[],
+  enabled: boolean
+) {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/subscriptions/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, url, events, method, conditions, enabled }) });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to update webhook subscription.' };
-    return { success: true, subscription: data.subscription };
-  } catch (err: any) { return { error: err.message || 'Failed to update webhook subscription.' }; }
+    const sub = await prisma.webhookSubscription.update({
+      where: { id },
+      data: {
+        name,
+        url,
+        events,
+        method: method || 'POST',
+        conditions: conditions || [],
+        enabled,
+      }
+    });
+    revalidatePath('/webhooks');
+    return { success: true, subscription: sub };
+  } catch (err: any) {
+    console.error('updateSubscription error:', err);
+    return { error: err.message || 'Failed to update webhook subscription.' };
+  }
 }
 
 export async function deleteSubscription(id: string) {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/subscriptions/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to delete webhook subscription.' };
+    await prisma.webhookSubscription.delete({
+      where: { id }
+    });
+    revalidatePath('/webhooks');
     return { success: true };
-  } catch (err: any) { return { error: err.message || 'Failed to delete webhook subscription.' }; }
+  } catch (err: any) {
+    console.error('deleteSubscription error:', err);
+    return { error: err.message || 'Failed to delete webhook subscription.' };
+  }
 }
 
 export async function toggleSubscription(id: string) {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/subscriptions/${id}/toggle`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to toggle webhook.' };
-    return { success: true, subscription: data.subscription };
-  } catch (err: any) { return { error: err.message || 'Failed to toggle webhook.' }; }
+    const sub = await prisma.webhookSubscription.findUnique({ where: { id } });
+    if (!sub) return { error: 'Not found' };
+    const updated = await prisma.webhookSubscription.update({
+      where: { id },
+      data: { enabled: !sub.enabled }
+    });
+    revalidatePath('/webhooks');
+    return { success: true, subscription: updated };
+  } catch (err: any) {
+    console.error('toggleSubscription error:', err);
+    return { error: err.message || 'Failed to toggle webhook.' };
+  }
 }
 
 export async function updateWebhookConfig(patch: any) {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to update global webhook config.' };
-    return { success: true, config: data.config };
-  } catch (err: any) { return { error: err.message || 'Failed to update global webhook config.' }; }
+    const config = await prisma.webhookConfig.findFirst();
+    let updated;
+    if (config) {
+      updated = await prisma.webhookConfig.update({
+        where: { id: config.id },
+        data: patch
+      });
+    } else {
+      updated = await prisma.webhookConfig.create({
+        data: { id: 1, ...patch }
+      });
+    }
+    revalidatePath('/webhooks');
+    return { success: true, config: updated };
+  } catch (err: any) {
+    console.error('updateWebhookConfig error:', err);
+    return { error: err.message || 'Failed to update webhook config.' };
+  }
 }
 
 export async function clearWebhookLogs() {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/webhooks/logs`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Failed to clear webhook logs.' };
+    await prisma.webhookLog.deleteMany({});
+    revalidatePath('/webhooks');
     return { success: true };
-  } catch (err: any) { return { error: err.message || 'Failed to clear webhook logs.' }; }
+  } catch (err: any) {
+    console.error('clearWebhookLogs error:', err);
+    return { error: err.message || 'Failed to clear webhook logs.' };
+  }
 }

@@ -91,3 +91,72 @@ export async function logout() {
 export async function getLoggedUser() {
   return await getSession();
 }
+
+
+export async function updateUserProfile(data: { name: string; email?: string }) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: session.id },
+      data: {
+        name: data.name,
+        email: data.email || '',
+      }
+    });
+
+    // Update current session cookie with new name/email
+    const updatedSession: SessionUser = {
+      ...session,
+      name: updated.name,
+      email: updated.email || undefined,
+    };
+    await createSession(updatedSession);
+
+    return { success: true, user: updated };
+  } catch (err: any) {
+    console.error('Update profile error:', err);
+    return { success: false, error: err.message || 'Failed to update profile' };
+  }
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  if (!currentPassword || !newPassword) {
+    return { success: false, error: 'Current and new password are required' };
+  }
+  if (newPassword.length < 6) {
+    return { success: false, error: 'New password must be at least 6 characters' };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: session.id } });
+    if (!user) return { success: false, error: 'User not found' };
+
+    const isBcryptHash = user.password.startsWith('$2a$') || user.password.startsWith('$2b$');
+    let isPasswordCorrect = false;
+    if (isBcryptHash) {
+      isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+    } else {
+      isPasswordCorrect = user.password === currentPassword;
+    }
+
+    if (!isPasswordCorrect) {
+      return { success: false, error: 'Current password is incorrect' };
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (err: any) {
+    console.error('Change password error:', err);
+    return { success: false, error: err.message || 'Failed to change password' };
+  }
+}

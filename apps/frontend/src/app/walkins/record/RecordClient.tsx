@@ -735,6 +735,40 @@ export default function RecordClient({ student, counselors, user }: RecordClient
           </span>
         </div>
 
+        {/* Intake Remarks Card */}
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '14px',
+          padding: '18px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: '#6366f1',
+          }}>
+            <span>📝</span>
+            <span>Intake Remarks</span>
+          </div>
+          <p style={{
+            margin: 0,
+            fontSize: '0.88rem',
+            color: student.remarks ? 'var(--text)' : 'var(--muted)',
+            fontStyle: student.remarks ? 'normal' : 'italic',
+            lineHeight: 1.6,
+          }}>
+            {student.remarks || 'No intake remarks added at registration.'}
+          </p>
+        </div>
+
         {student.sessions.length === 0 ? (
           <div style={{
             background: 'var(--card-bg)', border: '1.5px solid var(--border)',

@@ -3,10 +3,10 @@
 import StatusBadge from './StatusBadge';
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateStudentDetails, analyzeSessionAudio } from '../actions/walkinActions';
-import { COURSES, branches, locations } from '../lib/constants';
+import { COURSES, branches, locations, KNOW_US_OPTIONS, PASSOUT_YEAR_OPTIONS, WHY_COURSE_OPTIONS } from '../lib/constants';
 import PhoneInput from './PhoneInput';
 import AudioPlayerWithAnalyzer from './AudioPlayerWithAnalyzer';
 
@@ -92,14 +92,14 @@ function toDateInputValue(raw: string): string {
 }
 
 const GENDER_OPTIONS = [
-  { value: '', label: 'Select Gender' },
+  { value: '', label: '' },
   { value: 'Male', label: 'Male' },
   { value: 'Female', label: 'Female' },
   { value: 'Other', label: 'Other' },
 ];
 
 const TRAINING_MODE_OPTIONS = [
-  { value: '', label: 'Select Mode' },
+  { value: '', label: '' },
   { value: 'Offline', label: 'Offline (In-Classroom)' },
   { value: 'Online', label: 'Online (Live Stream)' },
   { value: 'Hybrid', label: 'Hybrid (Blended)' },
@@ -266,6 +266,142 @@ function renderSummary(summaryText: string) {
   );
 }
 
+
+interface CustomSelectProps {
+  id?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function CustomSelect({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: CustomSelectProps) {
+  return (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+      <select
+        id={id}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        style={{
+          ...fieldStyle,
+          cursor: disabled ? 'default' : 'pointer',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          paddingRight: '36px',
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          color: 'var(--text)',
+          opacity: 1,
+        }}
+        onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+        onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
+      >
+        <option value="" style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}></option>
+        {options.filter(opt => opt.value !== '').map(opt => (
+          <option key={opt.value} value={opt.value} style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <div style={{
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        color: 'var(--muted)',
+        opacity: 0.85,
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+
+function AutoResizingTextarea({
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  isEditing,
+  placeholder,
+  ...props
+}: any) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    // Single line base height is 38px
+    const newHeight = Math.max(38, el.scrollHeight);
+    el.style.height = `${newHeight}px`;
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={e => {
+        onChange(e);
+        adjustHeight();
+      }}
+      disabled={disabled}
+      readOnly={readOnly}
+      rows={1}
+      placeholder={placeholder}
+      style={{
+        ...fieldStyle,
+        fieldSizing: 'content' as any,
+        cursor: isEditing ? 'text' : 'default',
+        background: 'var(--surface)',
+        border: '1.5px solid var(--border)',
+        color: 'var(--text)',
+        opacity: 1,
+        resize: isEditing ? 'vertical' : 'none',
+        minHeight: '38px',
+        height: 'auto',
+        overflowY: 'hidden',
+        lineHeight: 1.42,
+        fontFamily: 'inherit',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        boxSizing: 'border-box',
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+      }}
+      onFocus={e => {
+        if (isEditing) {
+          e.target.style.borderColor = 'var(--primary)';
+          e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)';
+        }
+      }}
+      onBlur={e => {
+        e.target.style.borderColor = 'var(--border)';
+        e.target.style.boxShadow = 'none';
+      }}
+      {...props}
+    />
+  );
+}
+
 export default function StudentDetailsRecord({ student, counselors = [], onClose, hideHistory = false }: StudentDetailsRecordProps) {
   const router = useRouter();
   const counselorBranch = counselors.find(c => c.id === student.sessions?.find(s => s.status !== 'COMPLETED' && s.status !== 'CANCELLED')?.counselorId)?.branchName || '';
@@ -313,6 +449,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
   });
 
   const [formData, setFormData] = useState(buildForm);
+  const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [showDetails, setShowDetails] = useState<Record<string, boolean>>({});
@@ -387,7 +524,21 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
     setSaving(false);
   };
 
-  /* ── Render helpers ─────────────────────────────────────────────────── */
+      /* ── Render helpers ─────────────────────────────────────────────────── */
+  
+  const renderMultiLineText = (label: string, field: keyof typeof formData) => (
+    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+      <label style={labelStyle}>{label}</label>
+      <AutoResizingTextarea
+        value={formData[field]}
+        onChange={(e: any) => handleChange(field, e.target.value)}
+        disabled={!isEditing}
+        readOnly={!isEditing}
+        isEditing={isEditing}
+      />
+    </div>
+  );
+
   const renderText = (label: string, field: keyof typeof formData) => (
     <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <label style={labelStyle}>{label}</label>
@@ -395,8 +546,17 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         type="text"
         value={formData[field]}
         onChange={e => handleChange(field, e.target.value)}
-        style={fieldStyle}
-        onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+        disabled={!isEditing}
+        readOnly={!isEditing}
+        style={{
+          ...fieldStyle,
+          cursor: isEditing ? 'text' : 'default',
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          color: 'var(--text)',
+          opacity: 1,
+        }}
+        onFocus={e => { if (isEditing) { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; } }}
         onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
       />
     </div>
@@ -409,8 +569,17 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         type="email"
         value={formData[field]}
         onChange={e => handleChange(field, e.target.value.toLowerCase())}
-        style={fieldStyle}
-        onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+        disabled={!isEditing}
+        readOnly={!isEditing}
+        style={{
+          ...fieldStyle,
+          cursor: isEditing ? 'text' : 'default',
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          color: 'var(--text)',
+          opacity: 1,
+        }}
+        onFocus={e => { if (isEditing) { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; } }}
         onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
       />
     </div>
@@ -423,61 +592,19 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         type="date"
         value={formData[field]}
         onChange={e => handleChange(field, e.target.value)}
-        style={fieldStyle}
-        onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
-        onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
-      />
-    </div>
-  );
-
-  const CustomSelect = ({
-    value,
-    onChange,
-    options,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    options: { value: string; label: string }[];
-    placeholder?: string;
-  }) => (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-      <select
-        value={value}
-        onChange={onChange}
+        disabled={!isEditing}
+        readOnly={!isEditing}
         style={{
           ...fieldStyle,
-          cursor: 'pointer',
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          paddingRight: '36px',
+          cursor: isEditing ? 'text' : 'default',
           background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          color: 'var(--text)',
+          opacity: 1,
         }}
-        onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+        onFocus={e => { if (isEditing) { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; } }}
         onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
-      >
-        {placeholder && <option value="" style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}>{placeholder}</option>}
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value} style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <div style={{
-        position: 'absolute',
-        right: '12px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        pointerEvents: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        color: 'var(--muted)',
-        opacity: 0.85,
-      }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
+      />
     </div>
   );
 
@@ -488,6 +615,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         value={formData[field]}
         onChange={e => handleChange(field, e.target.value)}
         options={options}
+        disabled={!isEditing}
       />
     </div>
   );
@@ -498,6 +626,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       <PhoneInput
         value={formData[field]}
         onChange={v => handleChange(field, v)}
+        disabled={!isEditing}
       />
     </div>
   );
@@ -537,38 +666,104 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
           </h2>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {saveMsg && (
             <span style={{
               fontSize: '0.86rem', fontWeight: 700,
               color: saveMsg.startsWith('✅') ? '#10b981' : '#ef4444',
             }}>{saveMsg}</span>
           )}
-          <button
-            type="button"
-            onClick={handleSaveDetails}
-            disabled={saving}
-            style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              border: 'none', borderRadius: '10px', color: '#fff',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontSize: '0.88rem', fontWeight: 800,
-              padding: '9px 20px',
-              display: 'flex', alignItems: 'center', gap: '8px',
-              opacity: saving ? 0.6 : 1,
-              boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
-              transition: 'opacity 0.2s, transform 0.15s, box-shadow 0.2s',
-            }}
-            onMouseEnter={e => { if (!saving) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(16,185,129,0.4)'; } }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.3)'; }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-            {saving ? 'Saving...' : 'Save Profile Details'}
-          </button>
+
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              style={{
+                background: 'rgba(99, 102, 241, 0.12)',
+                border: '1.5px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '10px',
+                color: 'var(--primary)',
+                cursor: 'pointer',
+                fontSize: '0.86rem',
+                fontWeight: 800,
+                padding: '9px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--primary)';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)';
+                e.currentTarget.style.color = 'var(--primary)';
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="15" height="15">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit Details
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(buildForm());
+                  setIsEditing(false);
+                  setSaveMsg('');
+                }}
+                disabled={saving}
+                style={{
+                  background: 'rgba(100, 116, 139, 0.12)',
+                  border: '1.5px solid rgba(100, 116, 139, 0.3)',
+                  borderRadius: '10px',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  padding: '9px 16px',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleSaveDetails();
+                  setIsEditing(false);
+                }}
+                disabled={saving}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  padding: '9px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: saving ? 0.6 : 1,
+                  boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
+                  transition: 'opacity 0.2s, transform 0.15s, box-shadow 0.2s',
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                {saving ? 'Saving...' : 'Save Profile Details'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -587,7 +782,6 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         }}>
           <SectionHeader title="Registration & Intake Details" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-            {renderSelect('Counselling Status', 'status', STATUS_OPTIONS)}
             {renderSelect('Lead Source', 'source', SOURCE_OPTIONS)}
             {renderText('Form No', 'form_no')}
             {renderDate('Walk-in Date', 'walkinDate')}
@@ -602,7 +796,8 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
                   handleChange('branchId', e.target.value);
                   if (b) handleChange('branchName', b.name);
                 }}
-                placeholder="— Select Branch —"
+                
+                disabled={!isEditing}
                 options={branches.map(b => ({ value: b.id, label: b.name }))}
               />
             </div>
@@ -615,30 +810,48 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
               <CustomSelect
                 value={formData.location}
                 onChange={e => handleChange('location', e.target.value)}
-                placeholder="— Select Location —"
+                
+                disabled={!isEditing}
                 options={locations.map(l => ({ value: l.name, label: l.name }))}
               />
             </div>
 
-            {renderText('How Did You Know Us', 'know_about_us')}
+            {/* How Did You Know Us — dropdown */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>How Did You Know Us</label>
+              <CustomSelect
+                value={KNOW_US_OPTIONS.some(opt => opt.value === formData.know_about_us) ? formData.know_about_us : (formData.know_about_us ? 'Other' : '')}
+                onChange={e => handleChange('know_about_us', e.target.value)}
+                disabled={!isEditing}
+                options={KNOW_US_OPTIONS}
+              />
+              {formData.know_about_us === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Specify other source..."
+                  value={formData.know_about_us === 'Other' ? '' : formData.know_about_us}
+                  onChange={e => handleChange('know_about_us', e.target.value)}
+                  disabled={!isEditing}
+                  readOnly={!isEditing}
+                  style={{
+                    ...fieldStyle,
+                    marginTop: '6px',
+                    fontSize: '0.82rem',
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--border)',
+                    color: 'var(--text)',
+                    opacity: 1,
+                  }}
+                />
+              )}
+            </div>
             {renderText('Referrer Name', 'referrer_name')}
             {renderText('Added Time', 'added_time')}
             {renderText('Added Email ID', 'added_email_id')}
             {renderText('IP Address', 'ip')}
           </div>
 
-          <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={labelStyle}>Intake Remarks</label>
-            <textarea
-              value={formData.remarks}
-              onChange={e => handleChange('remarks', e.target.value)}
-              style={{
-                ...fieldStyle, height: '80px', resize: 'vertical',
-              }}
-              onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
-            />
-          </div>
+
         </div>
 
         {/* ROW 1, COL 2: Personal Details */}
@@ -676,9 +889,37 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         }}>
           <SectionHeader title="Academic Profile" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-            <div style={{ gridColumn: '1 / -1' }}>{renderText('Educational Qualification', 'qualification')}</div>
-            <div style={{ gridColumn: '1 / -1' }}>{renderText('Institution Name', 'college_name')}</div>
-            {renderText('Year of Passout', 'passout_year')}
+            <div style={{ gridColumn: '1 / -1' }}>{renderMultiLineText('Educational Qualification', 'qualification')}</div>
+            <div style={{ gridColumn: '1 / -1' }}>{renderMultiLineText('Institution Name', 'college_name')}</div>
+            {/* Year of Passout — dropdown */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>Year of Passout</label>
+              <CustomSelect
+                value={PASSOUT_YEAR_OPTIONS.some(opt => opt.value === formData.passout_year) ? formData.passout_year : (formData.passout_year ? 'Other' : '')}
+                onChange={e => handleChange('passout_year', e.target.value)}
+                disabled={!isEditing}
+                options={PASSOUT_YEAR_OPTIONS}
+              />
+              {formData.passout_year === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Specify year..."
+                  value={formData.passout_year === 'Other' ? '' : formData.passout_year}
+                  onChange={e => handleChange('passout_year', e.target.value)}
+                  disabled={!isEditing}
+                  readOnly={!isEditing}
+                  style={{
+                    ...fieldStyle,
+                    marginTop: '6px',
+                    fontSize: '0.82rem',
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--border)',
+                    color: 'var(--text)',
+                    opacity: 1,
+                  }}
+                />
+              )}
+            </div>
             {renderText('10th %', 'ssc_percentage')}
             {renderText('Intermediate %', 'inter_percentage')}
             {renderText('B.Tech / Degree %', 'degree_percentage')}
@@ -708,21 +949,60 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
                 onChange={e => {
                   if (e.target.value !== 'Other') handleChange('course', e.target.value);
                 }}
-                placeholder="— Select Course —"
+                
+                disabled={!isEditing}
                 options={COURSES.map(c => ({ value: c, label: c }))}
               />
-              {/* Free-text if not in list */}
-              {!COURSES.slice(0, -1).includes(formData.course) && (
+              {/* Free-text if Other is selected */}
+              {formData.course === 'Other' && (
                 <input
                   type="text"
                   placeholder="Type custom course name..."
-                  value={formData.course}
+                  value={formData.course === 'Other' ? '' : formData.course}
                   onChange={e => handleChange('course', e.target.value)}
-                  style={{ ...fieldStyle, marginTop: '6px', fontSize: '0.82rem' }}
+                  disabled={!isEditing}
+                  readOnly={!isEditing}
+                  style={{
+                    ...fieldStyle,
+                    marginTop: '6px',
+                    fontSize: '0.82rem',
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--border)',
+                    color: 'var(--text)',
+                    opacity: 1,
+                  }}
                 />
               )}
             </div>
-            {renderText('Why this Course', 'reason_for_course')}
+            {/* Why this Course — dropdown */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>Why this Course</label>
+              <CustomSelect
+                value={WHY_COURSE_OPTIONS.some(opt => opt.value === formData.reason_for_course) ? formData.reason_for_course : (formData.reason_for_course ? 'Other' : '')}
+                onChange={e => handleChange('reason_for_course', e.target.value)}
+                disabled={!isEditing}
+                options={WHY_COURSE_OPTIONS}
+              />
+              {formData.reason_for_course === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Specify reason..."
+                  value={formData.reason_for_course === 'Other' ? '' : formData.reason_for_course}
+                  onChange={e => handleChange('reason_for_course', e.target.value)}
+                  disabled={!isEditing}
+                  readOnly={!isEditing}
+                  style={{
+                    ...fieldStyle,
+                    marginTop: '6px',
+                    fontSize: '0.82rem',
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--border)',
+                    color: 'var(--text)',
+                    opacity: 1,
+                  }}
+                />
+              )}
+            </div>
             {renderText('Course Fee (₹)', 'course_fee')}
             {renderText('Discount (%)', 'discount')}
             {renderText('Final Course Fee (₹)', 'final_course_fee')}

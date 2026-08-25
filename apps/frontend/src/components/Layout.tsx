@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, useRef, ReactNode } from 'react';
 import { logout } from '../actions/authActions';
 import { SessionUser } from '../lib/auth';
 import { navConfig, NavigationItem } from '../config/navigation';
@@ -21,10 +21,28 @@ export default function Layout({ children, user }: LayoutProps) {
   
   // Phase 2 foundations: Command palette state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
 
   const hideNav = pathname === '/login' || pathname === '/walkin-form';
 
   // Hotkey listener for Command Palette (⌘K or Ctrl+K) and Escape key
+    useEffect(() => {
+    if (!isProfileDropdownOpen) return;
+    const handleDocClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        profileDropdownRef.current && !profileDropdownRef.current.contains(target) &&
+        profileButtonRef.current && !profileButtonRef.current.contains(target)
+      ) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
+  }, [isProfileDropdownOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -205,6 +223,29 @@ export default function Layout({ children, user }: LayoutProps) {
                 <span>Search (⌘K)</span>
               </button>
 
+              {/* Settings Icon Link beside Dark Mode */}
+              <Link
+                href="/settings"
+                className={`icon-btn ${pathname === '/settings' ? 'active' : ''}`}
+                aria-label="Settings"
+                title="System Settings"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                  color: pathname === '/settings' ? 'var(--primary)' : 'var(--text)',
+                  border: pathname === '/settings' ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  background: pathname === '/settings' ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                  boxShadow: pathname === '/settings' ? '0 0 0 2px var(--primary-glow)' : 'none',
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" width="18" height="18" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </Link>
+
               <button
                 type="button"
                 className="icon-btn theme-toggle"
@@ -225,15 +266,155 @@ export default function Layout({ children, user }: LayoutProps) {
               </button>
 
               {user ? (
-                <div className="user-info">
-                  <div className="user-details">
-                    <span className="user-name">{user.name}</span>
-                    <span className="user-role">{user.role}</span>
-                  </div>
-                  <button type="button" className="profile-menu" onClick={handleLogout} aria-label="Logout" title="Click to log out">
-                    <span className="user-photo">{user.name?.charAt(0).toUpperCase() || 'U'}</span>
-                    <span>⌄</span>
+                <div style={{ position: 'relative' }}>
+                  {/* ─── Sleek Unified Profile Trigger Pill ─── */}
+                  <button
+                    ref={profileButtonRef}
+                    type="button"
+                    onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+                    aria-label="User Profile & Account Menu"
+                    aria-expanded={isProfileDropdownOpen}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '9px',
+                      padding: '4px 10px 4px 5px',
+                      borderRadius: '9999px',
+                      background: isProfileDropdownOpen ? 'var(--surface-alt)' : 'rgba(255,255,255,0.03)',
+                      border: `1.5px solid ${isProfileDropdownOpen ? 'var(--primary)' : 'var(--border)'}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease',
+                      boxShadow: isProfileDropdownOpen ? '0 0 0 3px var(--primary-glow)' : 'none',
+                    }}
+                  >
+                    {/* Avatar circle with live online badge */}
+                    <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
+                      <div style={{
+                        width: '100%', height: '100%', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                        color: '#ffffff', fontWeight: 800, fontSize: '0.82rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+                      }}>
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <span style={{
+                        position: 'absolute', bottom: -1, right: -1,
+                        width: 9, height: 9, borderRadius: '50%',
+                        background: '#10b981', border: '2px solid var(--surface)',
+                      }} />
+                    </div>
+
+                    {/* Text Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.25 }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                        {user.name}
+                      </span>
+                      <span style={{ fontSize: '0.67rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {user.role}
+                      </span>
+                    </div>
+
+                    {/* Crisp Micro Chevron SVG */}
+                    <svg
+                      viewBox="0 0 20 20" fill="currentColor" width="13" height="13"
+                      style={{
+                        color: 'var(--muted)',
+                        transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                    >
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
                   </button>
+
+                  {/* ─── Clean Minimalist Profile Popover ─── */}
+                  {isProfileDropdownOpen && (
+                    <div
+                      ref={profileDropdownRef}
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        width: '200px',
+                        background: 'var(--surface)',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: '14px',
+                        boxShadow: '0 16px 40px -6px rgba(0,0,0,0.22), 0 0 0 1px var(--border)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        zIndex: 1000,
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        animation: 'dropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                    >
+                      {/* 1. My Profile */}
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.84rem',
+                          fontWeight: 600,
+                          color: 'var(--text)',
+                          textDecoration: 'none',
+                          transition: 'all 0.12s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-alt)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        <span>My Profile</span>
+                      </Link>
+
+                      {/* Subtle Divider */}
+                      <div style={{ height: '1px', background: 'var(--border)', margin: '3px 4px' }} />
+
+                      {/* 2. Log Out */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#ef4444',
+                          fontSize: '0.84rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          width: '100%',
+                          transition: 'all 0.12s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ef4444' }}>
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Link href="/login" className="login-link">
