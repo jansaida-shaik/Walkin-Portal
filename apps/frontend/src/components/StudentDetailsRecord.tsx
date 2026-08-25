@@ -1032,37 +1032,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         </div>
       )}
 
-      {/* ── Save Button ── */}
-      <div style={{
-        borderTop: '1px solid var(--border)', paddingTop: '18px',
-        display: 'flex', alignItems: 'center', gap: '14px', justifyContent: 'flex-end',
-      }}>
-        {saveMsg && (
-          <span style={{
-            fontSize: '0.86rem', fontWeight: 700,
-            color: saveMsg.startsWith('✅') ? '#10b981' : '#ef4444',
-          }}>{saveMsg}</span>
-        )}
-        <button
-          type="button"
-          onClick={handleSaveDetails}
-          disabled={saving}
-          style={{
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            border: 'none', borderRadius: '10px', color: '#fff',
-            cursor: saving ? 'not-allowed' : 'pointer',
-            fontSize: '0.88rem', fontWeight: 700,
-            padding: '11px 24px',
-            opacity: saving ? 0.6 : 1,
-            boxShadow: '0 4px 14px rgba(16,185,129,0.25)',
-            transition: 'opacity 0.2s, transform 0.15s',
-          }}
-          onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
-        >
-          {saving ? 'Saving Details...' : 'Save Profile Details'}
-        </button>
-      </div>
+
     </div>
   );
 }
