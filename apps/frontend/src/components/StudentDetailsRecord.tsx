@@ -470,130 +470,174 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       display: 'flex', flexDirection: 'column', gap: '28px',
     }}>
 
-      {/* ── Academic Profile ── */}
-      <div>
-        <SectionHeader title="Academic Profile" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px' }}>
-          <div style={{ gridColumn: '1 / -1' }}>{renderText('Educational Qualification', 'qualification')}</div>
-          <div style={{ gridColumn: '1 / -1' }}>{renderText('Institution Name', 'college_name')}</div>
-          {renderText('Year of Passout', 'passout_year')}
-          {renderText('10th %', 'ssc_percentage')}
-          {renderText('Intermediate %', 'inter_percentage')}
-          {renderText('B.Tech / Degree %', 'degree_percentage')}
-          {renderText('Post Graduation %', 'pg_percentage')}
-        </div>
-      </div>
+      {/* ── 2x2 Structured Grid Layout ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        {/* ROW 1, COL 1: Registration & Intake Details */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '14px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <SectionHeader title="Registration & Intake Details" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            {renderSelect('Lead Status', 'status', STATUS_OPTIONS)}
+            {renderSelect('Lead Source', 'source', SOURCE_OPTIONS)}
+            {renderText('Form No', 'form_no')}
+            {renderDate('Walk-in Date', 'walkinDate')}
 
-      {/* ── Personal Details ── */}
-      <div>
-        <SectionHeader title="Personal Details" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          {renderText('Student Name', 'name')}
-          {renderPhone('Student Phone', 'phone')}
-          {renderPhone('Parent Phone', 'parent_phone')}
-          {renderEmail('Email Address', 'email')}
-          {renderDate('Date of Birth', 'dob')}
-          {renderSelect('Gender', 'gender', GENDER_OPTIONS)}
-        </div>
-      </div>
+            {/* Branch — dropdown */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>Walk-in Branch</label>
+              <select
+                value={formData.branchId || ''}
+                onChange={e => {
+                  const b = branches.find(b => b.id === e.target.value);
+                  handleChange('branchId', e.target.value);
+                  if (b) handleChange('branchName', b.name);
+                }}
+                style={{ ...fieldStyle, cursor: 'pointer' }}
+              >
+                <option value="">— Select Branch —</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
 
-      {/* ── Training & Course Preferences ── */}
-      <div>
-        <SectionHeader title="Training & Course Preferences" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          {renderSelect('Mode of Training', 'training_mode', TRAINING_MODE_OPTIONS)}
-          {/* Course — searchable dropdown with COURSES list */}
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={labelStyle}>Preferred Course</label>
-            <select
-              value={COURSES.includes(formData.course) ? formData.course : 'Other'}
-              onChange={e => {
-                if (e.target.value !== 'Other') handleChange('course', e.target.value);
+            {renderText('Time', 'walkin_time')}
+
+            {/* Location — dropdown */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>Location</label>
+              <select
+                value={formData.location}
+                onChange={e => handleChange('location', e.target.value)}
+                style={{ ...fieldStyle, cursor: 'pointer' }}
+              >
+                <option value="">— Select Location —</option>
+                {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+              </select>
+            </div>
+
+            {renderText('How Did You Know Us', 'know_about_us')}
+            {renderText('Referrer Name', 'referrer_name')}
+            {renderText('Added Time', 'added_time')}
+            {renderText('Added Email ID', 'added_email_id')}
+            {renderText('IP Address', 'ip')}
+          </div>
+
+          <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={labelStyle}>Intake Remarks</label>
+            <textarea
+              value={formData.remarks}
+              onChange={e => handleChange('remarks', e.target.value)}
+              style={{
+                ...fieldStyle, height: '80px', resize: 'vertical',
               }}
-              style={{ ...fieldStyle, cursor: 'pointer' }}
-            >
-              <option value="">— Select Course —</option>
-              {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            {/* Free-text if not in list */}
-            {!COURSES.slice(0, -1).includes(formData.course) && (
-              <input
-                type="text"
-                placeholder="Type course name..."
-                value={formData.course}
-                onChange={e => handleChange('course', e.target.value)}
-                style={{ ...fieldStyle, marginTop: '6px', fontSize: '0.82rem' }}
-              />
-            )}
+              onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
+            />
           </div>
-          {renderText('Why this Course', 'reason_for_course')}
-          {renderText('Course Fee (₹)', 'course_fee')}
-          {renderText('Discount (%)', 'discount')}
-          {renderText('Final Course Fee (₹)', 'final_course_fee')}
-          {renderText('Duration (In Days)', 'duration')}
-          {renderText('Previous Training Institute', 'prev_institute')}
-        </div>
-      </div>
-
-      {/* ── Registration & Intake Details ── */}
-      <div>
-        <SectionHeader title="Registration & Intake Details" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          {renderSelect('Lead Status', 'status', STATUS_OPTIONS)}
-          {renderSelect('Lead Source', 'source', SOURCE_OPTIONS)}
-          {renderText('Form No', 'form_no')}
-          {renderDate('Walk-in Date', 'walkinDate')}
-
-          {/* Branch — dropdown */}
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={labelStyle}>Walk-in Branch</label>
-            <select
-              value={formData.branchId || ''}
-              onChange={e => {
-                const b = branches.find(b => b.id === e.target.value);
-                handleChange('branchId', e.target.value);
-                if (b) handleChange('branchName', b.name);
-              }}
-              style={{ ...fieldStyle, cursor: 'pointer' }}
-            >
-              <option value="">— Select Branch —</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-
-          {renderText('Time', 'walkin_time')}
-
-          {/* Location — dropdown */}
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={labelStyle}>Location</label>
-            <select
-              value={formData.location}
-              onChange={e => handleChange('location', e.target.value)}
-              style={{ ...fieldStyle, cursor: 'pointer' }}
-            >
-              <option value="">— Select Location —</option>
-              {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
-            </select>
-          </div>
-
-          {renderText('How Did You Know Us', 'know_about_us')}
-          {renderText('Referrer Name', 'referrer_name')}
-          {renderText('Added Time', 'added_time')}
-          {renderText('Added Email ID', 'added_email_id')}
-          {renderText('IP Address', 'ip')}
         </div>
 
-        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={labelStyle}>Intake Remarks</label>
-          <textarea
-            value={formData.remarks}
-            onChange={e => handleChange('remarks', e.target.value)}
-            style={{
-              ...fieldStyle, height: '100px', resize: 'vertical',
-            }}
-            onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
-            onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
-          />
+        {/* ROW 1, COL 2: Personal Details */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '14px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <SectionHeader title="Personal Details" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            {renderText('Student Name', 'name')}
+            {renderPhone('Student Phone', 'phone')}
+            {renderPhone('Parent Phone', 'parent_phone')}
+            {renderEmail('Email Address', 'email')}
+            {renderDate('Date of Birth', 'dob')}
+            {renderSelect('Gender', 'gender', GENDER_OPTIONS)}
+          </div>
+        </div>
+
+        {/* ROW 2, COL 1: Academic Profile */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '14px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <SectionHeader title="Academic Profile" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>{renderText('Educational Qualification', 'qualification')}</div>
+            <div style={{ gridColumn: '1 / -1' }}>{renderText('Institution Name', 'college_name')}</div>
+            {renderText('Year of Passout', 'passout_year')}
+            {renderText('10th %', 'ssc_percentage')}
+            {renderText('Intermediate %', 'inter_percentage')}
+            {renderText('B.Tech / Degree %', 'degree_percentage')}
+            {renderText('Post Graduation %', 'pg_percentage')}
+          </div>
+        </div>
+
+        {/* ROW 2, COL 2: Training & Course Preferences */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1.5px solid var(--border)',
+          borderRadius: '14px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <SectionHeader title="Training & Course Preferences" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            {renderSelect('Mode of Training', 'training_mode', TRAINING_MODE_OPTIONS)}
+            {/* Course — searchable dropdown with COURSES list */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={labelStyle}>Preferred Course</label>
+              <select
+                value={COURSES.includes(formData.course) ? formData.course : 'Other'}
+                onChange={e => {
+                  if (e.target.value !== 'Other') handleChange('course', e.target.value);
+                }}
+                style={{ ...fieldStyle, cursor: 'pointer' }}
+              >
+                <option value="">— Select Course —</option>
+                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              {/* Free-text if not in list */}
+              {!COURSES.slice(0, -1).includes(formData.course) && (
+                <input
+                  type="text"
+                  placeholder="Type course name..."
+                  value={formData.course}
+                  onChange={e => handleChange('course', e.target.value)}
+                  style={{ ...fieldStyle, marginTop: '6px', fontSize: '0.82rem' }}
+                />
+              )}
+            </div>
+            {renderText('Why this Course', 'reason_for_course')}
+            {renderText('Course Fee (₹)', 'course_fee')}
+            {renderText('Discount (%)', 'discount')}
+            {renderText('Final Course Fee (₹)', 'final_course_fee')}
+            {renderText('Duration (In Days)', 'duration')}
+            {renderText('Previous Training Institute', 'prev_institute')}
+          </div>
         </div>
       </div>
 
