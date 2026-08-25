@@ -705,13 +705,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
       {/* ══════════════════════════════════════════════════
           STUDENT SUBMISSION RECORD SHEET
       ══════════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
-        <div className="flex items-center gap-2.5">
-          <div style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--primary)', flexShrink: 0 }} />
-          <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)' }}>
-            Student Submission Record Sheet
-          </h2>
-        </div>
+      <div style={{ marginBottom: '28px' }}>
         <StudentDetailsRecord
           student={student}
           counselors={counselors}

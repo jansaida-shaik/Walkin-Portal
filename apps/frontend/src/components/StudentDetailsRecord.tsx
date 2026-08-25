@@ -517,7 +517,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       display: 'flex', flexDirection: 'column', gap: '24px',
     }}>
 
-      {/* ── Top Header Action Bar with Save Button ── */}
+      {/* ── Single Unified Header with Title on Left and Save Button on Right ── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -527,23 +527,11 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         paddingBottom: '16px',
         borderBottom: '1.5px solid var(--border)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '38px', height: '38px', borderRadius: '10px',
-            background: 'var(--primary-glow)', color: 'var(--primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.2rem', flexShrink: 0
-          }}>
-            📋
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text)' }}>
-              Student Submission Record Sheet
-            </h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
-              Registration, personal, academic profile, and course preferences
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--primary)', flexShrink: 0 }} />
+          <h2 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: 'var(--text)' }}>
+            Student Submission Record Sheet
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -562,7 +550,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
               border: 'none', borderRadius: '10px', color: '#fff',
               cursor: saving ? 'not-allowed' : 'pointer',
               fontSize: '0.88rem', fontWeight: 800,
-              padding: '10px 22px',
+              padding: '9px 20px',
               display: 'flex', alignItems: 'center', gap: '8px',
               opacity: saving ? 0.6 : 1,
               boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
