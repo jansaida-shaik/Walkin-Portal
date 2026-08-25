@@ -587,17 +587,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         }}>
           <SectionHeader title="Registration & Intake Details" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 2px 0' }}>
-                <label style={labelStyle}>Lead Status</label>
-                <StatusBadge status={formData.status} />
-              </div>
-              <CustomSelect
-                value={formData.status}
-                onChange={e => handleChange('status', e.target.value)}
-                options={STATUS_OPTIONS}
-              />
-            </div>
+            {renderSelect('Counselling Status', 'status', STATUS_OPTIONS)}
             {renderSelect('Lead Source', 'source', SOURCE_OPTIONS)}
             {renderText('Form No', 'form_no')}
             {renderDate('Walk-in Date', 'walkinDate')}

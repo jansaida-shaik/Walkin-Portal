@@ -480,7 +480,7 @@ export default function StudentContextDrawer({
                           <div key={sess.id} className="drawer-session-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                               <span style={{ fontWeight: 700, fontSize: '0.86rem' }}>{counselorName}</span>
-                              <StatusChip status={sess.status} />
+                              <StatusBadge status={sess.status} />
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: '0.78rem', color: 'var(--muted)' }}>
                               <span>Start: {formatDateTime(sess.startTime)}</span>
