@@ -270,7 +270,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
   const buildForm = () => ({
     name: student.name,
     phone: student.phone || getDetailValue(student.details, ['student_phone', 'Student Phone', 'studentPhone', 'phone', 'Phone']),
-    parent_phone: getDetailValue(student.details, ['parent_phone', 'Parent Number', 'Parent_Number']),
+    parent_phone: getDetailValue(student.details, ['parent_phone', 'Parent Phone', 'parentPhone', 'Parent Number', 'Parent_Number']),
     email: student.email || getDetailValue(student.details, ['email', 'email_id', 'Email Address', 'Email']),
     course: student.course,
     source: student.source,
@@ -350,7 +350,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         'B.Tech/Degree %': formData.degree_percentage, degree_percentage: formData.degree_percentage,
         'Post Graduation %': formData.pg_percentage, pg_percentage: formData.pg_percentage,
         'Date of Birth': formData.dob, dob: formData.dob,
-        'Parent Number': formData.parent_phone, parent_phone: formData.parent_phone, 'Student Phone': formData.phone, student_phone: formData.phone,
+        'Parent Phone': formData.parent_phone, 'Parent Number': formData.parent_phone, parent_phone: formData.parent_phone, 'Student Phone': formData.phone, student_phone: formData.phone,
         'Email Address': formData.email, 'Email': formData.email, email: formData.email,
         'Address': '',
         'Mode of Training': formData.training_mode, training_mode: formData.training_mode,
@@ -490,7 +490,7 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {renderText('Student Name', 'name')}
           {renderPhone('Student Phone', 'phone')}
-          {renderPhone('Parent Number', 'parent_phone')}
+          {renderPhone('Parent Phone', 'parent_phone')}
           {renderEmail('Email Address', 'email')}
           {renderDate('Date of Birth', 'dob')}
           {renderSelect('Gender', 'gender', GENDER_OPTIONS)}
