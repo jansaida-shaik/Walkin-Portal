@@ -427,18 +427,65 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
     </div>
   );
 
-  const renderSelect = (label: string, field: keyof typeof formData, options: { value: string; label: string }[]) => (
-    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      <label style={labelStyle}>{label}</label>
+  const CustomSelect = ({
+    value,
+    onChange,
+    options,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    options: { value: string; label: string }[];
+    placeholder?: string;
+  }) => (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
       <select
-        value={formData[field]}
-        onChange={e => handleChange(field, e.target.value)}
-        style={{ ...fieldStyle, cursor: 'pointer' }}
+        value={value}
+        onChange={onChange}
+        style={{
+          ...fieldStyle,
+          cursor: 'pointer',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          paddingRight: '36px',
+          background: 'var(--surface)',
+        }}
         onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
         onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
       >
-        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        {placeholder && <option value="" style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}>{placeholder}</option>}
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value} style={{ background: 'var(--card-bg, #111827)', color: 'var(--text)' }}>
+            {opt.label}
+          </option>
+        ))}
       </select>
+      <div style={{
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        color: 'var(--muted)',
+        opacity: 0.85,
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+    </div>
+  );
+
+  const renderSelect = (label: string, field: keyof typeof formData, options: { value: string; label: string }[]) => (
+    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <label style={labelStyle}>{label}</label>
+      <CustomSelect
+        value={formData[field]}
+        onChange={e => handleChange(field, e.target.value)}
+        options={options}
+      />
     </div>
   );
 
@@ -557,18 +604,16 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
             {/* Branch — dropdown */}
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={labelStyle}>Walk-in Branch</label>
-              <select
+              <CustomSelect
                 value={formData.branchId || ''}
                 onChange={e => {
                   const b = branches.find(b => b.id === e.target.value);
                   handleChange('branchId', e.target.value);
                   if (b) handleChange('branchName', b.name);
                 }}
-                style={{ ...fieldStyle, cursor: 'pointer' }}
-              >
-                <option value="">— Select Branch —</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+                placeholder="— Select Branch —"
+                options={branches.map(b => ({ value: b.id, label: b.name }))}
+              />
             </div>
 
             {renderText('Time', 'walkin_time')}
@@ -576,14 +621,12 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
             {/* Location — dropdown */}
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={labelStyle}>Location</label>
-              <select
+              <CustomSelect
                 value={formData.location}
                 onChange={e => handleChange('location', e.target.value)}
-                style={{ ...fieldStyle, cursor: 'pointer' }}
-              >
-                <option value="">— Select Location —</option>
-                {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
-              </select>
+                placeholder="— Select Location —"
+                options={locations.map(l => ({ value: l.name, label: l.name }))}
+              />
             </div>
 
             {renderText('How Did You Know Us', 'know_about_us')}
@@ -669,21 +712,19 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
             {/* Course — searchable dropdown with COURSES list */}
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={labelStyle}>Preferred Course</label>
-              <select
+              <CustomSelect
                 value={COURSES.includes(formData.course) ? formData.course : 'Other'}
                 onChange={e => {
                   if (e.target.value !== 'Other') handleChange('course', e.target.value);
                 }}
-                style={{ ...fieldStyle, cursor: 'pointer' }}
-              >
-                <option value="">— Select Course —</option>
-                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+                placeholder="— Select Course —"
+                options={COURSES.map(c => ({ value: c, label: c }))}
+              />
               {/* Free-text if not in list */}
               {!COURSES.slice(0, -1).includes(formData.course) && (
                 <input
                   type="text"
-                  placeholder="Type course name..."
+                  placeholder="Type custom course name..."
                   value={formData.course}
                   onChange={e => handleChange('course', e.target.value)}
                   style={{ ...fieldStyle, marginTop: '6px', fontSize: '0.82rem' }}
