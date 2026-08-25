@@ -1,5 +1,8 @@
 'use client';
 
+import StatusBadge from './StatusBadge';
+
+
 import { useState, useEffect, useRef } from 'react';
 
 interface Session {
@@ -203,7 +206,7 @@ export default function StudentContextDrawer({
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                <StatusChip status={student.status} />
+                <StatusBadge status={student.status} />
                 <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{student.course}</span>
                 {student.branchName && (
                   <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
@@ -398,7 +401,7 @@ export default function StudentContextDrawer({
                   <div className="drawer-info-grid">
                     <div className="drawer-info-item">
                       <span className="drawer-info-label">Current Status</span>
-                      <StatusChip status={student.status} />
+                      <StatusBadge status={student.status} />
                     </div>
                     <div className="drawer-info-item">
                       <span className="drawer-info-label">Queue Position</span>

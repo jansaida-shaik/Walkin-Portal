@@ -10,6 +10,7 @@ import {
   cancelCounsellingSession,
   analyzeSessionAudio,
 } from '../../../actions/walkinActions';
+import StatusBadge from '../../../components/StatusBadge';
 import StudentDetailsRecord from '../../../components/StudentDetailsRecord';
 import AudioPlayerWithAnalyzer from '../../../components/AudioPlayerWithAnalyzer';
 
@@ -427,7 +428,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
               gap: '10px', flexWrap: 'wrap',
             }}>
               {student.name}
-              <StatusPill status={student.status} />
+              <StatusBadge status={student.status} />
             </h1>
             <p style={{ margin: '5px 0 0 0', fontSize: '0.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
               <span>Record ID: <strong className="text-[var(--text)]">#{student.id}</strong></span>
@@ -785,7 +786,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
                       <div>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {counselor?.name || 'Unknown Counsellor'}
-                          <SessionStatusPill status={sess.status} />
+                          <StatusBadge status={sess.status} />
                           {isActive && liveElapsed !== null && (
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,

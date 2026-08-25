@@ -1,5 +1,8 @@
 'use client';
 
+import StatusBadge from '../../components/StatusBadge';
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
@@ -538,7 +541,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
                         </div>
                       </div>
                     </div>
-                    <StatusPill status={student.status} />
+                    <StatusBadge status={student.status} />
                   </div>
 
                   {/* ── Body ── */}
@@ -695,7 +698,7 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {selectedDetailsStudent.name}
-                    <StatusPill status={selectedDetailsStudent.status} />
+                    <StatusBadge status={selectedDetailsStudent.status} />
                   </h2>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
                     Record ID: <strong>#{selectedDetailsStudent.id}</strong>

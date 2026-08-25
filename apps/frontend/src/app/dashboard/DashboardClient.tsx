@@ -1,5 +1,8 @@
 'use client';
 
+import StatusBadge from '../../components/StatusBadge';
+
+
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
@@ -315,7 +318,8 @@ export default function DashboardClient({
   };
 
   // Rendering Helper Components
-  const renderStatusPill = (status: string, waitTimeSecs?: number) => {
+  const renderStatusPill = (status: string, waitTimeSecs?: number) => <StatusBadge status={status} waitTimeSecs={waitTimeSecs} />;
+  const _oldRenderStatusPill = (status: string, waitTimeSecs?: number) => {
     let styleClass = 'status-chip offline';
     let label = status;
     let icon = '⚫';

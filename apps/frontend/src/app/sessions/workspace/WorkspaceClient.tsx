@@ -1,5 +1,8 @@
 'use client';
 
+import StatusBadge from '../../../components/StatusBadge';
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../../lib/auth';
@@ -723,7 +726,7 @@ export default function WorkspaceClient({ student, counselors, user }: Workspace
           <div>
             <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               {student.name}
-              <StatusPill status={student.status} />
+              <StatusBadge status={student.status} />
             </h1>
             <p style={{ margin: '3px 0 0 0', fontSize: '0.84rem', color: 'var(--muted)' }}>
               Record ID: <strong>#{student.id}</strong> | Course: <strong>{student.course}</strong>
