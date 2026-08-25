@@ -470,13 +470,8 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       display: 'flex', flexDirection: 'column', gap: '28px',
     }}>
 
-      {/* ── 2x2 Structured Grid Layout ── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
-        gap: '24px',
-        alignItems: 'start'
-      }}>
+      {/* ── Strict 2x2 Structured Grid Layout (2 Columns Only) ── */}
+      <div className="record-submission-grid">
         {/* ROW 1, COL 1: Registration & Intake Details */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.02)',

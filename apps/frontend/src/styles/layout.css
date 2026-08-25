@@ -1220,3 +1220,18 @@ html[data-theme="light"] .ops-activity-item::before,
 .ops-deck-grid > *:nth-child(1) { animation-delay: 0.15s; }
 .ops-deck-grid > *:nth-child(2) { animation-delay: 0.25s; }
 .ops-deck-grid > *:nth-child(3) { animation-delay: 0.35s; }
+
+/* ─── Student Submission Record 2x2 Grid ────────────────────────── */
+.record-submission-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .record-submission-grid {
+    grid-template-columns: 1fr;
+  }
+}
