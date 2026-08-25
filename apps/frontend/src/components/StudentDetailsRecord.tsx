@@ -467,8 +467,72 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
       background: 'rgba(255,255,255,0.015)',
       border: '1.5px solid var(--border)',
       borderRadius: '16px',
-      display: 'flex', flexDirection: 'column', gap: '28px',
+      display: 'flex', flexDirection: 'column', gap: '24px',
     }}>
+
+      {/* ── Top Header Action Bar with Save Button ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        paddingBottom: '16px',
+        borderBottom: '1.5px solid var(--border)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '38px', height: '38px', borderRadius: '10px',
+            background: 'var(--primary-glow)', color: 'var(--primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.2rem', flexShrink: 0
+          }}>
+            📋
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text)' }}>
+              Student Submission Record Sheet
+            </h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+              Registration, personal, academic profile, and course preferences
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {saveMsg && (
+            <span style={{
+              fontSize: '0.86rem', fontWeight: 700,
+              color: saveMsg.startsWith('✅') ? '#10b981' : '#ef4444',
+            }}>{saveMsg}</span>
+          )}
+          <button
+            type="button"
+            onClick={handleSaveDetails}
+            disabled={saving}
+            style={{
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              border: 'none', borderRadius: '10px', color: '#fff',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              fontSize: '0.88rem', fontWeight: 800,
+              padding: '10px 22px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              opacity: saving ? 0.6 : 1,
+              boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
+              transition: 'opacity 0.2s, transform 0.15s, box-shadow 0.2s',
+            }}
+            onMouseEnter={e => { if (!saving) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(16,185,129,0.4)'; } }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.3)'; }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            {saving ? 'Saving...' : 'Save Profile Details'}
+          </button>
+        </div>
+      </div>
 
       {/* ── Strict 2x2 Structured Grid Layout (2 Columns Only) ── */}
       <div className="record-submission-grid">
