@@ -22,7 +22,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { studentName, phone, email, course, branchId, remarks, source } = await req.json();
+    const body = await req.json();
+    const studentName = body.studentName || body.name;
+    const phone = body.student_phone || body.studentPhone || body.phone || body.contact;
+    const email = body.email;
+    const course = body.course;
+    const branchId = body.branchId;
+    const remarks = body.remarks;
+    const source = body.source;
     if (!studentName || !phone || !branchId || !course) {
       return NextResponse.json({ error: 'Name, phone, branchId, and course are required.' }, { status: 400 });
     }
@@ -31,7 +38,7 @@ export async function POST(req: NextRequest) {
     const existingPhone = await prisma.student.findFirst({ where: { phone } });
     if (existingPhone) {
       await prisma.failedWalkin.create({ data: { name: studentName, phone, email: email || '', course, branchId, branchName, source: source || 'Walk-in API', reason: 'Duplicate phone number', details: { studentName, phone, email, course, branchId, branchName, remarks, source } } }).catch(() => {});
-      return NextResponse.json({ error: `A student with phone number ${phone} is already registered.` }, { status: 400 });
+      return NextResponse.json({ error: `A student with student phone number ${phone} is already registered.` }, { status: 400 });
     }
     if (email) {
       const existingEmail = await prisma.student.findFirst({ where: { email } });

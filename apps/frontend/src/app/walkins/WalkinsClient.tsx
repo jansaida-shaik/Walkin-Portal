@@ -389,7 +389,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
               <tr>
                 <th scope="col">Walk-in ID</th>
                 <th scope="col">Student</th>
-                <th scope="col">Phone</th>
+                <th scope="col">Student Phone</th>
                 <th scope="col">Email</th>
                 <th scope="col">Course</th>
                 <th scope="col">Walk-in Date</th>
@@ -519,7 +519,7 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
               {/* Phone + country code */}
               <div>
                 <label htmlFor="add-phone" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-                  Phone Number <span className="text-[var(--danger)]" aria-hidden="true">*</span>
+                  Student Phone <span className="text-[var(--danger)]" aria-hidden="true">*</span>
                 </label>
                 <div style={{ display: 'flex' }}>
                   <select

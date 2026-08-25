@@ -244,7 +244,7 @@ export default function StudentContextDrawer({
                   <span className="drawer-section-label">Contact Details</span>
                   <div className="drawer-info-grid">
                     <div className="drawer-info-item">
-                      <span className="drawer-info-label">Phone</span>
+                      <span className="drawer-info-label">Student Phone</span>
                       <span className="drawer-info-value" style={{ fontFamily: 'var(--font-mono)' }}>{student.phone || '—'}</span>
                     </div>
                     <div className="drawer-info-item">

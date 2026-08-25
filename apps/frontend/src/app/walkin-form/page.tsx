@@ -183,7 +183,7 @@ export default function WalkinForm() {
 
           {/* Phone with country code */}
           <div>
-            <label style={labelStyle}>Phone Number <span style={{ color: '#f87171' }}>*</span></label>
+            <label style={labelStyle}>Student Phone <span style={{ color: '#f87171' }}>*</span></label>
             <div style={{ display: 'flex', gap: 0 }}>
               <select
                 value={form.countryCode}

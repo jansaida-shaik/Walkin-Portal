@@ -37,7 +37,7 @@ const getBaseUrl = () => {
 
 export async function createWalkin(state: any, formData: FormData) {
   const studentName = formData.get('studentName') as string;
-  const rawPhone    = formData.get('phone') as string;
+  const rawPhone    = (formData.get('student_phone') || formData.get('phone')) as string;
   const countryCode = formData.get('countryCode') as string;
   const phone       = rawPhone.startsWith('+') ? rawPhone : `${countryCode || ''}${rawPhone}`;
   const email       = (formData.get('email') as string || '').trim().toLowerCase();
@@ -54,7 +54,7 @@ export async function createWalkin(state: any, formData: FormData) {
     const existingPhone = await prisma.student.findFirst({ where: { phone } });
     if (existingPhone) {
       await prisma.failedWalkin.create({ data: { name: studentName, phone, email: email || '', course, branchId, branchName, source: source || 'Walk-in API', reason: 'Duplicate phone number', details: { studentName, phone, email, course, branchId, branchName, remarks, source } } }).catch(() => {});
-      return { error: `A student with phone number ${phone} is already registered.` };
+      return { error: `A student with student phone number ${phone} is already registered.` };
     }
     if (email) {
       const existingEmail = await prisma.student.findFirst({ where: { email } });
