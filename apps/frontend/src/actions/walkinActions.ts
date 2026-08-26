@@ -4,6 +4,7 @@ import { prisma } from '../lib/db';
 import { getBranchName } from '../lib/constants';
 import { triggerWebhook } from '../lib/webhooks';
 import { validateSession } from '../lib/auth';
+import { formatPhoneNumber, normalizePhoneForStorage } from '../lib/formatters';
 
 // ─── READ OPERATIONS: Call Prisma directly (no HTTP fetch) ───────────────────
 
@@ -39,7 +40,7 @@ export async function createWalkin(state: any, formData: FormData) {
   const studentName = formData.get('studentName') as string;
   const rawPhone    = (formData.get('student_phone') || formData.get('phone')) as string;
   const countryCode = formData.get('countryCode') as string;
-  const phone       = rawPhone.startsWith('+') ? rawPhone : `${countryCode || ''}${rawPhone}`;
+  const phone       = normalizePhoneForStorage(rawPhone.startsWith('+') ? rawPhone : `${countryCode || '+91'}${rawPhone}`);
   const email       = (formData.get('email') as string || '').trim().toLowerCase();
   const course      = formData.get('course') as string;
   const branchId    = formData.get('branchId') as string;

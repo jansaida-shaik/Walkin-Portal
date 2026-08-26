@@ -1,4 +1,7 @@
 'use client';
+
+import SearchInput from '../../components/SearchInput';
+
 import CustomSelect from '../../components/CustomSelect';
 
 import { useState } from 'react';
@@ -399,47 +402,14 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
           }}
         >
           {/* Search Input */}
-          <div style={{
-            flex: '1 1 260px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'var(--surface)',
-            borderRadius: '8px',
-            border: '1.5px solid var(--border)',
-            padding: '0 12px',
-          }}>
-            <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
-            </svg>
-            <input
+          <div style={{ flex: '1 1 260px' }}>
+            <SearchInput
               id="counselors-search"
-              type="search"
               placeholder="Search by name, branch, location, or email…"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              aria-label="Search counselors"
-              style={{
-                border: 'none',
-                background: 'transparent',
-                width: '100%',
-                fontSize: '0.86rem',
-                color: 'var(--text)',
-                outline: 'none',
-                padding: '9px 0',
-                fontFamily: 'inherit',
-              }}
+              onChange={setSearchQuery}
+              ariaLabel="Search counselors"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
-              >
-                ✕
-              </button>
-            )}
           </div>
 
           {/* Location filter */}

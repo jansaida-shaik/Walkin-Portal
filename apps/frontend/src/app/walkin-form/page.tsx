@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { COURSES, COUNTRY_CODES, branches } from '../../lib/constants';
+import { COURSES, COUNTRY_CODES, walkinBranches } from '../../lib/constants';
 import { createWalkin } from '../../actions/walkinActions';
 
 const inputStyle: React.CSSProperties = {
@@ -254,7 +254,7 @@ export default function WalkinForm() {
               onBlur={focusOut}
             >
               <option value="" style={{ background: '#1a1b2e' }}>— Select Branch —</option>
-              {branches.map(b => (
+              {walkinBranches.map(b => (
                 <option key={b.id} value={b.id} style={{ background: '#1a1b2e' }}>{b.name}</option>
               ))}
             </select>

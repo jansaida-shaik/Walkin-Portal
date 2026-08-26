@@ -6,10 +6,18 @@ import { prisma } from '../lib/db';
 
 export async function getCounselors() {
   try {
-    return await prisma.counselorProfile.findMany({
+    const list = await prisma.counselorProfile.findMany({
       include: { user: true },
       orderBy: { id: 'asc' },
     });
+    return list.map((c) => ({
+      ...c,
+      name: c.user?.name || 'Counselor',
+      email: c.user?.email,
+      roleId: c.user?.roleId,
+      branchId: c.user?.branchId || 'branch_jntu1',
+      branchName: c.user?.branchId === 'branch_jntu1' ? '1st Campus (JNTU-HYD)' : '1st Campus (JNTU-HYD)',
+    }));
   } catch (err) {
     console.error('getCounselors error:', err);
     return [];

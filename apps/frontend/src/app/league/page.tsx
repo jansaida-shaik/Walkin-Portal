@@ -2,29 +2,19 @@ import { getSession } from '../../lib/auth';
 import { getStudents } from '../../actions/walkinActions';
 import { getCounselors } from '../../actions/counselorActions';
 import { branches } from '../../lib/constants';
-import ReportsClient from './ReportsClient';
+import LeagueClient from './LeagueClient';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ReportsPage() {
+export default async function LeaguePage() {
   const user = await getSession();
   if (!user) redirect('/login');
-
-  const roleId = user.roleId;
-  const canAccess =
-    roleId === 'role_super_admin' ||
-    roleId === 'role_admin' ||
-    roleId === 'role_manager' ||
-    roleId === 'role_counselor' ||
-    roleId === 'role_frontdesk';
-
-  if (!canAccess) redirect('/dashboard');
 
   const [students, counselors] = await Promise.all([getStudents(), getCounselors()]);
 
   return (
-    <ReportsClient
+    <LeagueClient
       students={students as any}
       counselors={counselors as any}
       branches={branches as any}

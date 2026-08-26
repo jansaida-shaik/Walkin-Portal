@@ -1,8 +1,15 @@
 'use client';
 
+import SearchInput from '../../components/SearchInput';
+
+
+import TestRibbonTag, { isTestRecord } from '../../components/TestRibbonTag';
+
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
+import { formatPhoneNumber } from '../../lib/formatters';
 import StudentContextDrawer, { DrawerStudent } from '../../components/StudentContextDrawer';
 import CustomSelect from '../../components/CustomSelect';
 import { updateStudentDetails } from '../../actions/walkinActions';
@@ -404,44 +411,12 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
         alignItems: 'center',
       }}>
         {/* Search */}
-        <div style={{
-          flex: '1 1 240px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'var(--surface-alt)',
-          borderRadius: '8px',
-          border: '1.5px solid var(--border)',
-          padding: '0 12px',
-        }}>
-          <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            type="search"
+        <div style={{ flex: '1 1 240px' }}>
+          <SearchInput
             placeholder="Search queue by student name, phone, course..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              width: '100%',
-              fontSize: '0.86rem',
-              color: 'var(--text)',
-              outline: 'none',
-              padding: '9px 0',
-              fontFamily: 'inherit',
-            }}
+            onChange={setSearchQuery}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
-            >
-              ✕
-            </button>
-          )}
         </div>
 
         {/* Priority Filter */}
@@ -515,7 +490,14 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
                 waitingQueue.map((w, index) => {
                   const position = index + 1;
                   const priority = (w.details?.priority || 'Medium') as PriorityLevel;
-                  const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
+                  const activeSession = w.sessions?.find(s => 
+                    s.status?.toUpperCase() === 'IN_SESSION' || 
+                    s.status?.toUpperCase() === 'ASSIGNED' ||
+                    s.status === 'In Session' ||
+                    s.status === 'Assigned'
+                  );
+                  const matchedCounselor = activeSession ? counselors.find(c => c.id === activeSession.counselorId || (c as any).user?.id === activeSession.counselorId) : null;
+                  const counselorName = matchedCounselor?.name || (matchedCounselor as any)?.user?.name || w.details?.counselorName || 'Unassigned';
                   const counselorId = activeSession ? activeSession.counselorId : 'unassigned';
 
                   return (
@@ -575,7 +557,7 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
                               {w.name}
                             </button>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '0.76rem', color: 'var(--muted)' }}>
-                              <span style={{ fontFamily: 'var(--font-mono)' }}>{w.phone}</span>
+                              <span style={{ fontFamily: 'var(--font-mono)' }}>{formatPhoneNumber(w.phone)}</span>
                               <span>•</span>
                               <span style={{ fontFamily: 'var(--font-mono)' }}>#{w.id.slice(-6).toUpperCase()}</span>
                             </div>

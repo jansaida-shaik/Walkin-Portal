@@ -1,5 +1,6 @@
 'use client';
 
+import TestRibbonTag, { isTestRecord } from '../../../components/TestRibbonTag';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../../lib/auth';
@@ -11,6 +12,7 @@ import {
   analyzeSessionAudio,
 } from '../../../actions/walkinActions';
 import StatusBadge from '../../../components/StatusBadge';
+import { formatPhoneNumber } from '../../../lib/formatters';
 import StudentDetailsRecord from '../../../components/StudentDetailsRecord';
 import AudioPlayerWithAnalyzer from '../../../components/AudioPlayerWithAnalyzer';
 
@@ -428,6 +430,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
               gap: '10px', flexWrap: 'wrap',
             }}>
               {student.name}
+              {isTestRecord(student) && <TestRibbonTag />}
               <StatusBadge status={student.status} />
             </h1>
             <p style={{ margin: '5px 0 0 0', fontSize: '0.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -437,7 +440,7 @@ export default function RecordClient({ student, counselors, user }: RecordClient
               {student.phone && (
                 <>
                   <span style={{ color: 'var(--border)' }}>|</span>
-                  <strong className="text-[var(--text)]">{student.phone}</strong>
+                  <strong className="text-[var(--text)]">{formatPhoneNumber(student.phone)}</strong>
                 </>
               )}
               {student.branchName && (

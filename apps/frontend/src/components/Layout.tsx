@@ -1,10 +1,20 @@
 'use client';
 
+function getInitials(name: string): string {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, ReactNode } from 'react';
 import { logout } from '../actions/authActions';
 import { SessionUser } from '../lib/auth';
+import { formatPhoneNumber } from '../lib/formatters';
 import { navConfig, NavigationItem } from '../config/navigation';
 
 export interface LayoutProps {
@@ -21,6 +31,48 @@ export default function Layout({ children, user }: LayoutProps) {
   
   // Phase 2 foundations: Command palette state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchFilter, setSearchFilter] = useState<'all' | 'students' | 'counselors' | 'pages'>('all');
+  const [isSearchingLive, setIsSearchingLive] = useState<boolean>(false);
+  const [liveStudents, setLiveStudents] = useState<any[]>([]);
+  const [liveCounselors, setLiveCounselors] = useState<any[]>([]);
+
+  // Live PostgreSQL Database Search Debouncer
+  useEffect(() => {
+    if (!isCommandPaletteOpen) {
+      setSearchQuery('');
+      setLiveStudents([]);
+      setLiveCounselors([]);
+      setIsSearchingLive(false);
+      return;
+    }
+
+    const trimmed = searchQuery.trim();
+    if (trimmed.length === 0) {
+      setLiveStudents([]);
+      setLiveCounselors([]);
+      setIsSearchingLive(false);
+      return;
+    }
+
+    setIsSearchingLive(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setLiveStudents(data.students || []);
+          setLiveCounselors(data.counselors || []);
+        }
+      } catch (err) {
+        console.error('Live search error:', err);
+      } finally {
+        setIsSearchingLive(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isCommandPaletteOpen]);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
@@ -106,18 +158,79 @@ export default function Layout({ children, user }: LayoutProps) {
     <div className={`portal-shell ${hideNav ? 'no-sidebar' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`} style={{ gridTemplateColumns: hideNav ? '1fr' : sidebarCollapsed ? 'var(--sidebar-collapsed-width) 1fr' : 'var(--sidebar-width) 1fr' }}>
       {/* Sidebar navigation */}
       {!hideNav && (
-        <aside className={`sidebar overflow-x-hidden ${menuOpen ? 'open' : ''}`} style={{ width: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}>
-          {/* Logo container */}
-          <div className={`sidebar-brand flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}>
+        <aside className={`sidebar ${menuOpen ? 'open' : ''}`} style={{ width: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)', overflow: 'visible' }}>
+          {/* Logo container with Top-Right Circular Toggle */}
+          <div className={`sidebar-brand relative flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`} style={{ overflow: 'visible' }}>
             {!sidebarCollapsed ? (
               <img
                 src="/Complete website logo.png"
                 alt="Organization Logo"
-                className="sidebar-logo-full max-h-9 w-auto"
+                className="sidebar-logo-full w-auto"
+                style={{ maxHeight: '42px' }}
               />
             ) : (
-              <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-gradient)] flex items-center justify-center font-black text-white text-[0.95rem] shrink-0 tracking-tight">C</div>
+              <img
+                src="/logo.png"
+                alt="Codegnan Logo"
+                className="w-auto object-contain"
+                style={{ maxHeight: '52px', maxWidth: '52px' }}
+              />
             )}
+
+            {/* Circular Collapse Toggle Button on Border */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="sidebar-edge-toggle"
+              style={{
+                position: 'absolute',
+                right: '-13px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '26px',
+                height: '26px',
+                borderRadius: '50%',
+                background: 'var(--surface)',
+                border: '1.5px solid var(--border)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 60,
+                color: 'var(--text)',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
+                e.currentTarget.style.boxShadow = '0 4px 12px var(--primary-glow)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.12)';
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                width="13"
+                height="13"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
           </div>
 
           {/* Navigation categories */}
@@ -171,23 +284,7 @@ export default function Layout({ children, user }: LayoutProps) {
             )}
           </nav>
 
-          {/* Sidebar Collapse Toggle Button */}
-          {!hideNav && (
-            <div className="sidebar-footer">
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className={`outline-btn w-full h-9 min-h-9 px-2.5 flex items-center gap-2 text-[0.8rem] font-bold ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
-                title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round"
-                  className={`shrink-0 transition-transform duration-250 ease-in-out ${sidebarCollapsed ? 'rotate-180' : ''}`}>
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-                {!sidebarCollapsed && <span>Collapse</span>}
-              </button>
-            </div>
-          )}
+
         </aside>
       )}
 
@@ -209,18 +306,62 @@ export default function Layout({ children, user }: LayoutProps) {
 
             {/* Quick Action search and profile commands */}
             <div className="header-actions">
-              {/* Centralized Search triggers */}
+              {/* Ultra-Modern Global Search Bar Trigger */}
               <button
                 type="button"
-                className="search-input"
+                className="global-search-trigger"
                 onClick={() => setIsCommandPaletteOpen(true)}
-                title="Search or perform actions (⌘K)"
+                title="Global Search & Quick Actions (⌘K / Ctrl+K)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '0 10px 0 14px',
+                  height: '38px',
+                  minHeight: '38px',
+                  width: '260px',
+                  borderRadius: '9999px',
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface-alt, rgba(255, 255, 255, 0.03))',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-glow)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="16" height="16">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16" style={{ color: 'var(--primary)', flexShrink: 0 }}>
                   <circle cx="11" cy="11" r="8" />
                   <path d="M21 21l-4.3-4.3" />
                 </svg>
-                <span>Search (⌘K)</span>
+                <span style={{ fontSize: '0.84rem', fontWeight: 500, color: 'var(--muted)', flex: 1, textAlign: 'left' }}>
+                  Search anything...
+                </span>
+                <kbd style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  color: 'var(--text)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                  fontFamily: 'inherit',
+                  letterSpacing: '0.04em',
+                }}>
+                  ⌘K
+                </kbd>
               </button>
 
               {/* Settings Icon Link beside Dark Mode */}
@@ -428,37 +569,488 @@ export default function Layout({ children, user }: LayoutProps) {
         <main className="portal-main">{children}</main>
       </div>
 
-      {/* ─── Global Command Palette Foundation Overlay ──────────────── */}
-      <div className={`command-palette-overlay ${isCommandPaletteOpen ? 'open' : ''}`} onClick={() => setIsCommandPaletteOpen(false)}>
-        <div className="command-palette-container p-4" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-3 border-b border-[var(--border)] pb-3">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="20" height="20" className="text-[var(--primary)] shrink-0">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.3-4.3" />
-            </svg>
+      {/* ─── Global Command Palette Live Real-Time Search Overlay ──────────────── */}
+      <div
+        className={`command-palette-overlay ${isCommandPaletteOpen ? 'open' : ''}`}
+        onClick={() => setIsCommandPaletteOpen(false)}
+        style={{
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          background: 'rgba(3, 7, 18, 0.75)',
+        }}
+      >
+        <div
+          className="command-palette-container"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            maxWidth: '680px',
+            width: '94%',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '18px',
+            boxShadow: '0 30px 70px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '85vh',
+          }}
+        >
+          {/* Top Search Input Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface)',
+            flexShrink: 0,
+          }}>
+            {isSearchingLive ? (
+              <div style={{
+                width: 18, height: 18, borderRadius: '50%',
+                border: '2px solid var(--primary)',
+                borderTopColor: 'transparent',
+                animation: 'spin 0.6s linear infinite',
+                flexShrink: 0,
+              }} />
+            ) : (
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2" width="20" height="20" style={{ color: 'var(--primary)', flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+            )}
             <input
               type="text"
-              placeholder="Search leads, counselors, or enter commands (e.g. > new)..."
-              className="border-none bg-transparent w-full text-[0.95rem] text-[var(--text)] outline-none"
+              placeholder="Search live students, phone (+91...), counselors, or commands..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                width: '100%',
+                fontSize: '1.02rem',
+                fontWeight: 500,
+                color: 'var(--text)',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
               disabled={!isCommandPaletteOpen}
               autoFocus
             />
-            <span className="text-[0.72rem] bg-[var(--surface-alt)] px-2 py-0.5 rounded border border-[var(--border)] text-[var(--muted)] font-bold">ESC</span>
-          </div>
-          
-          {/* Static placeholders detailing how index results will behave in Phase 4 */}
-          <div className="mt-4 flex flex-col gap-2">
-            <div className="text-[0.72rem] uppercase font-extrabold text-[var(--muted)] tracking-wider">Quick Actions</div>
-            <div className="flex flex-col gap-1">
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => { setIsCommandPaletteOpen(false); router.push('/walkins'); }}
-                className="outline-btn w-full px-2.5 py-2 rounded-md text-left text-[0.84rem] cursor-pointer flex justify-between"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--muted)', fontSize: '0.9rem', padding: '2px 6px',
+                }}
               >
-                <span>➕ Register Walk-in</span>
-                <span className="opacity-50">&gt; new</span>
+                ✕
               </button>
+            )}
+            <span style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              background: 'var(--surface-alt)',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              border: '1px solid var(--border)',
+              color: 'var(--muted)',
+            }}>
+              ESC
+            </span>
+          </div>
+
+          {/* Search Filter Tabs */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            background: 'var(--surface-alt, rgba(255,255,255,0.02))',
+            borderBottom: '1px solid var(--border)',
+            overflowX: 'auto',
+            flexShrink: 0,
+          }}>
+            {[
+              { id: 'all', label: 'All Results' },
+              { id: 'students', label: `👥 Live Students (${liveStudents.length})` },
+              { id: 'counselors', label: `👤 Counselors (${liveCounselors.length})` },
+              { id: 'pages', label: '⚡ Navigation & Actions' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSearchFilter(tab.id as any)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  border: searchFilter === tab.id ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  background: searchFilter === tab.id ? 'var(--primary-glow, rgba(99, 102, 241, 0.12))' : 'transparent',
+                  color: searchFilter === tab.id ? 'var(--primary)' : 'var(--muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Results Container */}
+          <div className="scroller" style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+
+            {/* 1. Live Students / Walk-in Database Matches */}
+            {(searchFilter === 'all' || searchFilter === 'students') && liveStudents.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: 'var(--muted)', padding: '4px 8px 8px 8px',
+                }}>
+                  <span>Live Student Records ({liveStudents.length})</span>
+                  <span style={{ fontSize: '0.64rem', color: 'var(--primary)' }}>PostgreSQL Live</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {liveStudents.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setIsCommandPaletteOpen(false);
+                        router.push(`/walkins/record?studentId=${s.id}`);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid transparent',
+                        background: 'var(--surface-alt, rgba(255,255,255,0.02))',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--surface)';
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = '0 2px 10px rgba(99,102,241,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'var(--surface-alt, rgba(255,255,255,0.02))';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                          color: '#fff', fontWeight: 800, fontSize: '0.8rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {getInitials(s.name)}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text)' }}>
+                              {s.name}
+                            </span>
+                            <span style={{
+                              fontFamily: 'var(--font-mono)', fontSize: '0.74rem',
+                              color: 'var(--primary)', fontWeight: 700,
+                            }}>
+                              {formatPhoneNumber(s.phone)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {s.course} • {s.branchName || 'Main Campus'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: '12px' }}>
+                        <span style={{
+                          fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px',
+                          background: s.status === 'In Session' ? 'rgba(245, 158, 11, 0.15)' : s.status === 'Completed' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                          color: s.status === 'In Session' ? '#d97706' : s.status === 'Completed' ? '#059669' : '#6366f1',
+                          border: '1px solid currentColor',
+                        }}>
+                          {s.status}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>Open ↵</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Live Counselors / Staff Database Matches */}
+            {(searchFilter === 'all' || searchFilter === 'counselors') && liveCounselors.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: 'var(--muted)', padding: '4px 8px 8px 8px',
+                }}>
+                  <span>Counselors & Staff ({liveCounselors.length})</span>
+                  <span style={{ fontSize: '0.64rem', color: 'var(--primary)' }}>PostgreSQL Live</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {liveCounselors.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setIsCommandPaletteOpen(false);
+                        router.push('/counsellors');
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid transparent',
+                        background: 'var(--surface-alt, rgba(255,255,255,0.02))',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--surface)';
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'var(--surface-alt, rgba(255,255,255,0.02))';
+                        e.currentTarget.style.borderColor = 'transparent';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #10b981, #06b6d4)',
+                          color: '#fff', fontWeight: 800, fontSize: '0.8rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {getInitials(c.name)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text)' }}>
+                            👤 {c.name}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '1px' }}>
+                            {c.email || 'Counselor Team'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px',
+                          background: c.status === 'Available' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'Busy' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                          color: c.status === 'Available' ? '#059669' : c.status === 'Busy' ? '#d97706' : '#f43f5e',
+                          border: '1px solid currentColor',
+                        }}>
+                          {c.status || 'Active'}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>View ↵</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Navigation & Actions Group */}
+            {(searchFilter === 'all' || searchFilter === 'pages') && (
+              <div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', padding: '4px 8px 8px 8px' }}>
+                  Navigation & Modules
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {[
+                    { name: 'Dashboard', href: '/dashboard', icon: '📊', desc: 'Real-time metrics & intake telemetry' },
+                    { name: 'Walk-ins Directory', href: '/walkins', icon: '👥', desc: 'All registered student walk-ins' },
+                    { name: 'Live Queue', href: '/queue', icon: '📋', desc: 'Token-based waiting & counseling pipeline' },
+                    { name: 'Counseling Sessions', href: '/sessions', icon: '🎙️', desc: 'Active and past counseling discussions' },
+                    { name: 'Reports & Analytics', href: '/reports', icon: '📈', desc: 'Conversion metrics and pipeline reports' },
+                    { name: 'Webhooks Gateway', href: '/webhooks', icon: '⚡', desc: 'Real-time lead integration webhooks' },
+                    { name: 'System Settings', href: '/settings', icon: '⚙️', desc: 'Campus branches & team directory' },
+                    { name: 'My Profile', href: '/profile', icon: '👤', desc: 'Account security & personal details' },
+                  ]
+                    .filter((cmd) => {
+                      if (!searchQuery) return true;
+                      const q = searchQuery.toLowerCase();
+                      return cmd.name.toLowerCase().includes(q) || cmd.desc.toLowerCase().includes(q) || cmd.href.toLowerCase().includes(q);
+                    })
+                    .map((cmd) => (
+                      <button
+                        key={cmd.href}
+                        type="button"
+                        onClick={() => {
+                          setIsCommandPaletteOpen(false);
+                          router.push(cmd.href);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          border: '1px solid transparent',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease',
+                          width: '100%',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--surface-alt)';
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.borderColor = 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '1.1rem' }}>{cmd.icon}</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>{cmd.name}</div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '1px' }}>{cmd.desc}</div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>Jump to ↵</span>
+                      </button>
+                    ))}
+                </div>
+
+                {/* Quick Actions */}
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', padding: '4px 8px 8px 8px' }}>
+                    Quick Actions
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCommandPaletteOpen(false);
+                        router.push('/walkins');
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--surface-alt)';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '1.1rem' }}>➕</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>Register New Student Walk-in</div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '1px' }}>Open the student check-in intake dialog</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700 }}>&gt; new</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleTheme();
+                        setIsCommandPaletteOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--surface-alt)';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '1.1rem' }}>🌓</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>Toggle Dark / Light Theme</div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '1px' }}>Switch UI visual appearance mode</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>Theme</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty state when searching and no results */}
+            {searchQuery.trim().length > 0 && !isSearchingLive && liveStudents.length === 0 && liveCounselors.length === 0 && searchFilter !== 'pages' && (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)' }}>
+                <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>🔍</div>
+                <strong style={{ fontSize: '0.94rem', color: 'var(--text)' }}>No matching live records found</strong>
+                <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                  No students or counselors match "{searchQuery}". Try searching by student name, phone number, or course.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 18px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface-alt, rgba(255,255,255,0.02))',
+            fontSize: '0.72rem',
+            color: 'var(--muted)',
+            flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <span><kbd style={{ padding: '1px 5px', borderRadius: '4px', background: 'var(--surface)', border: '1px solid var(--border)' }}>↵</kbd> to open</span>
+              <span><kbd style={{ padding: '1px 5px', borderRadius: '4px', background: 'var(--surface)', border: '1px solid var(--border)' }}>ESC</kbd> to close</span>
             </div>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+              Live PostgreSQL Indexing
+            </span>
           </div>
         </div>
       </div>    </div>

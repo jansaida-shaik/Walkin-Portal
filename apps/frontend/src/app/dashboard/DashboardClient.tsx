@@ -1,6 +1,10 @@
 'use client';
 
+import TestRibbonTag, { isTestRecord } from '../../components/TestRibbonTag';
+
+
 import StatusBadge from '../../components/StatusBadge';
+import { formatPhoneNumber } from '../../lib/formatters';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
@@ -152,6 +156,7 @@ export default function DashboardClient({
   const inSessionStudents = walkins.filter(w => w.status === 'In Session');
   const completedStudents = walkins.filter(w => w.status === 'Completed');
   const availableCounselors = counselors.filter(c => (c.status || '').toLowerCase() === 'available');
+  const busyCounselors = counselors.filter(c => (c.status || '').toLowerCase() === 'busy' || (c.status || '').toLowerCase() === 'break');
   const offlineCounselors = counselors.filter(c => (c.status || '').toLowerCase() === 'offline');
 
   // Counselor assigned students
@@ -414,25 +419,100 @@ export default function DashboardClient({
           </span>
         </div>
 
-        {/* COUNSELORS ONLINE */}
+        {/* COUNSELORS TELEMETRY BAR - VIBRANT */}
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '6px 14px',
+          gap: '8px',
+          padding: '4px 8px 4px 12px',
           borderRadius: '9999px',
-          fontSize: '0.74rem',
-          fontWeight: 800,
-          letterSpacing: '0.04em',
-          border: '1.5px solid rgba(100, 116, 139, 0.3)',
-          background: 'rgba(100, 116, 139, 0.12)',
-          color: '#64748b',
+          border: '1.5px solid rgba(99, 102, 241, 0.28)',
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
           marginLeft: 'auto',
+          boxShadow: '0 4px 16px rgba(99, 102, 241, 0.1)',
         }}>
-          <span>COUNSELORS:</span>
-          <span style={{ color: 'var(--success)' }}>🟢 {availableCounselors.length} Available</span>
-          <span style={{ opacity: 0.4 }}>|</span>
-          <span style={{ color: '#94a3b8' }}>⚫ {offlineCounselors.length} Offline</span>
+          {/* Label with Gradient Text */}
+          <span style={{
+            fontSize: '0.7rem',
+            fontWeight: 900,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginRight: '2px',
+          }}>
+            Counselors
+          </span>
+
+          {/* Available Pill */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '3px 10px',
+            borderRadius: '9999px',
+            background: availableCounselors.length > 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.08)',
+            border: `1px solid ${availableCounselors.length > 0 ? 'rgba(16, 185, 129, 0.45)' : 'rgba(16, 185, 129, 0.2)'}`,
+            color: '#10b981',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#10b981',
+              boxShadow: '0 0 8px #10b981',
+              animation: availableCounselors.length > 0 ? 'pulseDot 1.4s infinite' : 'none',
+            }} />
+            <span>{availableCounselors.length}</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Available</span>
+          </div>
+
+          {/* Busy Pill (if any) */}
+          {busyCounselors.length > 0 && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 10px',
+              borderRadius: '9999px',
+              background: 'rgba(245, 158, 11, 0.18)',
+              border: '1px solid rgba(245, 158, 11, 0.45)',
+              color: '#f59e0b',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: '#f59e0b',
+                boxShadow: '0 0 8px #f59e0b',
+              }} />
+              <span>{busyCounselors.length}</span>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Busy</span>
+            </div>
+          )}
+
+          {/* Offline Pill - Vibrant Coral/Rose */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '3px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(244, 63, 94, 0.14)',
+            border: '1px solid rgba(244, 63, 94, 0.35)',
+            color: '#f43f5e',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#f43f5e',
+              boxShadow: '0 0 6px rgba(244, 63, 94, 0.5)',
+            }} />
+            <span>{offlineCounselors.length}</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Offline</span>
+          </div>
         </div>
       </div>
 
@@ -474,10 +554,14 @@ export default function DashboardClient({
                   </tr>
                 ) : (
                   activeQueue.map((w) => {
-                    const activeSession = w.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
-                    const counselorName = activeSession
-                      ? counselors.find(c => c.id === activeSession.counselorId)?.name || 'Unassigned'
-                      : 'Unassigned';
+                    const activeSession = w.sessions?.find(s => 
+                      s.status?.toUpperCase() === 'IN_SESSION' || 
+                      s.status?.toUpperCase() === 'ASSIGNED' ||
+                      s.status === 'In Session' ||
+                      s.status === 'Assigned'
+                    );
+                    const matchedCounselor = activeSession ? counselors.find(c => c.id === activeSession.counselorId || (c as any).user?.id === activeSession.counselorId) : null;
+                    const counselorName = matchedCounselor?.name || (matchedCounselor as any)?.user?.name || w.details?.counselorName || (activeSession ? 'Assigned Counselor' : 'Unassigned');
 
                     return (
                       <tr
@@ -498,21 +582,24 @@ export default function DashboardClient({
                               {getInitials(w.name)}
                             </div>
                             <div>
-                              <button
-                                type="button"
-                                onClick={() => openStudentDrawer(w)}
-                                style={{
-                                  background: 'none', border: 'none', padding: 0,
-                                  cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
-                                  color: 'var(--primary)', fontFamily: 'inherit', textAlign: 'left',
-                                }}
-                                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-                              >
-                                {w.name}
-                              </button>
-                              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                                {w.phone}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openStudentDrawer(w)}
+                                  style={{
+                                    background: 'none', border: 'none', padding: 0,
+                                    cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+                                    color: 'var(--primary)', fontFamily: 'inherit', textAlign: 'left',
+                                  }}
+                                  onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                                  onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                                >
+                                  {w.name}
+                                </button>
+                                
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                                {formatPhoneNumber(w.phone)}
                               </div>
                             </div>
                           </div>
@@ -586,7 +673,7 @@ export default function DashboardClient({
                       {c.name || (c as any).user?.name}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '2px' }}>
-                      {c.branchName || 'Main Campus'} • {c.departmentName || 'Sales'}
+                      {c.branchName || 'Main Campus'}
                     </div>
                   </div>
                   <div>

@@ -1,6 +1,8 @@
 'use client';
 
+import TestRibbonTag, { isTestRecord } from './TestRibbonTag';
 import StatusBadge from './StatusBadge';
+import { formatPhoneNumber } from '../lib/formatters';
 
 
 import { useState, useEffect, useRef } from 'react';
@@ -191,8 +193,11 @@ export default function StudentContextDrawer({
                     {getInitials(student.name)}
                   </div>
                   <div>
-                    <p className="drawer-name">{student.name}</p>
-                    <p className="drawer-meta">#{student.id.slice(-8).toUpperCase()}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <p className="drawer-name" style={{ margin: 0 }}>{student.name}</p>
+                      {isTestRecord(student) && <TestRibbonTag />}
+                    </div>
+                    <p className="drawer-meta" style={{ marginTop: '4px' }}>#{student.id.slice(-8).toUpperCase()}</p>
                   </div>
                 </div>
                 <button

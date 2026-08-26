@@ -448,3 +448,26 @@ select option {
   font-size: 0.88rem;
   padding: 10px;
 }
+/* Global Search Input Reset: Prevents browser inner rounded bubbles / decorations */
+.portal-search-bar input,
+.portal-search-bar input[type="text"],
+.portal-search-bar input[type="search"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.portal-search-bar input::-webkit-search-decoration,
+.portal-search-bar input::-webkit-search-cancel-button,
+.portal-search-bar input::-webkit-search-results-button,
+.portal-search-bar input::-webkit-search-results-decoration {
+  -webkit-appearance: none !important;
+  display: none !important;
+}

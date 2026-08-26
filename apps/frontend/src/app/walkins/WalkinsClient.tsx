@@ -1,9 +1,16 @@
 'use client';
 
+import SearchInput from '../../components/SearchInput';
+
+
+import TestRibbonTag, { isTestRecord } from '../../components/TestRibbonTag';
+
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
 import StatusBadge from '../../components/StatusBadge';
+import { formatPhoneNumber } from '../../lib/formatters';
 import InputField from '../../components/InputField';
 import CustomSelect from '../../components/CustomSelect';
 import StudentContextDrawer, { DrawerStudent } from '../../components/StudentContextDrawer';
@@ -600,29 +607,14 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
         }}
       >
         {/* Search */}
-        <div style={{ flex: '1 1 260px', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: '0 var(--space-3)' }}>
-          <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
+        <div style={{ flex: '1 1 260px' }}>
+          <SearchInput
             id="walkins-search"
-            type="search"
             placeholder="Search by name, ID, or phone…"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            aria-label="Search walk-ins"
-            style={{ border: 'none', background: 'transparent', width: '100%', fontSize: '0.875rem', color: 'var(--text)', outline: 'none', padding: 'var(--space-2) 0', fontFamily: 'var(--font-sans)' }}
+            onChange={setSearchQuery}
+            ariaLabel="Search walk-ins"
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
-            >
-              ✕
-            </button>
-          )}
         </div>
 
         {/* Status filter */}
@@ -686,26 +678,29 @@ export default function WalkinsClient({ initialWalkins, branches, counselors, us
                         }}>
                           {getInitials(w.name)}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => openDrawer(w)}
-                          style={{
-                            background: 'none', border: 'none', padding: 0,
-                            cursor: 'pointer', color: 'var(--primary)',
-                            fontWeight: 700, fontSize: '0.9rem', fontFamily: 'var(--font-sans)',
-                            transition: 'color var(--transition-fast)',
-                            textAlign: 'left',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
-                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--primary)')}
-                          aria-label={`View profile for ${w.name}`}
-                        >
-                          {w.name}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => openDrawer(w)}
+                            style={{
+                              background: 'none', border: 'none', padding: 0,
+                              cursor: 'pointer', color: 'var(--primary)',
+                              fontWeight: 700, fontSize: '0.9rem', fontFamily: 'var(--font-sans)',
+                              transition: 'color var(--transition-fast)',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--primary)')}
+                            aria-label={`View profile for ${w.name}`}
+                          >
+                            {w.name}
+                          </button>
+                          
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.84rem' }}>{w.phone}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.84rem' }}>{formatPhoneNumber(w.phone)}</span>
                     </td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                       title={w.email || ''}>

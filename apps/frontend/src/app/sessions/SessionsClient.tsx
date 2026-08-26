@@ -1,4 +1,10 @@
 'use client';
+
+import SearchInput from '../../components/SearchInput';
+
+
+import TestRibbonTag, { isTestRecord } from '../../components/TestRibbonTag';
+
 import CustomSelect from '../../components/CustomSelect';
 
 
@@ -697,44 +703,12 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
           flexWrap: 'wrap',
           alignItems: 'center',
         }}>
-          <div style={{
-            flex: '1 1 260px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'var(--surface-alt)',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            padding: '0 12px',
-          }}>
-            <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" width="15" height="15" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.3-4.3" />
-            </svg>
-            <input
-              type="search"
+          <div style={{ flex: '1 1 260px' }}>
+            <SearchInput
               placeholder="Search session by student name, phone, course..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                width: '100%',
-                fontSize: '0.86rem',
-                color: 'var(--text)',
-                outline: 'none',
-                padding: '8px 0',
-                fontFamily: 'inherit',
-              }}
+              onChange={setSearchQuery}
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 2 }}
-              >
-                ✕
-              </button>
-            )}
           </div>
 
           <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
@@ -749,9 +723,15 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
         {active.length > 0 ? (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px,1fr))', gap:20, alignItems:'start' }}>
             {active.map((student, idx) => {
-              const ses = student.sessions.find(s => s.status === 'ASSIGNED' || s.status === 'IN_SESSION');
-              const counselorName = counselors.find(c => c.id === ses?.counselorId)?.name || 'Unassigned';
-              const branchName    = student.branchName || counselors.find(c => c.id === ses?.counselorId)?.branchName || 'N/A';
+              const ses = student.sessions?.find(s => 
+                s.status?.toUpperCase() === 'IN_SESSION' || 
+                s.status?.toUpperCase() === 'ASSIGNED' ||
+                s.status === 'In Session' ||
+                s.status === 'Assigned'
+              );
+              const matchedCounselor = counselors.find(c => c.id === ses?.counselorId || (c as any).user?.id === ses?.counselorId);
+              const counselorName    = matchedCounselor?.name || (matchedCounselor as any)?.user?.name || student.details?.counselorName || (ses ? 'Assigned Counselor' : 'Unassigned');
+              const branchName       = student.branchName || matchedCounselor?.branchName || (matchedCounselor as any)?.user?.branchName || '1st Campus (JNTU-HYD)';
               const isInSes  = student.status === 'In Session';
               const isBusy   = loadingId === student.id && loading;
               const isDropOpen = openDropId === student.id;
@@ -773,10 +753,11 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
                     <div style={{ display:'flex', alignItems:'center', gap:12, flex:1, minWidth:0 }}>
                       <div className={`sc-av ${isInSes ? 'amber' : 'indigo'}`}>{getInitials(student.name)}</div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                           <div style={{ fontWeight:800, fontSize:'1.1rem', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             {student.name}
                           </div>
+                          
                           <button
                             type="button"
                             onClick={() => {

@@ -38,37 +38,28 @@ export interface Branch {
   departmentIds: string[];
 }
 
-export interface BranchPayload extends Branch {
-  locationName: string;
-  departmentNames: string[];
-}
-
 export const roles: Role[] = [
-  { id: 'role_super_admin', name: 'Super Admin', description: 'Full control of the system.' },
-  { id: 'role_admin', name: 'Admin', description: 'Full administrative access.' },
-  { id: 'role_manager', name: 'Manager', description: 'Reports, dashboards, and branch monitoring.' },
-  { id: 'role_frontdesk', name: 'Front Desk', description: 'Add walk-ins, assign counsellors, and manage queue.' },
-  { id: 'role_counselor', name: 'Counsellor', description: 'View assigned students, start/end sessions, and update status.' }
+  { id: 'role_superadmin', name: 'Super Admin', description: 'Full institutional access across all campuses.' },
+  { id: 'role_admin', name: 'Admin', description: 'Branch management and administrative operations.' },
+  { id: 'role_counselor', name: 'Counselor', description: 'Student counseling, intake handling, and sessions.' },
+  { id: 'role_frontdesk', name: 'Front Desk', description: 'Student walk-in reception and queue assignment.' },
 ];
 
 export const departments: Department[] = [
-  { id: 'dept_sales', name: 'Sales', description: 'Admissions counseling and student conversion.' },
-  { id: 'dept_development', name: 'Development', description: 'Product and software development.' },
-  { id: 'dept_frontdesk', name: 'Front Desk', description: 'Walk-in intake and reception operations.' },
-  { id: 'dept_administration', name: 'Administration', description: 'Administrative management and operations.' }
+  { id: 'dept_sales', name: 'Admissions & Counseling', description: 'Handles inquiries and admissions.' },
+  { id: 'dept_frontdesk', name: 'Reception & Front Desk', description: 'Handles token generation and check-in.' },
+  { id: 'dept_administration', name: 'Administration', description: 'Branch operations and oversight.' },
 ];
 
 export const modules: Module[] = [
-  { id: 'mod_appointments', name: 'Appointments', departmentId: 'dept_sales', description: 'Manage counselor appointments.' },
-  { id: 'mod_walkins', name: 'Walk-ins', departmentId: 'dept_frontdesk', description: 'Manage walk-in intake and queue flow.' },
-  { id: 'mod_admin', name: 'Administration', departmentId: 'dept_administration', description: 'Manage users, branches and operations.' },
-  { id: 'mod_development', name: 'Development', departmentId: 'dept_development', description: 'Manage development work and support.' }
+  { id: 'mod_counseling', name: 'Counseling', departmentId: 'dept_sales', description: 'Student guidance.' },
+  { id: 'mod_queue', name: 'Queue Management', departmentId: 'dept_frontdesk', description: 'Queue handling.' },
 ];
 
 export const locations: Location[] = [
   { id: 'loc_hyd', name: 'Hyderabad', address: 'Hyderabad, Telangana' },
+  { id: 'loc_vsp', name: 'Visakhapatnam', address: 'Visakhapatnam, Andhra Pradesh' },
   { id: 'loc_vij', name: 'Vijayawada', address: 'Vijayawada, Andhra Pradesh' },
-  { id: 'loc_vsp', name: 'Visakhapatnam', address: 'Visakhapatnam, Andhra Pradesh' }
 ];
 
 export const timings: Timing[] = [
@@ -84,66 +75,33 @@ export const branches: Branch[] = [
     id: 'branch_jntu1',
     name: '1st Campus (JNTU-HYD)',
     locationId: 'loc_hyd',
-    profile: 'Main campus at JNTU Hyderabad.',
-    departmentIds: ['dept_sales', 'dept_frontdesk']
-  },
-  {
-    id: 'branch_jntu2',
-    name: '2nd Campus (JNTU-HYD)',
-    locationId: 'loc_hyd',
-    profile: 'Second campus at JNTU Hyderabad.',
+    profile: '1st Main Campus at JNTU Hyderabad.',
     departmentIds: ['dept_sales', 'dept_frontdesk']
   },
   {
     id: 'branch_pista',
-    name: 'Pista House (JNTU-HYD)',
+    name: '3rd Campus (Pista House-HYD)',
     locationId: 'loc_hyd',
-    profile: 'Pista House branch near JNTU Hyderabad.',
-    departmentIds: ['dept_sales']
-  },
-  {
-    id: 'branch_jntu4',
-    name: '4th Campus (JNTU-HYD)',
-    locationId: 'loc_hyd',
-    profile: '4th campus at JNTU Hyderabad.',
+    profile: '3rd Campus near Pista House at JNTU Hyderabad.',
     departmentIds: ['dept_sales', 'dept_frontdesk']
   },
   {
-    id: 'branch_jntu5',
-    name: '5th Campus (JNTU-HYD)',
-    locationId: 'loc_hyd',
-    profile: '5th campus at JNTU Hyderabad.',
-    departmentIds: ['dept_sales']
-  },
-  {
-    id: 'branch_ameerpet',
-    name: 'Ameerpet (HYD)',
-    locationId: 'loc_hyd',
-    profile: 'Ameerpet branch in Hyderabad.',
+    id: 'branch_vsp1',
+    name: '1st Campus (Main-VSP)',
+    locationId: 'loc_vsp',
+    profile: '1st Main Campus in Visakhapatnam.',
     departmentIds: ['dept_sales', 'dept_frontdesk']
   },
   {
     id: 'branch_vij1',
     name: '1st Campus (Main-VIJ)',
     locationId: 'loc_vij',
-    profile: 'Main campus in Vijayawada.',
-    departmentIds: ['dept_sales', 'dept_frontdesk']
-  },
-  {
-    id: 'branch_vij4',
-    name: '4th Campus (Modern-VIJ)',
-    locationId: 'loc_vij',
-    profile: 'Modern campus in Vijayawada.',
-    departmentIds: ['dept_sales', 'dept_administration']
-  },
-  {
-    id: 'branch_vsp1',
-    name: '1st Campus (Main-VSP)',
-    locationId: 'loc_vsp',
-    profile: 'Main campus in Visakhapatnam.',
+    profile: '1st Main Campus in Vijayawada.',
     departmentIds: ['dept_sales', 'dept_frontdesk']
   }
 ];
+
+export const walkinBranches: Branch[] = branches;
 
 export const getRole = (roleId: string): string => roles.find((role) => role.id === roleId)?.name || 'Unknown';
 export const getDepartment = (departmentId: string): string => departments.find((dept) => dept.id === departmentId)?.name || 'Unknown';
@@ -193,81 +151,44 @@ export const COUNTRY_CODES: CountryCode[] = [
   { code: '+971', country: 'UAE', flag: '🇦🇪' },
   { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
   { code: '+65', country: 'Singapore', flag: '🇸🇬' },
-  { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
   { code: '+61', country: 'Australia', flag: '🇦🇺' },
-  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
   { code: '+49', country: 'Germany', flag: '🇩🇪' },
   { code: '+33', country: 'France', flag: '🇫🇷' },
-  { code: '+39', country: 'Italy', flag: '🇮🇹' },
-  { code: '+34', country: 'Spain', flag: '🇪🇸' },
-  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
-  { code: '+7', country: 'Russia', flag: '🇷🇺' },
-  { code: '+86', country: 'China', flag: '🇨🇳' },
   { code: '+81', country: 'Japan', flag: '🇯🇵' },
-  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
-  { code: '+92', country: 'Pakistan', flag: '🇵🇰' },
-  { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
-  { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
-  { code: '+977', country: 'Nepal', flag: '🇳🇵' },
-  { code: '+974', country: 'Qatar', flag: '🇶🇦' },
-  { code: '+973', country: 'Bahrain', flag: '🇧🇭' },
-  { code: '+968', country: 'Oman', flag: '🇴🇲' },
-  { code: '+962', country: 'Jordan', flag: '🇯🇴' },
-  { code: '+20', country: 'Egypt', flag: '🇪🇬' },
-  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
-  { code: '+55', country: 'Brazil', flag: '🇧🇷' },
-  { code: '+52', country: 'Mexico', flag: '🇲🇽' },
 ];
 
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
-
-// ─── Referral Channels ───────────────────────────────────────────────────
-export const KNOW_US_OPTIONS: { value: string; label: string }[] = [
-  { value: 'Google Search / Website', label: 'Google Search / Website' },
-  { value: 'Instagram', label: 'Instagram' },
-  { value: 'Facebook', label: 'Facebook' },
-  { value: 'YouTube', label: 'YouTube' },
-  { value: 'LinkedIn', label: 'LinkedIn' },
+export const KNOW_US_OPTIONS: SelectOption[] = [
+  { value: 'Google Search', label: 'Google Search' },
+  { value: 'Instagram / Social Media', label: 'Instagram / Social Media' },
   { value: 'Friend / Referral', label: 'Friend / Referral' },
-  { value: 'College / Campus Seminar', label: 'College / Campus Seminar' },
-  { value: 'Poster / Banner / Hoarding', label: 'Poster / Banner / Hoarding' },
-  { value: 'WhatsApp', label: 'WhatsApp' },
-  { value: 'Walk-by / Direct Campus Visit', label: 'Walk-by / Direct Campus Visit' },
+  { value: 'College Campus Placement', label: 'College Campus Placement' },
+  { value: 'YouTube', label: 'YouTube' },
+  { value: 'Banner / Hoarding', label: 'Banner / Hoarding' },
+  { value: 'Walk-in / Direct Visit', label: 'Walk-in / Direct Visit' },
   { value: 'Other', label: 'Other' },
 ];
 
-
-// ─── Passout Years ────────────────────────────────────────────────────────
-export const PASSOUT_YEAR_OPTIONS: { value: string; label: string }[] = [
-  { value: '2030', label: '2030' },
-  { value: '2029', label: '2029' },
-  { value: '2028', label: '2028' },
-  { value: '2027', label: '2027' },
-  { value: '2026', label: '2026' },
+export const PASSOUT_YEAR_OPTIONS: SelectOption[] = [
+  { value: '2026 (Pursuing)', label: '2026 (Pursuing)' },
   { value: '2025', label: '2025' },
   { value: '2024', label: '2024' },
   { value: '2023', label: '2023' },
   { value: '2022', label: '2022' },
   { value: '2021', label: '2021' },
-  { value: '2020', label: '2020' },
-  { value: '2019', label: '2019' },
-  { value: '2018', label: '2018' },
-  { value: '2017', label: '2017' },
-  { value: '2016', label: '2016' },
-  { value: '2015', label: '2015' },
-  { value: 'Before 2015', label: 'Before 2015' },
-  { value: 'Other', label: 'Other' },
+  { value: '2020 or earlier', label: '2020 or earlier' },
 ];
 
-// ─── Why this Course (Reasons) ───────────────────────────────────────────
-export const WHY_COURSE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'To Upskill', label: 'To Upskill' },
-  { value: 'Job Placement', label: 'Job Placement' },
-  { value: 'Career Switch', label: 'Career Switch' },
+export const WHY_COURSE_OPTIONS: SelectOption[] = [
+  { value: 'Career Switch to IT', label: 'Career Switch to IT' },
+  { value: 'Fresh Graduate Job Placement', label: 'Fresh Graduate Job Placement' },
+  { value: 'Skill Upgrade / Promotion', label: 'Skill Upgrade / Promotion' },
   { value: 'College Project / Academic Requirement', label: 'College Project / Academic Requirement' },
-  { value: 'Higher Studies Preparation', label: 'Higher Studies Preparation' },
-  { value: 'Certification / Industry Skills', label: 'Certification / Industry Skills' },
-  { value: 'Freelancing / Startup', label: 'Freelancing / Startup' },
-  { value: 'Personal Interest', label: 'Personal Interest' },
+  { value: 'Freelancing & Remote Work', label: 'Freelancing & Remote Work' },
+  { value: 'Personal Interest & Curiosity', label: 'Personal Interest & Curiosity' },
   { value: 'Other', label: 'Other' },
 ];
