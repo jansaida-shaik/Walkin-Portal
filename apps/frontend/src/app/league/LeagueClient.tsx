@@ -28,7 +28,7 @@ function getInitials(name: string): string {
 }
 
 export default function LeagueClient({ students, counselors, branches, user }: LeagueClientProps) {
-  const [activeTab, setActiveTab] = useState<'league' | 'clash' | 'counselors' | 'badges' | 'quests'>('league');
+  const [activeTab, setActiveTab] = useState<'badges' | 'points_table' | 'league' | 'clash' | 'counselors' | 'quests'>('badges');
   const [selectedMonth, setSelectedMonth] = useState<string>('August 2026');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('all');
@@ -139,7 +139,7 @@ export default function LeagueClient({ students, counselors, branches, user }: L
             </span>
           </h1>
           <p className="small-text" style={{ marginTop: '4px' }}>
-            Monthly admissions target progress, campus performance velocity, and counselor achievements.
+            Counselor points leaderboard, achievement badge crests, and campus championship targets.
           </p>
         </div>
 
@@ -225,7 +225,7 @@ export default function LeagueClient({ students, counselors, branches, user }: L
             88%
           </div>
           <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, marginTop: '2px' }}>
-            On track to exceed monthly intake quota
+            On track to exceed monthly quota
           </div>
         </div>
 
@@ -309,12 +309,12 @@ export default function LeagueClient({ students, counselors, branches, user }: L
             {counselorGamifications[0]?.name || 'Kranthi Kumar'}
           </div>
           <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, marginTop: '2px' }}>
-            Lvl {counselorGamifications[0]?.level || 5} • {counselorGamifications[0]?.xp || 1450} XP
+            Lvl {counselorGamifications[0]?.level || 5} • {counselorGamifications[0]?.xp || 1450} PTS
           </div>
         </div>
       </div>
 
-      {/* ─── Navigation Tabs & Filters Strip ─── */}
+      {/* ─── Navigation Tabs Strip ─── */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -327,10 +327,11 @@ export default function LeagueClient({ students, counselors, branches, user }: L
         {/* Tab Buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
+            { id: 'badges', label: '🎖️ Achievement Badges' },
+            { id: 'points_table', label: '📊 Counselors Points Table' },
             { id: 'league', label: '🏆 Campus Standings' },
-            { id: 'clash', label: '📊 Campus Comparison' },
+            { id: 'clash', label: '📈 Campus Comparison' },
             { id: 'counselors', label: '🌟 Counselor Roster' },
-            { id: 'badges', label: '🎖️ Monthly Trophies' },
             { id: 'quests', label: '🎯 Daily Quests' },
           ].map((tab) => (
             <button
@@ -358,48 +359,253 @@ export default function LeagueClient({ students, counselors, branches, user }: L
           ))}
         </div>
 
-        {/* Region Filter & Unified Search Input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {[
-              { id: 'all', label: 'All Campuses' },
-              { id: 'Hyderabad', label: 'Hyderabad' },
-              { id: 'Visakhapatnam', label: 'Visakhapatnam' },
-              { id: 'Vijayawada', label: 'Vijayawada' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setRegionFilter(t.id)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: regionFilter === t.id ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                  background: regionFilter === t.id ? 'var(--primary-glow, rgba(99,102,241,0.1))' : 'var(--surface)',
-                  color: regionFilter === t.id ? 'var(--primary)' : 'var(--muted)',
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ width: '240px' }}>
-            <SearchInput
-              placeholder="Search campus, counselor..."
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
-          </div>
+        {/* Search Input */}
+        <div style={{ width: '240px' }}>
+          <SearchInput
+            placeholder="Search badges, counselors..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════
-          TAB 1: CAMPUS STANDINGS & 3D PODIUM
+          TAB 1: YOUR 3D SHIELD CREST ACHIEVEMENT BADGES
+      ══════════════════════════════════════════════════════ */}
+      {activeTab === 'badges' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '18px',
+            padding: '24px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+          }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, margin: '0 0 4px 0', color: 'var(--text)' }}>
+              {selectedMonth} Achievement Badges &amp; Milestone Trophies
+            </h2>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '0 0 24px 0' }}>
+              Unlock special milestone medals by hitting monthly candidate conversion velocity and quality benchmarks.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
+              {currentUserGamification.badges.map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    background: 'var(--card-bg)',
+                    border: '1.5px solid var(--border)',
+                    borderRadius: '16px',
+                    padding: '20px 18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    position: 'relative',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {/* Status Pill Top Right */}
+                  <div style={{ position: 'absolute', top: '14px', right: '14px' }}>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 900,
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      background: b.isUnlocked ? '#dcfce7' : '#f1f5f9',
+                      color: b.isUnlocked ? '#15803d' : '#64748b',
+                      border: `1px solid ${b.isUnlocked ? '#86efac' : '#cbd5e1'}`,
+                      letterSpacing: '0.04em',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}>
+                      {b.isUnlocked ? 'UNLOCKED ✔' : 'LOCKED 🔒'}
+                    </span>
+                  </div>
+
+                  {/* 3D Shield Crest Center Top */}
+                  <div style={{ marginTop: '10px', marginBottom: '14px' }}>
+                    <BadgeCrest
+                      tier={b.tier}
+                      size={68}
+                      isUnlocked={b.isUnlocked}
+                      icon={b.icon}
+                    />
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '1.02rem', fontWeight: 800, color: 'var(--text)' }}>
+                    {b.name}
+                  </h3>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '0.76rem', color: 'var(--muted)', lineHeight: 1.45, maxWidth: '240px' }}>
+                    {b.description}
+                  </p>
+
+                  {/* Tier Mastery Meter at Bottom */}
+                  <div style={{ width: '100%', marginTop: 'auto', paddingTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '5px' }}>
+                      <span style={{ color: 'var(--muted)' }}>TIER MASTERY</span>
+                      <span style={{ color: b.isUnlocked ? '#10b981' : 'var(--primary)' }}>
+                        {b.progressPct || (b.isUnlocked ? 100 : 60)}%
+                      </span>
+                    </div>
+                    <div style={{ height: '5px', borderRadius: '9999px', background: 'var(--surface-alt, #f1f5f9)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${b.progressPct || (b.isUnlocked ? 100 : 60)}%`,
+                        background: b.isUnlocked ? '#10b981' : '#6366f1',
+                        borderRadius: '9999px',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          TAB 2: COUNSELORS POINTS TABLE
+      ══════════════════════════════════════════════════════ */}
+      {activeTab === 'points_table' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '18px',
+            padding: '24px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: 'var(--text)' }}>
+                  {selectedMonth} Counselors Performance &amp; Points Table
+                </h2>
+                <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '4px 0 0 0' }}>
+                  Live breakdown of student counseling volume, enrollment completions, conversion multipliers, and total championship points.
+                </p>
+              </div>
+
+              <div style={{
+                padding: '6px 14px', borderRadius: '8px',
+                background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)',
+                fontSize: '0.76rem', fontWeight: 800,
+              }}>
+                Formula: Intakes (+25) + Enrolled (+100) + Quality (+250) + Streak (+50)
+              </div>
+            </div>
+
+            <div className="table-wrapper">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '920px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Rank &amp; Counselor</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Campus Branch</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Total Intakes</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Completed</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Conversion %</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Active Streak</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Badges</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'right' }}>Total Points (PTS)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCounselors.map((cg, idx) => (
+                    <tr
+                      key={cg.id}
+                      style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s ease' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-alt)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {/* Rank & Counselor */}
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '26px', height: '26px', borderRadius: '50%',
+                            background: idx === 0 ? '#f59e0b' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--surface-alt)',
+                            color: idx <= 2 ? '#fff' : 'var(--muted)', fontWeight: 900, fontSize: '0.74rem',
+                          }}>
+                            #{idx + 1}
+                          </span>
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                            color: '#fff', fontWeight: 900, fontSize: '0.8rem',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {getInitials(cg.name)}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text)' }}>
+                              {cg.name}
+                            </div>
+                            <span style={{
+                              fontSize: '0.66rem', fontWeight: 800, color: cg.tierColor,
+                            }}>
+                              Lvl {cg.level} • {cg.tierName}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Campus Branch */}
+                      <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>
+                        {cg.branchName}
+                      </td>
+
+                      {/* Total Intakes */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
+                        {Math.max(cg.completedCount + 2, 4)}
+                      </td>
+
+                      {/* Completed */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
+                        {cg.completedCount}
+                      </td>
+
+                      {/* Conversion Rate */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
+                        {cg.conversionRate}%
+                      </td>
+
+                      {/* Streak */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#f59e0b' }}>
+                        🔥 {cg.streakDays}d
+                      </td>
+
+                      {/* Badges */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{
+                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 8px', borderRadius: '6px',
+                          background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)',
+                        }}>
+                          {cg.badges.filter(b => b.isUnlocked).length} 🎖️
+                        </span>
+                      </td>
+
+                      {/* Total Points */}
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <span style={{
+                          fontSize: '1rem', fontWeight: 900, color: 'var(--primary)', fontFamily: 'var(--font-mono)',
+                        }}>
+                          {cg.xp} PTS
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          TAB 3: CAMPUS STANDINGS & 3D PODIUM
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'league' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -621,7 +827,7 @@ export default function LeagueClient({ students, counselors, branches, user }: L
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TAB 2: EXECUTIVE CAMPUS COMPARISON MATRIX
+          TAB 4: CAMPUS COMPARISON MATRIX
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'clash' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -644,7 +850,6 @@ export default function LeagueClient({ students, counselors, branches, user }: L
 
               {/* Selectors */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                {/* Campus A Select */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label htmlFor="campus-a-select" style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--muted)' }}>Campus A:</label>
                   <select
@@ -670,7 +875,6 @@ export default function LeagueClient({ students, counselors, branches, user }: L
 
                 <span style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--muted)' }}>VS</span>
 
-                {/* Campus B Select */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label htmlFor="campus-b-select" style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--muted)' }}>Campus B:</label>
                   <select
@@ -730,7 +934,6 @@ export default function LeagueClient({ students, counselors, branches, user }: L
                   </div>
                 </div>
 
-                {/* Metrics Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Total Footfalls</span>
@@ -778,7 +981,6 @@ export default function LeagueClient({ students, counselors, branches, user }: L
                   </div>
                 </div>
 
-                {/* Metrics Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Total Footfalls</span>
@@ -796,42 +998,12 @@ export default function LeagueClient({ students, counselors, branches, user }: L
               </div>
 
             </div>
-
-            {/* Proportional Metric Progress Comparison */}
-            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { label: 'Walk-in Intake Volume', valA: selectedCampusA.intakeCount, valB: selectedCampusB.intakeCount, unit: 'students' },
-                { label: 'Conversion Rate', valA: selectedCampusA.conversionRate, valB: selectedCampusB.conversionRate, unit: '%' },
-                { label: 'Winning Streak', valA: selectedCampusA.winStreak, valB: selectedCampusB.winStreak, unit: 'days' },
-              ].map((m) => {
-                const total = (m.valA + m.valB) || 1;
-                const pctA = Math.round((m.valA / total) * 100);
-                const pctB = 100 - pctA;
-                return (
-                  <div key={m.label} style={{ background: 'var(--surface)', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 800, marginBottom: '6px' }}>
-                      <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
-                        {selectedCampusA.name}: {m.valA} {m.unit} ({pctA}%)
-                      </span>
-                      <span style={{ color: 'var(--text)' }}>{m.label}</span>
-                      <span style={{ color: '#a855f7', fontFamily: 'var(--font-mono)' }}>
-                        {selectedCampusB.name}: {m.valB} {m.unit} ({pctB}%)
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', height: '8px', borderRadius: '9999px', overflow: 'hidden', background: 'var(--surface-alt)' }}>
-                      <div style={{ width: `${pctA}%`, background: 'var(--primary)', transition: 'width 0.4s ease' }} />
-                      <div style={{ width: `${pctB}%`, background: '#a855f7', transition: 'width 0.4s ease' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TAB 3: COUNSELOR MVP ARENA
+          TAB 5: COUNSELOR ROSTER
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'counselors' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -843,7 +1015,7 @@ export default function LeagueClient({ students, counselors, branches, user }: L
             boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
           }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 16px 0', color: 'var(--text)' }}>
-              {selectedMonth} Counselor Target &amp; Leaderboard
+              {selectedMonth} Counselor Roster
             </h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '16px' }}>
@@ -859,14 +1031,6 @@ export default function LeagueClient({ students, counselors, branches, user }: L
                     flexDirection: 'column',
                     gap: '12px',
                     transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border)';
-                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -935,104 +1099,7 @@ export default function LeagueClient({ students, counselors, branches, user }: L
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TAB 4: TROPHY & BADGE CABINET
-      ══════════════════════════════════════════════════════ */}
-      {activeTab === 'badges' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{
-            background: 'var(--card-bg)',
-            border: '1.5px solid var(--border)',
-            borderRadius: '18px',
-            padding: '24px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
-          }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text)' }}>
-              {selectedMonth} Achievement Badges &amp; Milestone Trophies
-            </h2>
-            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '0 0 20px 0' }}>
-              Unlock special milestone medals by hitting monthly candidate conversion velocity and quality benchmarks.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-              {currentUserGamification.badges.map((b) => (
-                <div
-                  key={b.id}
-                  style={{
-                    background: b.isUnlocked ? 'linear-gradient(180deg, var(--surface-alt) 0%, var(--card-bg) 100%)' : 'rgba(255,255,255,0.01)',
-                    border: `1.5px solid ${b.isUnlocked ? 'var(--border)' : 'var(--border)'}`,
-                    borderRadius: '16px',
-                    padding: '22px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    gap: '14px',
-                    position: 'relative',
-                    boxShadow: b.isUnlocked ? '0 4px 20px rgba(0,0,0,0.04)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {/* Status Pill on Top-Right */}
-                  <span style={{
-                    position: 'absolute',
-                    top: '12px',
-                    right: '12px',
-                    fontSize: '0.62rem',
-                    fontWeight: 900,
-                    padding: '2px 8px',
-                    borderRadius: '9999px',
-                    background: b.isUnlocked ? 'rgba(16, 185, 129, 0.15)' : 'var(--surface)',
-                    color: b.isUnlocked ? '#10b981' : 'var(--muted)',
-                    border: `1px solid ${b.isUnlocked ? 'rgba(16, 185, 129, 0.3)' : 'var(--border)'}`,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}>
-                    {b.isUnlocked ? 'Unlocked ✅' : 'Locked 🔒'}
-                  </span>
-
-                  {/* 3D Crest Badge */}
-                  <div style={{ marginTop: '6px' }}>
-                    <BadgeCrest
-                      tier={b.tier || 'gold'}
-                      size={76}
-                      isUnlocked={b.isUnlocked}
-                      icon={b.icon}
-                    />
-                  </div>
-
-                  <div>
-                    <h3 style={{ margin: '4px 0 3px 0', fontSize: '1.02rem', fontWeight: 900, color: 'var(--text)' }}>
-                      {b.name}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.45, maxWidth: '240px' }}>
-                      {b.description}
-                    </p>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div style={{ width: '100%', marginTop: 'auto', paddingTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: 800, marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--muted)', textTransform: 'uppercase', fontSize: '0.65rem' }}>Tier Mastery</span>
-                      <span style={{ color: b.isUnlocked ? '#10b981' : 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{b.progressPct}%</span>
-                    </div>
-                    <div style={{ height: '6px', borderRadius: '9999px', background: 'var(--surface)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${b.progressPct}%`,
-                        background: b.isUnlocked ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #6366f1, #a855f7)',
-                        borderRadius: '9999px',
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════
-          TAB 5: DAILY QUESTS
+          TAB 6: DAILY QUESTS
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'quests' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

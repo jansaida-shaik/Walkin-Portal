@@ -12,7 +12,7 @@ import { SessionUser } from '../../lib/auth';
 import { formatPhoneNumber } from '../../lib/formatters';
 import StudentContextDrawer, { DrawerStudent } from '../../components/StudentContextDrawer';
 import CustomSelect from '../../components/CustomSelect';
-import { updateStudentDetails } from '../../actions/walkinActions';
+import { updateStudentDetails, mergeWalkinsIntoGroup } from '../../actions/walkinActions';
 
 interface Branch {
   id: string;
@@ -79,6 +79,10 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showMergeModal, setShowMergeModal] = useState<boolean>(false);
+  const [groupNameInput, setGroupNameInput] = useState<string>('');
+  const [merging, setMerging] = useState<boolean>(false);
 
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -93,6 +97,40 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
     }, 30000);
     return () => clearInterval(interval);
   }, [router]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === waitingQueue.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(waitingQueue.map(w => w.id));
+    }
+  };
+
+  const handleMergeSubmit = async () => {
+    if (selectedIds.length < 2) {
+      setMessage('Please select at least 2 candidates to merge into a group walk-in.');
+      return;
+    }
+    setMerging(true);
+    const res = await mergeWalkinsIntoGroup(selectedIds, groupNameInput.trim() || undefined);
+    if (res.success) {
+      setMessage(`✅ Successfully merged ${res.count} candidates into a Group Walk-in!`);
+      setSelectedIds([]);
+      setShowMergeModal(false);
+      setGroupNameInput('');
+      router.refresh();
+      window.location.reload();
+    } else {
+      setMessage(res.error || 'Failed to merge walk-ins.');
+    }
+    setMerging(false);
+  };
 
   const openDrawer = useCallback((student: Student) => {
     setDrawerStudent(student as DrawerStudent);
@@ -468,6 +506,15 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
           <table style={{ minWidth: '950px', borderCollapse: 'collapse', width: '100%' }} aria-label="Waiting Queue">
             <thead>
               <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
+                <th style={{ padding: '12px 16px', width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={waitingQueue.length > 0 && selectedIds.length === waitingQueue.length}
+                    onChange={handleSelectAll}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                    aria-label="Select all students in queue"
+                  />
+                </th>
                 <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', width: '70px', textAlign: 'center' }}>Token</th>
                 <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Student</th>
                 <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>Course</th>
@@ -510,6 +557,17 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt, rgba(255,255,255,0.02))')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
+                      {/* Multi-Select Checkbox */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(w.id)}
+                          onChange={() => handleToggleSelect(w.id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                          aria-label={`Select ${w.name} for group merge`}
+                        />
+                      </td>
+
                       {/* Token / Position */}
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{
@@ -560,6 +618,34 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
                               <span style={{ fontFamily: 'var(--font-mono)' }}>{formatPhoneNumber(w.phone)}</span>
                               <span>•</span>
                               <span style={{ fontFamily: 'var(--font-mono)' }}>#{w.id.slice(-6).toUpperCase()}</span>
+                              {w.details?.walkinType === 'group' && (
+                                <span style={{
+                                  fontSize: '0.66rem',
+                                  fontWeight: 800,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: 'rgba(99, 102, 241, 0.15)',
+                                  color: 'var(--primary)',
+                                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                                }}>
+                                  👥 Group ({w.details?.groupSize || 2})
+                                </span>
+                              )}
+                              {w.details?.parentAccompanied && w.details?.parentAccompanied !== 'solo' && (
+                                <span style={{
+                                  fontSize: '0.66rem',
+                                  fontWeight: 800,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                }}>
+                                  {w.details?.parentAccompanied === 'both' ? '👨‍👩‍👦 Parents Present' :
+                                   w.details?.parentAccompanied === 'father' ? '👨 Father' :
+                                   w.details?.parentAccompanied === 'mother' ? '👩 Mother' : '👥 Guardian'}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -719,6 +805,208 @@ export default function QueueClient({ initialWalkins, branches, counselors, user
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
+      {/* ── Floating Merge Group Bar (When 2+ Candidates Selected) ── */}
+      {selectedIds.length >= 2 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: 'var(--card-bg, #111827)',
+          border: '2px solid var(--primary)',
+          borderRadius: '16px',
+          padding: '12px 24px',
+          boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          backdropFilter: 'blur(12px)',
+          animation: 'slideUp 0.25s ease-out',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.2rem' }}>👥</span>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text)' }}>
+                {selectedIds.length} Walk-in Candidates Selected
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                Merge friends / batchmates into a single group session
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '7px 12px',
+                color: 'var(--muted)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMergeModal(true)}
+              style={{
+                background: 'linear-gradient(135deg, var(--primary), #818cf8)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 18px',
+                color: '#fff',
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(99, 102, 241, 0.35)',
+              }}
+            >
+              Merge into Group Walk-in 👥
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Merge Walk-ins Modal ── */}
+      {showMergeModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 11000,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--card-bg, #111827)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            padding: '24px',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>👥</span> Merge into Group Walk-in
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowMergeModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: 0 }}>
+              The selected candidates will be linked together into a single counseling session so they can be guided at the same time by the same counselor.
+            </p>
+
+            {/* Selected Candidates List */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '12px',
+              maxHeight: '180px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>
+                Selected Candidates ({selectedIds.length})
+              </span>
+              {walkins.filter(w => selectedIds.includes(w.id)).map(s => (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text)' }}>👤 {s.name}</span>
+                  <span style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>{s.course}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Optional Group Title */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
+                Group Label / Batch Name (Optional)
+              </label>
+              <input
+                type="text"
+                value={groupNameInput}
+                onChange={e => setGroupNameInput(e.target.value)}
+                placeholder="e.g. SRM College Friends / Java Batch"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: '0.86rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setShowMergeModal(false)}
+                disabled={merging}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleMergeSubmit}
+                disabled={merging}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, var(--primary), #818cf8)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 10px rgba(99, 102, 241, 0.35)',
+                }}
+              >
+                {merging ? 'Merging Candidates…' : 'Confirm Group Merge 👥'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

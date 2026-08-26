@@ -46,6 +46,10 @@ export async function createWalkin(state: any, formData: FormData) {
   const branchId    = formData.get('branchId') as string;
   const remarks     = formData.get('remarks') as string || '';
   const source      = formData.get('source') as string || 'Walk-in';
+  const walkinType  = (formData.get('walkinType') as string) || 'single';
+  const parentAccompanied = (formData.get('parentAccompanied') as string) || 'solo';
+  const parentName  = (formData.get('parentName') as string) || '';
+  const parentPhone = (formData.get('parentPhone') as string) || '';
 
   if (!studentName || !phone || !branchId || !course) return { error: 'Name, phone, branch, and course are required.' };
   if (!email) return { error: 'Email address is required.' };
@@ -74,7 +78,7 @@ export async function createWalkin(state: any, formData: FormData) {
     const assignedTime = counselor ? 'TBD' : 'Waitlist';
 
     const result = await prisma.$transaction(async (tx: any) => {
-      const student = await tx.student.create({ data: { name: studentName, phone, email: email || null, course, branchId, branchName, status, remarks: remarks || '', source: source || 'Walk-in API', details: { branchId, branchName, email } } });
+      const student = await tx.student.create({ data: { name: studentName, phone, email: email || null, course, branchId, branchName, status, remarks: remarks || '', source: source || 'Walk-in API', details: { branchId, branchName, email, walkinType, parentAccompanied, parentName, parentPhone } } });
       const maxPosition = await tx.queueEntry.aggregate({ where: { student: { branchId }, status: 'active' }, _max: { position: true } });
       const nextPos = (maxPosition._max.position || 100) + 1;
       const queueEntry = await tx.queueEntry.create({ data: { id: String(nextPos), studentId: student.id, position: nextPos, status: 'active' } });
@@ -179,5 +183,46 @@ export async function saveSessionNotes(studentId: string, notes: string, followU
     return { success: true, session: data.session };
   } catch (err: any) {
     return { error: err.message || 'Failed to save session notes.' };
+  }
+}
+
+
+export async function mergeWalkinsIntoGroup(studentIds: string[], groupName?: string) {
+  try {
+    if (!studentIds || studentIds.length < 2) {
+      return { error: 'At least 2 walk-in candidates are required to create a group walk-in.' };
+    }
+    const groupId = `grp_${Date.now()}`;
+    const students = await prisma.student.findMany({
+      where: { id: { in: studentIds } },
+    });
+    if (students.length < 2) {
+      return { error: 'Selected students were not found.' };
+    }
+    const names = students.map(s => s.name).join(', ');
+    const autoGroupName = groupName || `Group of ${students.length} (${names})`;
+
+    await prisma.$transaction(async (tx: any) => {
+      for (const st of students) {
+        const existingDetails = (st.details as any) || {};
+        await tx.student.update({
+          where: { id: st.id },
+          data: {
+            details: {
+              ...existingDetails,
+              walkinType: 'group',
+              groupId,
+              groupName: autoGroupName,
+              groupMembers: students.map(s => ({ id: s.id, name: s.name, phone: s.phone })),
+              groupSize: students.length,
+            },
+          },
+        });
+      }
+    });
+
+    return { success: true, groupId, groupName: autoGroupName, count: students.length };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to merge walk-ins into a group.' };
   }
 }

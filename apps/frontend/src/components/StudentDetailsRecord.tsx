@@ -91,6 +91,19 @@ function toDateInputValue(raw: string): string {
   return '';
 }
 
+const PARENT_ACCOMPANIED_OPTIONS = [
+  { value: 'solo', label: '👤 Solo Student (No Parent)' },
+  { value: 'both', label: '👨‍👩‍👦 Both Parents Present' },
+  { value: 'father', label: '👨 Father Accompanied' },
+  { value: 'mother', label: '👩 Mother Accompanied' },
+  { value: 'guardian', label: '👥 Guardian / Sibling Present' },
+];
+
+const WALKIN_TYPE_OPTIONS = [
+  { value: 'single', label: '👤 Single Student Walk-in' },
+  { value: 'group', label: '👥 Group Walk-in (Batchmates / Friends)' },
+];
+
 const GENDER_OPTIONS = [
   { value: '', label: '' },
   { value: 'Male', label: 'Male' },
@@ -446,6 +459,9 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
     added_time: getDetailValue(student.details, ['added_time', 'Added Time']),
     added_email_id: getDetailValue(student.details, ['added_email_id', 'Added Email ID']),
     ip: getDetailValue(student.details, ['ip', 'IP Address']),
+    walkinType: getDetailValue(student.details, ['walkinType', 'Walk-in Type'], 'single'),
+    parentAccompanied: getDetailValue(student.details, ['parentAccompanied', 'Parent Accompanied'], 'solo'),
+    parentName: getDetailValue(student.details, ['parentName', 'Parent Name', 'Father Name', 'Mother Name']),
   });
 
   const [formData, setFormData] = useState(buildForm);
@@ -509,6 +525,12 @@ export default function StudentDetailsRecord({ student, counselors = [], onClose
         'Added Time': formData.added_time, added_time: formData.added_time,
         'Added Email ID': formData.added_email_id, added_email_id: formData.added_email_id,
         'IP Address': formData.ip, ip: formData.ip,
+        walkinType: formData.walkinType,
+        'Walk-in Type': formData.walkinType,
+        parentAccompanied: formData.parentAccompanied,
+        'Parent Accompanied': formData.parentAccompanied,
+        parentName: formData.parentName,
+        'Parent Name': formData.parentName,
         branchId: formData.branchId,
         branchName: resolvedBranchName,
       },

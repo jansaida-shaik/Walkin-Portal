@@ -45,6 +45,8 @@ export default function WalkinForm() {
     email: '',
     branchId: '',
     course: '',
+    walkinType: 'single',
+    parentAccompanied: 'solo',
     source: 'Walk-in Form',
     remarks: '',
   });
@@ -76,6 +78,8 @@ export default function WalkinForm() {
     formData.append('email', form.email);
     formData.append('branchId', form.branchId);
     formData.append('course', form.course);
+    formData.append('walkinType', form.walkinType);
+    formData.append('parentAccompanied', form.parentAccompanied);
     formData.append('source', form.source);
     formData.append('remarks', form.remarks || 'Self registered via walk-in form.');
 
@@ -92,7 +96,8 @@ export default function WalkinForm() {
       setResult(res);
       setForm({
         studentName: '', countryCode: '+91', phone: '', email: '',
-        branchId: '', course: '', source: 'Walk-in Form', remarks: '',
+        branchId: '', course: '', walkinType: 'single', parentAccompanied: 'solo',
+        source: 'Walk-in Form', remarks: '',
       });
     }
     setLoading(false);
@@ -258,6 +263,40 @@ export default function WalkinForm() {
                 <option key={b.id} value={b.id} style={{ background: '#1a1b2e' }}>{b.name}</option>
               ))}
             </select>
+          </div>
+
+                    {/* Walk-in Type & Parent Attendance */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <label style={labelStyle}>Walk-in Type</label>
+              <select
+                value={form.walkinType}
+                onChange={e => setForm({ ...form, walkinType: e.target.value })}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                onFocus={focusIn}
+                onBlur={focusOut}
+              >
+                <option value="single" style={{ background: '#1a1b2e' }}>👤 Single Student Walk-in</option>
+                <option value="group" style={{ background: '#1a1b2e' }}>👥 Group Walk-in (Friends / Batchmates)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Parent Accompanied?</label>
+              <select
+                value={form.parentAccompanied}
+                onChange={e => setForm({ ...form, parentAccompanied: e.target.value })}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                onFocus={focusIn}
+                onBlur={focusOut}
+              >
+                <option value="solo" style={{ background: '#1a1b2e' }}>👤 Solo Student (No Parent)</option>
+                <option value="both" style={{ background: '#1a1b2e' }}>👨‍👩‍👦 Both Parents Present</option>
+                <option value="father" style={{ background: '#1a1b2e' }}>👨 Father Accompanied</option>
+                <option value="mother" style={{ background: '#1a1b2e' }}>👩 Mother Accompanied</option>
+                <option value="guardian" style={{ background: '#1a1b2e' }}>👥 Guardian / Sibling Present</option>
+              </select>
+            </div>
           </div>
 
           {/* Course */}
