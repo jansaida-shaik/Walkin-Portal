@@ -51,6 +51,8 @@ model CounselorProfile {
 
   sessions          CounselingSession[] @relation("CounselorSessions")
   convertedLeads    ConvertedLead[] @relation("CounselorConvertedLeads")
+  attendances       CounselorAttendance[] @relation("CounselorAttendances")
+  breaks            CounselorBreak[] @relation("CounselorBreaks")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @default(now()) @updatedAt
   deletedAt         DateTime?
@@ -267,4 +269,50 @@ model ConvertedLead {
   @@index([counselorId])
   @@index([enrollmentDate])
   @@index([status])
+}
+
+
+// 13. Counselor Attendance & Daily Shift Logs
+model CounselorAttendance {
+  id                    String            @id @default(cuid())
+  counselorId           String
+  counselor             CounselorProfile  @relation("CounselorAttendances", fields: [counselorId], references: [id], onDelete: Cascade)
+  date                  String            // YYYY-MM-DD
+  clockIn               DateTime          @default(now())
+  clockOut              DateTime?
+  status                String            @default("CLOCKED_IN") // CLOCKED_IN, ON_BREAK, IN_SESSION, BUFFER, CLOCKED_OUT
+  totalWorkMinutes      Int               @default(0)
+  totalBreakMinutes     Int               @default(0)
+  totalSessionMinutes   Int               @default(0)
+  totalBufferMinutes    Int               @default(0)
+  totalAvailableMinutes Int               @default(0)
+  notes                 String?           @db.Text
+  breaks                CounselorBreak[]  @relation("AttendanceBreaks")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  deletedAt             DateTime?
+
+  @@unique([counselorId, date])
+  @@index([counselorId, date, status])
+  @@index([date, status])
+}
+
+// 14. Counselor Break & Buffer Intervals
+model CounselorBreak {
+  id              String               @id @default(cuid())
+  attendanceId    String
+  attendance      CounselorAttendance  @relation("AttendanceBreaks", fields: [attendanceId], references: [id], onDelete: Cascade)
+  counselorId     String
+  counselor       CounselorProfile     @relation("CounselorBreaks", fields: [counselorId], references: [id], onDelete: Cascade)
+  breakType       String               // Lunch, Tea Break, Personal, Meeting, SessionBuffer
+  startTime       DateTime             @default(now())
+  endTime         DateTime?
+  durationMinutes Int?                 @default(0)
+  reason          String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  deletedAt       DateTime?
+
+  @@index([attendanceId, counselorId, breakType])
+  @@index([startTime, endTime])
 }

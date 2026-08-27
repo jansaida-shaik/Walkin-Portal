@@ -353,44 +353,68 @@ router.put('/counselors/:id', async (req: Request, res: Response) => {
     const patch = req.body;
 
     const updated = await prisma.$transaction(async (tx) => {
-      const profile = await tx.counselorProfile.findUnique({ where: { id: counselorId } });
+      const profile = await tx.counselorProfile.findUnique({ where: { id: counselorId }, include: { user: true } });
       if (!profile) throw new Error('Counselor not found.');
 
-      const userPatch: any = {};
-      if (patch.branchId) userPatch.branchId = patch.branchId;
-      if (patch.locationId || patch.location) {
-        const loc = patch.locationId || patch.location;
-        userPatch.locationId = loc === 'Vijayawada' ? 'loc_vij' : (loc === 'Visakhapatnam' ? 'loc_vsp' : 'loc_hyd');
-      }
-
-      if (Object.keys(userPatch).length > 0) {
-        await tx.user.update({
-          where: { id: counselorId },
-          data: userPatch
-        });
-      }
-
       const profilePatch: any = {};
-      if (patch.status) {
+      if (patch.name !== undefined) profilePatch.name = patch.name;
+      if (patch.email !== undefined) profilePatch.email = patch.email;
+      if (patch.phone !== undefined) profilePatch.phone = patch.phone;
+      if (patch.branchId !== undefined) {
+        profilePatch.branchId = patch.branchId;
+        profilePatch.branchName = patch.branchName || getBranchName(patch.branchId);
+      }
+      if (patch.branchName !== undefined) profilePatch.branchName = patch.branchName;
+      if (patch.location !== undefined || patch.locationId !== undefined) {
+        const loc = patch.location || patch.locationId;
+        profilePatch.location = loc === 'loc_vij' ? 'Vijayawada' : (loc === 'loc_vsp' ? 'Visakhapatnam' : (loc === 'loc_hyd' ? 'Hyderabad' : loc));
+      }
+      if (patch.departmentId !== undefined) {
+        profilePatch.departmentId = patch.departmentId;
+        profilePatch.departmentName = patch.departmentName || getDepartment(patch.departmentId);
+      }
+      if (patch.departmentName !== undefined) profilePatch.departmentName = patch.departmentName;
+      if (patch.roleId !== undefined) profilePatch.roleId = patch.roleId;
+
+      if (patch.status !== undefined) {
         const mapStatus = (s: string): string => {
-          const low = s.toLowerCase();
+          const low = (s || '').toLowerCase();
           if (low === 'available') return 'Available';
-          if (low === 'busy') return 'Busy';
+          if (low === 'busy' || low === 'in session' || low === 'in_session') return 'Busy';
           if (low === 'offline' || low === 'unavailable') return 'Offline';
           if (low === 'break' || low === 'on_leave') return 'Break';
           return 'Available';
         };
         profilePatch.status = mapStatus(patch.status);
       }
-      if (patch.availability) {
-        profilePatch.availability = patch.availability;
+      if (patch.availability !== undefined) {
+        profilePatch.availability = Array.isArray(patch.availability) ? patch.availability : [patch.availability];
       }
 
-      if (Object.keys(profilePatch).length > 0) {
-        await tx.counselorProfile.update({
-          where: { id: counselorId },
-          data: profilePatch
-        });
+      await tx.counselorProfile.update({
+        where: { id: counselorId },
+        data: profilePatch
+      });
+
+      // If linked to a User account, sync User record
+      if (profile.userId) {
+        const userPatch: any = {};
+        if (patch.name !== undefined) userPatch.name = patch.name;
+        if (patch.email !== undefined) userPatch.email = patch.email;
+        if (patch.branchId !== undefined) userPatch.branchId = patch.branchId;
+        if (patch.location !== undefined || patch.locationId !== undefined) {
+          const loc = patch.location || patch.locationId;
+          userPatch.locationId = loc === 'Vijayawada' ? 'loc_vij' : (loc === 'Visakhapatnam' ? 'loc_vsp' : 'loc_hyd');
+        }
+        if (patch.departmentId !== undefined) userPatch.departmentId = patch.departmentId;
+        if (patch.roleId !== undefined) userPatch.roleId = patch.roleId;
+
+        if (Object.keys(userPatch).length > 0) {
+          await tx.user.update({
+            where: { id: profile.userId },
+            data: userPatch
+          });
+        }
       }
 
       return await tx.counselorProfile.findUnique({
@@ -399,19 +423,34 @@ router.put('/counselors/:id', async (req: Request, res: Response) => {
       });
     });
 
+    await prisma.auditLog.create({
+      data: {
+        action: 'UPDATE_COUNSELOR',
+        module: 'Counselors',
+        newValue: `Updated counselor ID ${counselorId} with values: ${JSON.stringify(patch)}`
+      }
+    });
+
+    await triggerWebhook('Counselor Updated', { counselorId, counselor: updated });
+
     res.json({
       success: true,
       counselor: {
         id: updated!.id,
-        name: updated!.user.name,
-        branchId: updated!.user.branchId,
-        branchName: getBranchName(updated!.user.branchId),
-        location: updated!.user.locationId,
+        name: updated!.name || updated!.user?.name || 'Counselor',
+        email: updated!.email || updated!.user?.email || '',
+        branchId: updated!.branchId,
+        branchName: updated!.branchName || getBranchName(updated!.branchId),
+        location: updated!.location,
+        departmentId: updated!.departmentId,
+        departmentName: updated!.departmentName,
+        roleId: updated!.roleId,
         status: updated!.status,
-        availability: updated!.availability
+        availability: updated!.availability,
       }
     });
   } catch (err: any) {
+    console.error('Update counselor error:', err);
     res.status(500).json({ error: err.message || 'Failed to update counselor details.' });
   }
 });
@@ -876,52 +915,40 @@ router.post('/sessions/end', async (req: Request, res: Response): Promise<any> =
         data: { status: 'completed' }
       });
 
+      // 5-Minute Post-Session Buffer Initiation
       const profile = await tx.counselorProfile.update({
         where: { id: session.counselorId },
         data: {
           assignedStudentId: null,
-          status: 'Available'
+          status: 'Busy' // In 5-min post-session buffer
         },
         include: { user: true }
       });
 
-      let nextSession = null;
-      let nextStudent = null;
-      
-      const nextQueue = await tx.queueEntry.findFirst({
-        where: {
-          student: {
-            branchId: profile.user.branchId,
-            status: 'Waiting'
-          },
-          status: 'active'
-        },
-        include: { student: true },
-        orderBy: { position: 'asc' }
+      // Log 5-min buffer in attendance
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayAtt = await tx.counselorAttendance.findUnique({
+        where: { counselorId_date: { counselorId: session.counselorId, date: todayStr } }
       });
-
-      if (nextQueue) {
-        nextStudent = nextQueue.student;
-        
-        await tx.counselorProfile.update({
-          where: { id: profile.id },
-          data: { assignedStudentId: nextStudent.id }
-        });
-
-        await tx.student.update({
-          where: { id: nextStudent.id },
-          data: { status: 'Assigned' }
-        });
-
-        nextSession = await tx.counselingSession.create({
+      if (todayAtt) {
+        await tx.counselorBreak.create({
           data: {
-            studentId: nextStudent.id,
-            counselorId: profile.id,
-            status: 'ASSIGNED',
-            notes: ''
+            attendanceId: todayAtt.id,
+            counselorId: session.counselorId,
+            breakType: 'SessionBuffer',
+            startTime: new Date(),
+            reason: '5-minute post-session wrap-up buffer'
           }
         });
+        await tx.counselorAttendance.update({
+          where: { id: todayAtt.id },
+          data: { status: 'BUFFER' }
+        });
       }
+
+      let nextSession = null;
+      let nextStudent = null;
+      // Note: 5-minute buffer is active. Next student will be assigned when buffer completes (after 5 mins or Ready Now).
 
       return { completedSession, counselor: profile, nextStudent, nextSession };
     });
@@ -1319,4 +1346,560 @@ router.delete('/webhooks/logs', async (req: Request, res: Response) => {
   }
 });
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// 13. COUNSELOR ATTENDANCE, CLOCK IN/OUT, BREAKS & BUFFER ROUTES
+// ════════════════════════════════════════════════════════════════════════════
+
+// Helper: Format YYYY-MM-DD
+function getTodayDateStr(): string {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+// 1. Clock In
+router.post('/attendance/clock-in', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId, notes } = req.body;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId is required.' });
+    }
+
+    const counselor = await prisma.counselorProfile.findUnique({
+      where: { id: counselorId }
+    });
+
+    if (!counselor) {
+      return res.status(404).json({ error: 'Counselor profile not found.' });
+    }
+
+    const today = getTodayDateStr();
+
+    // Upsert today's attendance
+    const attendance = await prisma.counselorAttendance.upsert({
+      where: {
+        counselorId_date: { counselorId, date: today }
+      },
+      update: {
+        status: 'CLOCKED_IN',
+        clockOut: null,
+        notes: notes || undefined,
+        deletedAt: null
+      },
+      create: {
+        counselorId,
+        date: today,
+        clockIn: new Date(),
+        status: 'CLOCKED_IN',
+        notes: notes || null
+      },
+      include: {
+        breaks: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    // Update counselor profile status to Available if currently Offline
+    await prisma.counselorProfile.update({
+      where: { id: counselorId },
+      data: { status: 'Available' }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'ATTENDANCE_CLOCK_IN',
+        module: 'Attendance',
+        newValue: `Counselor ${counselor.name} clocked in for date ${today}`
+      }
+    });
+
+    res.json({ success: true, attendance });
+  } catch (err: any) {
+    console.error('Clock-in error:', err);
+    res.status(500).json({ error: err.message || 'Failed to clock in.' });
+  }
+});
+
+// 2. Clock Out
+router.post('/attendance/clock-out', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId } = req.body;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId is required.' });
+    }
+
+    const today = getTodayDateStr();
+    const attendance = await prisma.counselorAttendance.findUnique({
+      where: {
+        counselorId_date: { counselorId, date: today }
+      },
+      include: { breaks: true }
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ error: 'No active attendance record found for today.' });
+    }
+
+    const now = new Date();
+    const clockInTime = new Date(attendance.clockIn);
+    const totalWorkMinutes = Math.max(0, Math.round((now.getTime() - clockInTime.getTime()) / 60000));
+
+    // Close any active open break
+    await prisma.counselorBreak.updateMany({
+      where: {
+        attendanceId: attendance.id,
+        endTime: null
+      },
+      data: {
+        endTime: now
+      }
+    });
+
+    // Calculate total break minutes
+    const allBreaks = await prisma.counselorBreak.findMany({
+      where: { attendanceId: attendance.id }
+    });
+    const totalBreakMinutes = allBreaks.reduce((acc, b) => {
+      if (b.endTime && b.startTime) {
+        return acc + Math.round((new Date(b.endTime).getTime() - new Date(b.startTime).getTime()) / 60000);
+      }
+      return acc;
+    }, 0);
+
+    const updated = await prisma.counselorAttendance.update({
+      where: { id: attendance.id },
+      data: {
+        clockOut: now,
+        status: 'CLOCKED_OUT',
+        totalWorkMinutes,
+        totalBreakMinutes
+      },
+      include: { breaks: true }
+    });
+
+    // Set counselor profile to Offline
+    await prisma.counselorProfile.update({
+      where: { id: counselorId },
+      data: { status: 'Offline' }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'ATTENDANCE_CLOCK_OUT',
+        module: 'Attendance',
+        newValue: `Counselor ${counselorId} clocked out. Total work: ${totalWorkMinutes}m, Breaks: ${totalBreakMinutes}m`
+      }
+    });
+
+    res.json({ success: true, attendance: updated });
+  } catch (err: any) {
+    console.error('Clock-out error:', err);
+    res.status(500).json({ error: err.message || 'Failed to clock out.' });
+  }
+});
+
+// 3. Start Break (Validates Queue Priority Rule)
+router.post('/attendance/break/start', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId, breakType = 'Lunch', reason } = req.body;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId is required.' });
+    }
+
+    const counselor = await prisma.counselorProfile.findUnique({
+      where: { id: counselorId }
+    });
+    if (!counselor) {
+      return res.status(404).json({ error: 'Counselor not found.' });
+    }
+
+    // ── QUEUE PRIORITY CHECK ──
+    // Check if students are waiting in the queue for this branch
+    const waitingStudentsCount = await prisma.student.count({
+      where: {
+        branchId: counselor.branchId,
+        status: 'Waiting',
+        deletedAt: null
+      }
+    });
+
+    if (waitingStudentsCount > 0 && breakType !== 'SessionBuffer') {
+      return res.status(400).json({
+        error: `Cannot initiate break (${breakType}) while ${waitingStudentsCount} student${waitingStudentsCount > 1 ? 's are' : ' is'} waiting in the queue. Please serve waiting students first.`
+      });
+    }
+
+    const today = getTodayDateStr();
+    let attendance = await prisma.counselorAttendance.findUnique({
+      where: { counselorId_date: { counselorId, date: today } }
+    });
+
+    if (!attendance) {
+      // Auto clock-in if taking break
+      attendance = await prisma.counselorAttendance.create({
+        data: {
+          counselorId,
+          date: today,
+          clockIn: new Date(),
+          status: 'CLOCKED_IN'
+        }
+      });
+    }
+
+    // Close any existing open break
+    await prisma.counselorBreak.updateMany({
+      where: {
+        attendanceId: attendance.id,
+        endTime: null
+      },
+      data: {
+        endTime: new Date()
+      }
+    });
+
+    // Create new break record
+    const breakRecord = await prisma.counselorBreak.create({
+      data: {
+        attendanceId: attendance.id,
+        counselorId,
+        breakType,
+        startTime: new Date(),
+        reason: reason || null
+      }
+    });
+
+    // Update attendance status
+    await prisma.counselorAttendance.update({
+      where: { id: attendance.id },
+      data: { status: breakType === 'SessionBuffer' ? 'BUFFER' : 'ON_BREAK' }
+    });
+
+    // Update counselor profile status
+    await prisma.counselorProfile.update({
+      where: { id: counselorId },
+      data: { status: breakType === 'SessionBuffer' ? 'Busy' : 'Break' }
+    });
+
+    res.json({ success: true, break: breakRecord });
+  } catch (err: any) {
+    console.error('Start break error:', err);
+    res.status(500).json({ error: err.message || 'Failed to start break.' });
+  }
+});
+
+// 4. End Break
+router.post('/attendance/break/end', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId } = req.body;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId is required.' });
+    }
+
+    const today = getTodayDateStr();
+    const attendance = await prisma.counselorAttendance.findUnique({
+      where: { counselorId_date: { counselorId, date: today } }
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ error: 'No attendance record found for today.' });
+    }
+
+    // Find active break
+    const activeBreak = await prisma.counselorBreak.findFirst({
+      where: {
+        attendanceId: attendance.id,
+        endTime: null
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (activeBreak) {
+      const now = new Date();
+      const durationMinutes = Math.max(0, Math.round((now.getTime() - new Date(activeBreak.startTime).getTime()) / 60000));
+      await prisma.counselorBreak.update({
+        where: { id: activeBreak.id },
+        data: {
+          endTime: now,
+          durationMinutes
+        }
+      });
+    }
+
+    // Recalculate total break minutes
+    const allBreaks = await prisma.counselorBreak.findMany({
+      where: { attendanceId: attendance.id, NOT: { breakType: 'SessionBuffer' } }
+    });
+    const totalBreakMinutes = allBreaks.reduce((acc, b) => acc + (b.durationMinutes || 0), 0);
+
+    const updatedAttendance = await prisma.counselorAttendance.update({
+      where: { id: attendance.id },
+      data: {
+        status: 'CLOCKED_IN',
+        totalBreakMinutes
+      },
+      include: { breaks: { orderBy: { createdAt: 'desc' } } }
+    });
+
+    // Update counselor profile status to Available
+    await prisma.counselorProfile.update({
+      where: { id: counselorId },
+      data: { status: 'Available' }
+    });
+
+    res.json({ success: true, attendance: updatedAttendance });
+  } catch (err: any) {
+    console.error('End break error:', err);
+    res.status(500).json({ error: err.message || 'Failed to end break.' });
+  }
+});
+
+// 5. Complete 5-Minute Post-Session Buffer (Ready Now)
+router.post('/attendance/buffer/complete', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId } = req.body;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId is required.' });
+    }
+
+    const today = getTodayDateStr();
+    const attendance = await prisma.counselorAttendance.findUnique({
+      where: { counselorId_date: { counselorId, date: today } }
+    });
+
+    if (attendance) {
+      // Close active SessionBuffer break
+      const activeBuffer = await prisma.counselorBreak.findFirst({
+        where: {
+          attendanceId: attendance.id,
+          breakType: 'SessionBuffer',
+          endTime: null
+        }
+      });
+
+      if (activeBuffer) {
+        const now = new Date();
+        const durationMinutes = Math.max(0, Math.round((now.getTime() - new Date(activeBuffer.startTime).getTime()) / 60000));
+        await prisma.counselorBreak.update({
+          where: { id: activeBuffer.id },
+          data: { endTime: now, durationMinutes }
+        });
+      }
+
+      await prisma.counselorAttendance.update({
+        where: { id: attendance.id },
+        data: { status: 'CLOCKED_IN' }
+      });
+    }
+
+    // Set counselor to Available
+    await prisma.counselorProfile.update({
+      where: { id: counselorId },
+      data: { status: 'Available' }
+    });
+
+    res.json({ success: true, status: 'Available' });
+  } catch (err: any) {
+    console.error('Complete buffer error:', err);
+    res.status(500).json({ error: err.message || 'Failed to complete buffer.' });
+  }
+});
+
+// 6. Get Today's Attendance & Active Status for Counselor
+router.get('/attendance/today', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { counselorId, branchId } = req.query;
+    if (!counselorId) {
+      return res.status(400).json({ error: 'counselorId query param is required.' });
+    }
+
+    const today = getTodayDateStr();
+    const counselor = await prisma.counselorProfile.findUnique({
+      where: { id: String(counselorId) }
+    });
+
+    if (!counselor) {
+      return res.status(404).json({ error: 'Counselor not found.' });
+    }
+
+    const attendance = await prisma.counselorAttendance.findUnique({
+      where: {
+        counselorId_date: { counselorId: String(counselorId), date: today }
+      },
+      include: {
+        breaks: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    // Check waiting queue count in this branch
+    const waitingQueueCount = await prisma.student.count({
+      where: {
+        branchId: counselor.branchId || String(branchId || ''),
+        status: 'Waiting',
+        deletedAt: null
+      }
+    });
+
+    // Active break if any
+    const activeBreak = attendance?.breaks?.find(b => !b.endTime) || null;
+
+    // Check today's in-session consultation counts & duration
+    const todaySessions = await prisma.counselingSession.findMany({
+      where: {
+        counselorId: String(counselorId),
+        createdAt: {
+          gte: new Date(`${today}T00:00:00.000Z`)
+        }
+      }
+    });
+
+    const totalSessionMinutes = todaySessions.reduce((acc, s) => acc + Math.round((s.duration || 0) / 60), 0);
+
+    res.json({
+      success: true,
+      today,
+      attendance,
+      activeBreak,
+      counselorStatus: counselor.status,
+      waitingQueueCount,
+      totalSessionMinutes,
+      completedSessionsCount: todaySessions.filter(s => s.status === 'COMPLETED').length
+    });
+  } catch (err: any) {
+    console.error('Get today attendance error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch attendance.' });
+  }
+});
+
+// 7. Manager Attendance Summary & Live Floor Matrix
+router.get('/attendance/summary', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { date = getTodayDateStr(), branchId } = req.query;
+
+    const counselors = await prisma.counselorProfile.findMany({
+      where: {
+        deletedAt: null,
+        ...(branchId ? { branchId: String(branchId) } : {})
+      },
+      include: {
+        attendances: {
+          where: { date: String(date) },
+          include: {
+            breaks: { orderBy: { createdAt: 'desc' } }
+          }
+        },
+        sessions: {
+          where: {
+            createdAt: {
+              gte: new Date(`${String(date)}T00:00:00.000Z`)
+            }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const summaryList = counselors.map(c => {
+      const att = c.attendances[0] || null;
+      const activeBreak = att?.breaks?.find(b => !b.endTime) || null;
+      const completedSessions = c.sessions.filter(s => s.status === 'COMPLETED');
+      const inSession = c.sessions.find(s => s.status === 'IN_SESSION');
+
+      let liveStatus = 'Offline';
+      if (att && !att.clockOut) {
+        if (inSession) {
+          liveStatus = 'In Session';
+        } else if (activeBreak) {
+          liveStatus = activeBreak.breakType === 'SessionBuffer' ? '5m Buffer' : `Break (${activeBreak.breakType})`;
+        } else {
+          liveStatus = 'Available';
+        }
+      }
+
+      const totalBreakMins = (att?.breaks || [])
+        .filter(b => b.breakType !== 'SessionBuffer')
+        .reduce((acc, b) => acc + (b.durationMinutes || 0), 0);
+
+      const totalSessionMins = c.sessions.reduce((acc, s) => acc + Math.round((s.duration || 0) / 60), 0);
+
+      return {
+        counselorId: c.id,
+        name: c.name,
+        email: c.email,
+        branchId: c.branchId,
+        branchName: c.branchName,
+        location: c.location,
+        liveStatus,
+        clockIn: att?.clockIn || null,
+        clockOut: att?.clockOut || null,
+        totalWorkMinutes: att?.totalWorkMinutes || 0,
+        totalBreakMinutes: totalBreakMins,
+        totalSessionMinutes: totalSessionMins,
+        completedSessionsCount: completedSessions.length,
+        activeBreak
+      };
+    });
+
+    res.json({ success: true, date, summary: summaryList });
+  } catch (err: any) {
+    console.error('Attendance summary error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch attendance summary.' });
+  }
+});
+
+// 8. Export CSV Attendance Register
+router.get('/attendance/export', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { date = getTodayDateStr(), branchId } = req.query;
+
+    const counselors = await prisma.counselorProfile.findMany({
+      where: {
+        deletedAt: null,
+        ...(branchId ? { branchId: String(branchId) } : {})
+      },
+      include: {
+        attendances: {
+          where: { date: String(date) },
+          include: { breaks: true }
+        },
+        sessions: {
+          where: {
+            createdAt: {
+              gte: new Date(`${String(date)}T00:00:00.000Z`)
+            }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    let csv = 'Counselor Name,Campus,Date,Status,Clock In,Clock Out,Total Work (Mins),Break Time (Mins),In-Session Time (Mins),Consultations Completed\n';
+
+    counselors.forEach(c => {
+      const att = c.attendances[0] || null;
+      const completedSessions = c.sessions.filter(s => s.status === 'COMPLETED');
+      const totalBreakMins = (att?.breaks || [])
+        .filter(b => b.breakType !== 'SessionBuffer')
+        .reduce((acc, b) => acc + (b.durationMinutes || 0), 0);
+      const totalSessionMins = c.sessions.reduce((acc, s) => acc + Math.round((s.duration || 0) / 60), 0);
+
+      const clockInStr = att?.clockIn ? new Date(att.clockIn).toLocaleTimeString() : 'N/A';
+      const clockOutStr = att?.clockOut ? new Date(att.clockOut).toLocaleTimeString() : 'N/A';
+      const statusStr = att ? (att.clockOut ? 'Clocked Out' : 'Active') : 'Absent';
+
+      csv += `"${c.name}","${c.branchName || c.location}","${date}","${statusStr}","${clockInStr}","${clockOutStr}",${att?.totalWorkMinutes || 0},${totalBreakMins},${totalSessionMins},${completedSessions.length}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="counselor_attendance_${date}.csv"`);
+    res.send(csv);
+  } catch (err: any) {
+    console.error('Export attendance error:', err);
+    res.status(500).json({ error: err.message || 'Failed to export attendance.' });
+  }
+});
+
 export default router;
+

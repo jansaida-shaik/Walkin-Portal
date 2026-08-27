@@ -1,5 +1,9 @@
 'use client';
 
+import AttendanceControlWidget from '../../components/AttendanceControlWidget';
+import AttendanceTab from './AttendanceTab';
+
+
 import SearchInput from '../../components/SearchInput';
 
 import CustomSelect from '../../components/CustomSelect';
@@ -20,6 +24,7 @@ interface Branch {
 
 interface Counselor {
   id: string;
+  userId?: string;
   name?: string;
   email?: string;
   user?: { name?: string; email?: string };
@@ -117,6 +122,7 @@ function formatSlotTime(slot: string): string {
 export default function CounselorsClient({ initialCounselors, branches, user }: CounselorsClientProps) {
   const router = useRouter();
   const [counselors, setCounselors] = useState<Counselor[]>(initialCounselors);
+  const [activeMainTab, setActiveMainTab] = useState<'directory' | 'attendance'>('directory');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'busy' | 'break' | 'offline' | 'inactive'>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -212,6 +218,13 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
   }
 
   const canManage = user?.roleId === 'role_super_admin' || user?.roleId === 'role_admin' || user?.roleId === 'role_manager';
+  // Identify logged in counselor profile if any
+  const loggedInCounselor = counselors.find(c => 
+    (user?.id && c.userId === user.id) || 
+    (user?.email && (c.email === user.email || c.user?.email === user.email)) ||
+    (user?.name && c.name?.toLowerCase() === user.name?.toLowerCase())
+  ) || counselors[0];
+
 
   const totalCount = counselors.length;
   const inactiveCount = counselors.filter(c => isUnidentified(c.name || '')).length;
@@ -274,6 +287,70 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
       </div>
 
       {message && <div className="inline-message" style={{ margin: '14px 0' }}>{message}</div>}
+
+      
+      {/* ── COUNSELOR LIVE ATTENDANCE & SHIFT CONTROL WIDGET ── */}
+      {loggedInCounselor && (
+        <AttendanceControlWidget
+          counselorId={loggedInCounselor.id}
+          counselorName={loggedInCounselor.name}
+          branchId={loggedInCounselor.branchId}
+          onStatusChange={(newStatus) => {
+            setCounselors(prev => prev.map(c => c.id === loggedInCounselor.id ? { ...c, status: newStatus } : c));
+          }}
+        />
+      )}
+
+      {/* ── TOP LEVEL TAB NAVIGATION ── */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', borderBottom: '2px solid var(--border-color, #e2e8f0)', paddingBottom: '2px' }}>
+        <button
+          onClick={() => setActiveMainTab('directory')}
+          style={{
+            padding: '10px 20px',
+            fontSize: '0.92rem',
+            fontWeight: 800,
+            color: activeMainTab === 'directory' ? 'var(--primary, #0284c7)' : 'var(--muted, #64748b)',
+            borderBottom: activeMainTab === 'directory' ? '3px solid var(--primary, #0284c7)' : '3px solid transparent',
+            background: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          👥 Counselor Profiles & Directory
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('attendance')}
+          style={{
+            padding: '10px 20px',
+            fontSize: '0.92rem',
+            fontWeight: 800,
+            color: activeMainTab === 'attendance' ? 'var(--primary, #0284c7)' : 'var(--muted, #64748b)',
+            borderBottom: activeMainTab === 'attendance' ? '3px solid var(--primary, #0284c7)' : '3px solid transparent',
+            background: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          ⏱️ Attendance, Breaks & Live Floor Duty
+        </button>
+      </div>
+
+      {activeMainTab === 'attendance' ? (
+        <AttendanceTab branches={branches} />
+      ) : (
 
       <div className="dash-table-card">
         <div className="dash-table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -772,6 +849,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
           </table>
         </div>
       </div>
+      )}
 
       {/* Add Counselor Modal */}
       {showAddModal && (

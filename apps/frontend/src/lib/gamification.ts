@@ -232,7 +232,7 @@ export const ALL_BADGES: Badge[] = [
     name: '🥈 Season Silver Medalist',
     description: 'Runner-up #2 revenue performer for a calendar season.',
     icon: '🥈',
-    tier: 'legendary',
+    tier: 'silver',
   },
   {
     id: 'season_volume_leader',

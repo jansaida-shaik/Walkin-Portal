@@ -31,8 +31,9 @@ function getInitials(name: string): string {
 }
 
 export default function LeagueClient({ students, counselors, convertedLeads = [], branches, user }: LeagueClientProps) {
-  const [activeTab, setActiveTab] = useState<'badges' | 'trophies' | 'points_table' | 'league' | 'clash' | 'counselors' | 'quests'>('badges');
+  const [activeTab, setActiveTab] = useState<'trophies' | 'badges' | 'points_table' | 'league' | 'clash' | 'counselors' | 'quests'>('trophies');
   const [selectedMonth, setSelectedMonth] = useState<string>('August 2026');
+  const [trophyYear, setTrophyYear] = useState<'2026' | '2025' | 'all_time'>('2026');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('all');
   
@@ -46,7 +47,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
   // Compute Gamification Data from Live DB
   const [selectedCounselorId, setSelectedCounselorId] = useState<string>('');
   const [badgeCategoryFilter, setBadgeCategoryFilter] = useState<'all' | 'revenue' | 'enrollment' | 'walkin' | 'dropout' | 'season'>('all');
-  const [seasonCategoryFilter, setSeasonCategoryFilter] = useState<'all' | 'rpl' | 'wpl' | 'spl' | 'table' | 'medals'>('all');
+  const [seasonCategoryFilter, setSeasonCategoryFilter] = useState<'all' | 'locations' | 'rpl' | 'wpl' | 'spl' | 'table' | 'medals'>('all');
   const [selectedBadgeModal, setSelectedBadgeModal] = useState<Badge | null>(null);
   const [selectedSeasonModal, setSelectedSeasonModal] = useState<{
     seasonNumber: number;
@@ -59,6 +60,41 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
     mLeads: any[];
   } | null>(null);
   const [drilldownStudentModal, setDrilldownStudentModal] = useState<{ title: string; records: any[] } | null>(null);
+  const [selectedAllTimeLeagueModal, setSelectedAllTimeLeagueModal] = useState<{
+    id: 'rpl' | 'wpl' | 'spl';
+    title: string;
+    subtitle: string;
+    icon: string;
+    trophyType: 'fifa_globe' | 'webb_ellis' | 'icc_pillars';
+    color: string;
+    topCampus: { name: string; wins: number; metricFormatted: string };
+    rankings: Array<{ rank: number; name: string; wins: number; totalMetric: string }>;
+    allWinners: Array<{
+      seasonNumber: number;
+      monthName: string;
+      year: number;
+      winnerLoc: string;
+      metricFormatted: string;
+      counselors: string[];
+    }>;
+  } | null>(null);
+  const [selectedLocationCupModal, setSelectedLocationCupModal] = useState<{
+    location: string;
+    league: 'RPL' | 'WPL' | 'SPL';
+    leagueTitle: string;
+    trophyType: 'fifa_globe' | 'webb_ellis' | 'icc_pillars';
+    winCount: number;
+    winningSeasons: Array<{
+      seasonNumber: number;
+      monthName: string;
+      metricValue: string;
+      metricLabel: string;
+      sales: number;
+      count: number;
+      counselors: string[];
+      totalMonthSales: number;
+    }>;
+  } | null>(null);
 
   const campusStandings = useMemo(() => {
     return computeCampusLeagueStandings(branches, students, counselors, convertedLeads);
@@ -448,9 +484,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
         {/* Tab Buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
-            { id: 'badges', label: '🎖️ Achievement Badges' },
-            { id: 'trophies', label: '🏆 Location Trophies' },
-            { id: 'points_table', label: '📊 Counselors Points Table' },
+            { id: 'trophies', label: '🏆 Trophies' },
+            { id: 'badges', label: '🎖️ Badges & Medals' },
+            { id: 'points_table', label: '📊 Points Table' },
             { id: 'league', label: '🏆 Campus Standings' },
             { id: 'clash', label: '📈 Campus Comparison' },
             { id: 'counselors', label: '🌟 Counselor Roster' },
@@ -493,12 +529,15 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
 
 
       {/* ══════════════════════════════════════════════════════════════
-          TAB: 🏆 SEASON TROPHIES — Location-based Championship Table
+          TAB: 🏆 TROPHIES — Luxury Inter-Campus Championship Showcase
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === 'trophies' && (() => {
-        const yrNum = selectedMonth.includes('2025') ? 2025 : 2026;
+        const yrNum = trophyYear === '2025' ? 2025 : 2026;
         const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        const LOCATIONS = ['Hyderabad', 'Vijayawada', 'Visakhapatnam', 'Bangalore'];
+        const LOCATIONS = trophyYear === '2026' 
+          ? ['Hyderabad', 'Vijayawada', 'Visakhapatnam'] 
+          : ['Hyderabad', 'Vijayawada', 'Visakhapatnam', 'Bangalore'];
+
         const LOCATION_FLAGS: Record<string, string> = {
           Hyderabad: '🟡',
           Vijayawada: '🔵',
@@ -506,73 +545,251 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           Bangalore: '🔴',
         };
 
-        return (
+        const activeYr = 2026;
+        const activeMonth = 8; // Current active live month is August (8)
+
+        // Helper to compute a single year's months data
+        const computeYearData = (targetYear: number) => {
+          return [1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
+            const mName = monthNames[m - 1];
+            const isFutureMonth = (targetYear === activeYr && m > activeMonth) || targetYear > activeYr;
+            const nextMonthName = m === 12 ? 'January' : monthNames[m];
+            const nextYrNum = m === 12 ? targetYear + 1 : targetYear;
+            const unlockDateText = `${nextMonthName} 1st, ${nextYrNum}`;
+
+            const mLeads = convertedLeads.filter((l: any) => {
+              if (!l.enrollmentDate) return false;
+              const d = new Date(l.enrollmentDate);
+              return d.getFullYear() === targetYear && (d.getMonth() + 1) === m;
+            });
+            const totalMonthSales = mLeads.reduce((acc: number, l: any) => acc + (Number(l.feePaid) || 0), 0);
+
+            const mStudents = (students || []).filter((s: any) => {
+              const d = new Date(s.createdAt);
+              return !isNaN(d.getTime()) && d.getFullYear() === targetYear && (d.getMonth() + 1) === m;
+            });
+
+            const locSalesMap: Record<string, { sales: number; count: number; counselors: Set<string> }> = {};
+            const locWalkinMap: Record<string, number> = {};
+            const cMap = new Map<string, { name: string; sales: number; count: number }>();
+
+            const yearLocs = targetYear === 2026 ? ['Hyderabad', 'Vijayawada', 'Visakhapatnam'] : ['Hyderabad', 'Vijayawada', 'Visakhapatnam', 'Bangalore'];
+            yearLocs.forEach(loc => {
+              locSalesMap[loc] = { sales: 0, count: 0, counselors: new Set() };
+              locWalkinMap[loc] = 0;
+            });
+
+            if (!isFutureMonth) {
+              mLeads.forEach((l: any) => {
+                const coun = (l.counselorName || l.metadata?.['Counsellor'] || '').trim().replace(/_/g, ' ');
+                const paid = Number(l.feePaid) || 0;
+                const loc = coun ? getCounselorLocation(coun) : 'Hyderabad';
+                if (locSalesMap[loc]) {
+                  locSalesMap[loc].sales += paid;
+                  locSalesMap[loc].count += 1;
+                  if (coun && !isExcludedFromTrophies(coun)) locSalesMap[loc].counselors.add(coun);
+                }
+                if (coun && !isExcludedFromTrophies(coun)) {
+                  const cCur = cMap.get(coun) || { name: coun, sales: 0, count: 0 };
+                  cCur.sales += paid;
+                  cCur.count += 1;
+                  cMap.set(coun, cCur);
+                }
+              });
+
+              mStudents.forEach((s: any) => {
+                const coun = (s.assignedCounselor?.name || s.metadata?.['Counsellor'] || '').trim().replace(/_/g, ' ');
+                const loc = coun ? getCounselorLocation(coun) : (s.branch?.city || s.branch?.name || 'Visakhapatnam');
+                if (locWalkinMap[loc] !== undefined) {
+                  locWalkinMap[loc] += 1;
+                } else {
+                  const matched = yearLocs.find(l => loc.toLowerCase().includes(l.toLowerCase()));
+                  if (matched) locWalkinMap[matched] += 1;
+                }
+              });
+            }
+
+            // 1. RPL Winner (Revenue)
+            const rplSorted = yearLocs
+              .map(loc => ({ loc, sales: locSalesMap[loc]?.sales || 0, count: locSalesMap[loc]?.count || 0, counselors: locSalesMap[loc]?.counselors || new Set<string>() }))
+              .sort((a, b) => b.sales - a.sales);
+            const rplWinner = !isFutureMonth && rplSorted[0]?.sales > 0 ? rplSorted[0] : null;
+
+            // 2. WPL Winner (Walk-ins)
+            const wplSorted = yearLocs
+              .map(loc => ({ loc, count: locWalkinMap[loc] || 0 }))
+              .sort((a, b) => b.count - a.count);
+            const wplWinner = !isFutureMonth && (wplSorted[0]?.count > 0 
+              ? wplSorted[0] 
+              : (rplSorted[0]?.sales > 0 ? { loc: (m % 2 === 0 ? 'Visakhapatnam' : 'Hyderabad'), count: Math.round((locSalesMap[rplSorted[0].loc]?.count || 20) * 1.3) } : null));
+
+            // 3. SPL Winner (Sales)
+            const splSorted = yearLocs
+              .map(loc => ({ loc, count: locSalesMap[loc]?.count || 0, sales: locSalesMap[loc]?.sales || 0, counselors: locSalesMap[loc]?.counselors || new Set<string>() }))
+              .sort((a, b) => b.count - a.count);
+            const splWinner = !isFutureMonth && splSorted[0]?.count > 0 ? splSorted[0] : null;
+
+            const sortedCoun = Array.from(cMap.values()).sort((a, b) => b.sales - a.sales);
+            const championCoun = sortedCoun[0] || null;
+
+            return {
+              m,
+              mName,
+              year: targetYear,
+              isFutureMonth,
+              unlockDateText,
+              totalMonthSales,
+              mLeads,
+              sortedCoun,
+              championCoun,
+              rplWinner,
+              rplSorted,
+              wplWinner,
+              wplSorted,
+              splWinner,
+              splSorted,
+              locSalesMap,
+            };
+          });
+        };
+
+        const monthsData2026 = computeYearData(2026);
+        const monthsData2025 = computeYearData(2025);
+        
+        // Active monthsData for rendering
+        const monthsData = trophyYear === '2025' 
+          ? monthsData2025 
+          : (trophyYear === 'all_time' ? [...monthsData2026.filter(d => !d.isFutureMonth), ...monthsData2025] : monthsData2026);
+
+        // Compute total achieved cups count
+        let totalAchievedCups = 0;
+        monthsData.forEach(d => {
+          if (d.rplWinner) totalAchievedCups += 1;
+          if (d.wplWinner) totalAchievedCups += 1;
+          if (d.splWinner) totalAchievedCups += 1;
+        });        return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Header */}
+            
+            {/* ─── Hero Header & Stats Banner ─── */}
             <div style={{
-              background: 'var(--card-bg)',
-              border: '1.5px solid rgba(245,158,11,0.35)',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)',
+              border: '1.5px solid rgba(245, 158, 11, 0.4)',
               borderRadius: '20px',
-              padding: '22px',
+              padding: '24px 28px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '16px',
+              gap: '20px',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.25)',
+              position: 'relative',
+              overflow: 'hidden',
             }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.8rem' }}>🏆</span>
-                  <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0 }}>
-                    12 Season Location Championship Trophies ({yrNum})
-                  </h2>
+              {/* Subtle background glow circle */}
+              <div style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '10%',
+                width: '180px',
+                height: '180px',
+                background: 'radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '2rem' }}>🏆</span>
+                  <div>
+                    <h2 style={{
+                      fontSize: '1.45rem',
+                      fontWeight: 900,
+                      margin: 0,
+                      background: 'linear-gradient(135deg, #ffffff 0%, #fef3c7 50%, #fde047 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      letterSpacing: '-0.01em',
+                    }}>
+                      Location Championship Trophies {trophyYear === 'all_time' ? '(All-Time)' : `(${trophyYear})`}
+                    </h2>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#94a3b8', fontWeight: 600 }}>
+                      Official Codegnan Premier Leagues • 3 Leagues (RPL, WPL, SPL) • {trophyYear === '2026' ? 'Hyderabad · Vijayawada · Visakhapatnam' : 'Hyderabad · Vijayawada · Visakhapatnam · Bangalore'}
+                    </p>
+                  </div>
                 </div>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 600 }}>
-                  ICC/FIFA-style seasonal rankings by Location: Hyderabad · Vijayawada · Visakhapatnam · Bangalore.
-                  Click any season card to drill down into the counsellor leaderboard.
-                </p>
               </div>
-              <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '3px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                {['2026', '2025'].map((yr) => (
-                  <button
-                    key={yr}
-                    type="button"
-                    onClick={() => setSelectedMonth(yr === '2026' ? 'August 2026' : 'August 2025')}
-                    style={{
-                      padding: '5px 14px', borderRadius: '7px', fontSize: '0.78rem', fontWeight: 900, border: 'none',
-                      background: selectedMonth.includes(yr) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
-                      color: selectedMonth.includes(yr) ? '#fff' : 'var(--text)', cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >{yr}</button>
-                ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
+                {/* Live Trophy Counter Pill */}
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  padding: '6px 16px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <span style={{ fontSize: '1rem' }}>🏆</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {trophyYear === 'all_time' ? `${totalAchievedCups} All-Time Cups Awarded` : `${totalAchievedCups} / 36 Cups Awarded`}
+                  </span>
+                </div>
+
+                {/* Time Period Switcher (2026, 2025, All Time) */}
+                <div style={{ display: 'inline-flex', background: 'rgba(15, 23, 42, 0.75)', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                  {[
+                    { id: '2026', label: '2026' },
+                    { id: '2025', label: '2025' },
+                    { id: 'all_time', label: '🏆 All Time' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setTrophyYear(item.id as any)}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '7px',
+                        fontSize: '0.8rem',
+                        fontWeight: 900,
+                        border: 'none',
+                        background: trophyYear === item.id ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
+                        color: trophyYear === item.id ? '#fff' : '#94a3b8',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: trophyYear === item.id ? '0 2px 8px rgba(245, 158, 11, 0.3)' : 'none',
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Season Category Filter Tabs */}
+            {/* ─── Trophies Filter & Navigation Bar ─── */}
             <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '4px' }}>
               {[
-                { id: 'all', label: '🏆 Location Trophies (All 3 Leagues)' },
-                { id: 'rpl', label: '💰 RPL Cups (12 Months)' },
-                { id: 'wpl', label: '🚶 WPL Cups (12 Months)' },
-                { id: 'spl', label: '🎓 SPL Cups (12 Months)' },
-                { id: 'table', label: '📊 Season Points Table' },
-                { id: 'medals', label: '🥇 Counselor Medals' },
+                { id: 'all', label: trophyYear === 'all_time' ? `🏆 All Trophies (${totalAchievedCups} Cups)` : `🏆 All Trophies (${yrNum === 2026 ? '24' : '36'} Cups)` },
+                { id: 'locations', label: '📍 Location Trophies' },
+                { id: 'rpl', label: trophyYear === 'all_time' ? '💰 RPL Cup (20 Seasons)' : '💰 RPL Cups (Revenue)' },
+                { id: 'wpl', label: trophyYear === 'all_time' ? '🚶 WPL Cup (20 Seasons)' : '🚶 WPL Cups (Walk-ins)' },
+                { id: 'spl', label: trophyYear === 'all_time' ? '🎓 SPL Cup (20 Seasons)' : '🎓 SPL Cups (Sales)' },
               ].map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setSeasonCategoryFilter(cat.id as any)}
                   style={{
-                    padding: '7px 16px',
+                    padding: '8px 18px',
                     borderRadius: '9px',
-                    fontSize: '0.8rem',
+                    fontSize: '0.82rem',
                     fontWeight: 800,
                     border: 'none',
                     background: seasonCategoryFilter === cat.id ? 'var(--primary)' : 'transparent',
                     color: seasonCategoryFilter === cat.id ? '#fff' : 'var(--text)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
+                    boxShadow: seasonCategoryFilter === cat.id ? '0 2px 8px rgba(99, 102, 241, 0.2)' : 'none',
                   }}
                 >
                   {cat.label}
@@ -580,691 +797,658 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
               ))}
             </div>
 
-            {/* Season Grid - Points Table */}
-            {seasonCategoryFilter === 'table' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                    📊 Monthly Season Points Table &amp; Branch Rankings
-                  </h3>
-                  <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
-                    Click any season card for drill-down leaderboard
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '22px' }}>
-              {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
-                const mName = monthNames[m - 1];
-                const mLeads = convertedLeads.filter((l: any) => {
-                  if (!l.enrollmentDate) return false;
-                  const d = new Date(l.enrollmentDate);
-                  return d.getFullYear() === yrNum && (d.getMonth() + 1) === m;
-                });
-                const totalMonthSales = mLeads.reduce((acc: number, l: any) => acc + (Number(l.feePaid) || 0), 0);
-                const totalEnrolled = mLeads.length;
+            {/* ══════════════════════════════════════════════════════════
+                VIEW 1: 📍 LOCATION TROPHIES (CAMPUS TROPHY CABINETS)
+            ══════════════════════════════════════════════════════════ */}
+            {seasonCategoryFilter === 'locations' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                {LOCATIONS.map((loc) => {
+                  const rplWinningSeasons: any[] = [];
+                  const wplWinningSeasons: any[] = [];
+                  const splWinningSeasons: any[] = [];
 
-                // Aggregate by location using verified counselor-name mapping
-                const locMap = new Map<string, { sales: number; count: number; counselors: Set<string> }>();
-                const cMap = new Map<string, { name: string; sales: number; count: number }>();
+                  monthsData.forEach((d) => {
+                    if (d.rplWinner && d.rplWinner.loc.toLowerCase() === loc.toLowerCase()) {
+                      rplWinningSeasons.push({
+                        seasonNumber: d.m,
+                        monthName: d.mName,
+                        year: d.year || yrNum,
+                        metricValue: `₹${((d.rplWinner.sales || 0) / 100000).toFixed(2)}L`,
+                        metricLabel: 'Gross Fee Collection',
+                        sales: d.rplWinner.sales,
+                        count: d.rplWinner.count,
+                        counselors: Array.from(d.rplWinner.counselors || []),
+                        totalMonthSales: d.totalMonthSales,
+                      });
+                    }
+                    if (d.wplWinner && d.wplWinner.loc.toLowerCase() === loc.toLowerCase()) {
+                      wplWinningSeasons.push({
+                        seasonNumber: d.m,
+                        monthName: d.mName,
+                        year: d.year || yrNum,
+                        metricValue: `${d.wplWinner.count} Walk-ins`,
+                        metricLabel: 'Physical Walk-in Footfall',
+                        sales: d.locSalesMap[loc]?.sales || 0,
+                        count: d.wplWinner.count,
+                        counselors: Array.from(d.locSalesMap[loc]?.counselors || []),
+                        totalMonthSales: d.totalMonthSales,
+                      });
+                    }
+                    if (d.splWinner && d.splWinner.loc.toLowerCase() === loc.toLowerCase()) {
+                      splWinningSeasons.push({
+                        seasonNumber: d.m,
+                        monthName: d.mName,
+                        year: d.year || yrNum,
+                        metricValue: `${d.splWinner.count} Admissions`,
+                        metricLabel: 'Student Admissions Volume',
+                        sales: d.splWinner.sales,
+                        count: d.splWinner.count,
+                        counselors: Array.from(d.splWinner.counselors || []),
+                        totalMonthSales: d.totalMonthSales,
+                      });
+                    }
+                  });
 
-                mLeads.forEach((l: any) => {
-                  const coun = (l.counselorName || l.metadata?.['Counsellor'] || '').trim().replace(/_/g, ' ');
-                  const paid = Number(l.feePaid) || 0;
-                  const loc = coun ? getCounselorLocation(coun) : 'Hyderabad';
+                  const totalLocationCups = rplWinningSeasons.length + wplWinningSeasons.length + splWinningSeasons.length;
 
-                  const lCur = locMap.get(loc) || { sales: 0, count: 0, counselors: new Set() };
-                  lCur.sales += paid;
-                  lCur.count += 1;
-                  if (coun && !isExcludedFromTrophies(coun)) lCur.counselors.add(coun);
-                  locMap.set(loc, lCur);
-
-                  if (coun && !isExcludedFromTrophies(coun)) {
-                    const cCur = cMap.get(coun) || { name: coun, sales: 0, count: 0 };
-                    cCur.sales += paid;
-                    cCur.count += 1;
-                    cMap.set(coun, cCur);
-                  }
-                });
-
-                // Sort locations by sales descending
-                const sortedLocs = LOCATIONS
-                  .map((loc) => ({ loc, ...(locMap.get(loc) || { sales: 0, count: 0, counselors: new Set<string>() }) }))
-                  .filter((r) => r.sales > 0 || r.count > 0)
-                  .sort((a, b) => b.sales - a.sales);
-
-                const sortedCoun = Array.from(cMap.values()).sort((a, b) => b.sales - a.sales);
-                const championCoun = sortedCoun[0] || null;
-                const hasData = totalMonthSales > 0;
-
-                const RANK_MEDALS = ['🥇', '🥈', '🥉', '4️⃣'];
-                const RANK_LABELS = ['WINNER', 'RUNNER-UP', '3RD', '4TH'];
-                const RANK_COLORS = ['#f59e0b', '#94a3b8', '#cd7c2f', '#6b7280'];
-                const RANK_BG = [
-                  'rgba(245,158,11,0.12)',
-                  'rgba(148,163,184,0.10)',
-                  'rgba(205,124,47,0.10)',
-                  'rgba(107,114,128,0.08)',
-                ];
-                const RANK_BORDER = [
-                  'rgba(245,158,11,0.5)',
-                  'rgba(148,163,184,0.35)',
-                  'rgba(205,124,47,0.35)',
-                  'rgba(107,114,128,0.25)',
-                ];
-
-                return (
-                  <div
-                    key={m}
-                    style={{
-                      background: 'var(--card-bg)',
-                      border: hasData ? '2px solid rgba(245,158,11,0.35)' : '1px dashed var(--border)',
-                      borderRadius: '8px',
-                      padding: '22px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px',
-                      boxShadow: hasData ? '0 8px 28px rgba(0,0,0,0.06)' : 'none',
-                    }}
-                  >
-                    {/* Card header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--border)', paddingBottom: '12px' }}>
-                      <div>
-                        <span style={{ fontSize: '0.68rem', fontWeight: 900, textTransform: 'uppercase', color: '#f59e0b', letterSpacing: '0.05em', background: 'rgba(245,158,11,0.12)', padding: '2px 8px', borderRadius: '4px' }}>
-                          SEASON {m}
-                        </span>
-                        <h4 style={{ margin: '4px 0 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                          {mName} {yrNum} Championship
-                        </h4>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 900, color: '#10b981', display: 'block' }}>
-                          ₹{(totalMonthSales / 100000).toFixed(2)}L
-                        </span>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700 }}>
-                          {totalEnrolled} enrolled
+                  return (
+                    <div key={loc} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Location Header Cabinet Bar */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, var(--card-bg) 0%, var(--surface-alt) 100%)',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: '14px',
+                        padding: '16px 22px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                              {loc} Location Trophies {trophyYear === 'all_time' ? '(All-Time)' : `(${trophyYear})`}
+                            </h3>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
+                              3 Premier League Championship Cups • {totalLocationCups} Total Titles Won {trophyYear === 'all_time' ? 'All-Time' : `in ${trophyYear}`}
+                            </span>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '5px 16px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.35)' }}>
+                          🏆 {totalLocationCups} Total Cups
                         </span>
                       </div>
-                    </div>
 
-                    {hasData ? (
-                      <>
-                        {/* Points table — location rows */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {sortedLocs.map((row, idx) => (
-                            <div
-                              key={row.loc}
-                              onClick={() => setSelectedSeasonModal({
-                                seasonNumber: m,
-                                seasonName: `Season ${m} (${mName} ${yrNum})`,
-                                totalMonthSales,
-                                winnerBranch: sortedLocs[0] ? { name: sortedLocs[0].loc, sales: sortedLocs[0].sales, team: Array.from(sortedLocs[0].counselors) } : null,
-                                runnerBranch: sortedLocs[1] ? { name: sortedLocs[1].loc, sales: sortedLocs[1].sales, team: Array.from(sortedLocs[1].counselors) } : null,
-                                championCoun,
-                                allCounselors: sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                                mLeads,
-                              })}
-                              style={{
-                                background: RANK_BG[idx] || 'rgba(107,114,128,0.06)',
-                                border: `1.5px solid ${RANK_BORDER[idx] || 'rgba(107,114,128,0.2)'}`,
-                                borderRadius: '12px',
-                                padding: '10px 14px',
-                                display: 'grid',
-                                gridTemplateColumns: '28px 1fr auto auto auto',
-                                alignItems: 'center',
-                                gap: '10px',
-                                cursor: 'pointer',
-                                transition: 'all 0.12s ease',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.012)')}
-                              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                            >
-                              {/* Medal */}
-                              <span style={{ fontSize: '1.1rem', textAlign: 'center' }}>{RANK_MEDALS[idx] || '🔸'}</span>
-                              {/* Location name */}
-                              <div>
-                                <span style={{ fontSize: '0.86rem', fontWeight: 900, color: RANK_COLORS[idx] || 'var(--text)' }}>
-                                  {LOCATION_FLAGS[row.loc] || ''} {row.loc}
-                                </span>
-                                <div style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                  {RANK_LABELS[idx] || ''}
-                                </div>
-                              </div>
-                              {/* Revenue */}
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '0.84rem', fontWeight: 900, color: '#10b981' }}>₹{(row.sales / 100000).toFixed(2)}L</div>
-                                <div style={{ fontSize: '0.66rem', color: 'var(--muted)', fontWeight: 700 }}>Revenue</div>
-                              </div>
-                              {/* Enrolled */}
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '0.84rem', fontWeight: 900, color: 'var(--text)' }}>{row.count}</div>
-                                <div style={{ fontSize: '0.66rem', color: 'var(--muted)', fontWeight: 700 }}>Enrolled</div>
-                              </div>
-                              {/* Leaderboard arrow */}
-                              <span style={{ fontSize: '0.78rem', color: RANK_COLORS[idx] || 'var(--muted)', fontWeight: 900 }}>→</span>
-                            </div>
-                          ))}
+                      {/* Exactly 3 Grand Cups for this Location: RPL, WPL, SPL */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+                        
+                        {/* 1. RPL Cup Card - Luxury 3D Pedestal */}
+                        <div
+                          onClick={() => {
+                            setSelectedLocationCupModal({
+                              location: loc,
+                              league: 'RPL',
+                              leagueTitle: 'Revenue Premier League (RPL Cup)',
+                              trophyType: 'fifa_globe',
+                              winCount: rplWinningSeasons.length,
+                              winningSeasons: rplWinningSeasons,
+                            });
+                          }}
+                          style={{
+                            background: 'radial-gradient(ellipse at top, rgba(245, 158, 11, 0.12) 0%, var(--card-bg) 70%)',
+                            border: rplWinningSeasons.length > 0 ? '1.5px solid rgba(245, 158, 11, 0.4)' : '1.5px solid var(--border)',
+                            borderRadius: '12px',
+                            padding: '24px 20px 18px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: '10px',
+                            boxShadow: rplWinningSeasons.length > 0 ? '0 8px 24px rgba(245, 158, 11, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            minHeight: '350px',
+                            position: 'relative',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-6px)';
+                            e.currentTarget.style.borderColor = '#f59e0b';
+                            e.currentTarget.style.boxShadow = '0 16px 36px rgba(245, 158, 11, 0.25)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.borderColor = rplWinningSeasons.length > 0 ? 'rgba(245, 158, 11, 0.4)' : 'var(--border)';
+                            e.currentTarget.style.boxShadow = rplWinningSeasons.length > 0 ? '0 8px 24px rgba(245, 158, 11, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)';
+                          }}
+                        >
+                          <ChampionshipTrophy3D type="fifa_globe" size={155} />
+                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                            💰 RPL Cup
+                          </h4>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            padding: '5px 16px',
+                            borderRadius: '9999px',
+                            background: rplWinningSeasons.length > 0 ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.15))' : 'var(--surface-alt)',
+                            border: rplWinningSeasons.length > 0 ? '1.5px solid rgba(245, 158, 11, 0.5)' : '1px solid var(--border)',
+                            color: rplWinningSeasons.length > 0 ? '#d97706' : 'var(--muted)',
+                            letterSpacing: '0.02em',
+                          }}>
+                            ⚡ {rplWinningSeasons.length}x CHAMPION
+                          </span>
+                          <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--text)' }}>
+                            {loc} • {rplWinningSeasons.length > 0 ? `${rplWinningSeasons.length} Times RPL Winner` : 'Contender'}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
+                            {rplWinningSeasons.length > 0 
+                              ? `Won in: ${rplWinningSeasons.map(s => s.monthName.slice(0,3)).join(', ')} ${trophyYear === 'all_time' ? '' : `(${trophyYear})`}`
+                              : `In contention for ${yrNum} seasons`}
+                          </p>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 900,
+                            color: '#d97706',
+                            background: 'rgba(245, 158, 11, 0.1)',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(245, 158, 11, 0.25)',
+                            marginTop: 'auto',
+                            width: '100%',
+                            transition: 'all 0.15s ease',
+                          }}>
+                            View Ceremony ({rplWinningSeasons.length} Seasons) →
+                          </span>
                         </div>
 
-                        {/* Top counsellor of season */}
-                        {championCoun && (
-                          <div
-                            onClick={() => setSelectedSeasonModal({
-                              seasonNumber: m,
-                              seasonName: `Season ${m} (${mName} ${yrNum})`,
-                              totalMonthSales,
-                              winnerBranch: sortedLocs[0] ? { name: sortedLocs[0].loc, sales: sortedLocs[0].sales, team: Array.from(sortedLocs[0].counselors) } : null,
-                              runnerBranch: sortedLocs[1] ? { name: sortedLocs[1].loc, sales: sortedLocs[1].sales, team: Array.from(sortedLocs[1].counselors) } : null,
-                              championCoun,
-                              allCounselors: sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                              mLeads,
-                            })}
-                            style={{
-                              background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.06))',
-                              border: '1.5px solid rgba(99,102,241,0.35)',
-                              borderRadius: '12px',
-                              padding: '10px 14px',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              cursor: 'pointer',
-                              transition: 'all 0.12s ease',
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.012)')}
-                            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                          >
-                            <div>
-                              <span style={{ fontSize: '0.66rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary)' }}>👑 Counsellor of the Season</span>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text)', marginTop: '1px' }}>{championCoun.name}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#10b981' }}>₹{(championCoun.sales / 100000).toFixed(2)}L</div>
-                              <div style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700 }}>{championCoun.count} enrolled • View board →</div>
-                            </div>
+                        {/* 2. WPL Cup Card - Luxury 3D Pedestal */}
+                        <div
+                          onClick={() => {
+                            setSelectedLocationCupModal({
+                              location: loc,
+                              league: 'WPL',
+                              leagueTitle: 'Walk-in Premier League (WPL Cup)',
+                              trophyType: 'webb_ellis',
+                              winCount: wplWinningSeasons.length,
+                              winningSeasons: wplWinningSeasons,
+                            });
+                          }}
+                          style={{
+                            background: 'radial-gradient(ellipse at top, rgba(16, 185, 129, 0.12) 0%, var(--card-bg) 70%)',
+                            border: wplWinningSeasons.length > 0 ? '1.5px solid rgba(16, 185, 129, 0.4)' : '1.5px solid var(--border)',
+                            borderRadius: '12px',
+                            padding: '24px 20px 18px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: '10px',
+                            boxShadow: wplWinningSeasons.length > 0 ? '0 8px 24px rgba(16, 185, 129, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            minHeight: '350px',
+                            position: 'relative',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-6px)';
+                            e.currentTarget.style.borderColor = '#10b981';
+                            e.currentTarget.style.boxShadow = '0 16px 36px rgba(16, 185, 129, 0.25)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.borderColor = wplWinningSeasons.length > 0 ? 'rgba(16, 185, 129, 0.4)' : 'var(--border)';
+                            e.currentTarget.style.boxShadow = wplWinningSeasons.length > 0 ? '0 8px 24px rgba(16, 185, 129, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)';
+                          }}
+                        >
+                          <ChampionshipTrophy3D type="webb_ellis" size={155} />
+                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                            🚶 WPL Cup
+                          </h4>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            padding: '5px 16px',
+                            borderRadius: '9999px',
+                            background: wplWinningSeasons.length > 0 ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))' : 'var(--surface-alt)',
+                            border: wplWinningSeasons.length > 0 ? '1.5px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border)',
+                            color: wplWinningSeasons.length > 0 ? '#059669' : 'var(--muted)',
+                            letterSpacing: '0.02em',
+                          }}>
+                            👑 {wplWinningSeasons.length}x CHAMPION
+                          </span>
+                          <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--text)' }}>
+                            {loc} • {wplWinningSeasons.length > 0 ? `${wplWinningSeasons.length} Times WPL Winner` : 'Contender'}
                           </div>
-                        )}
-                      </>
-                    ) : (
-                      <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--muted)', fontSize: '0.84rem' }}>
-                        No admissions recorded for Season {m} yet.
+                          <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
+                            {wplWinningSeasons.length > 0 
+                              ? `Won in: ${wplWinningSeasons.map(s => s.monthName.slice(0,3)).join(', ')} ${trophyYear === 'all_time' ? '' : `(${trophyYear})`}`
+                              : `In contention for ${yrNum} seasons`}
+                          </p>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 900,
+                            color: '#059669',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            marginTop: 'auto',
+                            width: '100%',
+                            transition: 'all 0.15s ease',
+                          }}>
+                            View Ceremony ({wplWinningSeasons.length} Seasons) →
+                          </span>
+                        </div>
+
+                        {/* 3. SPL Cup Card - Luxury 3D Pedestal */}
+                        <div
+                          onClick={() => {
+                            setSelectedLocationCupModal({
+                              location: loc,
+                              league: 'SPL',
+                              leagueTitle: 'Sales Premier League (SPL Cup)',
+                              trophyType: 'icc_pillars',
+                              winCount: splWinningSeasons.length,
+                              winningSeasons: splWinningSeasons,
+                            });
+                          }}
+                          style={{
+                            background: 'radial-gradient(ellipse at top, rgba(56, 189, 248, 0.12) 0%, var(--card-bg) 70%)',
+                            border: splWinningSeasons.length > 0 ? '1.5px solid rgba(56, 189, 248, 0.4)' : '1.5px solid var(--border)',
+                            borderRadius: '12px',
+                            padding: '24px 20px 18px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: '10px',
+                            boxShadow: splWinningSeasons.length > 0 ? '0 8px 24px rgba(56, 189, 248, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            minHeight: '350px',
+                            position: 'relative',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-6px)';
+                            e.currentTarget.style.borderColor = '#0284c7';
+                            e.currentTarget.style.boxShadow = '0 16px 36px rgba(56, 189, 248, 0.25)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.borderColor = splWinningSeasons.length > 0 ? 'rgba(56, 189, 248, 0.4)' : 'var(--border)';
+                            e.currentTarget.style.boxShadow = splWinningSeasons.length > 0 ? '0 8px 24px rgba(56, 189, 248, 0.1)' : '0 4px 16px rgba(0,0,0,0.04)';
+                          }}
+                        >
+                          <ChampionshipTrophy3D type="icc_pillars" size={155} />
+                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                            🎓 SPL Cup
+                          </h4>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            padding: '5px 16px',
+                            borderRadius: '9999px',
+                            background: splWinningSeasons.length > 0 ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(2, 132, 199, 0.15))' : 'var(--surface-alt)',
+                            border: splWinningSeasons.length > 0 ? '1.5px solid rgba(56, 189, 248, 0.5)' : '1px solid var(--border)',
+                            color: splWinningSeasons.length > 0 ? '#0284c7' : 'var(--muted)',
+                            letterSpacing: '0.02em',
+                          }}>
+                            🏆 {splWinningSeasons.length}x CHAMPION
+                          </span>
+                          <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--text)' }}>
+                            {loc} • {splWinningSeasons.length > 0 ? `${splWinningSeasons.length} Times SPL Winner` : 'Contender'}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
+                            {splWinningSeasons.length > 0 
+                              ? `Won in: ${splWinningSeasons.map(s => s.monthName.slice(0,3)).join(', ')} ${trophyYear === 'all_time' ? '' : `(${trophyYear})`}`
+                              : `In contention for ${yrNum} seasons`}
+                          </p>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 900,
+                            color: '#0284c7',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                            marginTop: 'auto',
+                            width: '100%',
+                            transition: 'all 0.15s ease',
+                          }}>
+                            View Ceremony ({splWinningSeasons.length} Seasons) →
+                          </span>
+                        </div>
+
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════════════════════
-                3 DISTINCT LEAGUES: RPL (12 Boxes), WPL (12 Boxes), SPL (12 Boxes)
-                EXACT SAME BOX SIZE & STRUCTURE AS BADGES (1:1 GEOMETRY)
-            ══════════════════════════════════════════════════════════════ */}
-            {(() => {
-              const monthsData = [1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
-                const mName = monthNames[m - 1];
-                const mLeads = convertedLeads.filter((l: any) => {
-                  if (!l.enrollmentDate) return false;
-                  const d = new Date(l.enrollmentDate);
-                  return d.getFullYear() === yrNum && (d.getMonth() + 1) === m;
-                });
-                const totalMonthSales = mLeads.reduce((acc: number, l: any) => acc + (Number(l.feePaid) || 0), 0);
+            {/* ══════════════════════════════════════════════════════════
+                VIEW 2: 🏆 ALL TROPHIES VIEW
+                - If 'all_time': Exactly 3 Grand Trophies with Full All-Time Winners Leaderboard
+                - If single year (2026/2025): 12 Monthly Boxes per League
+            ══════════════════════════════════════════════════════════ */}
+            {seasonCategoryFilter !== 'locations' && (() => {
+              const rawLeagues: Array<{
+                id: 'rpl' | 'wpl' | 'spl';
+                title: string;
+                subtitle: string;
+                icon: string;
+                trophyType: 'fifa_globe' | 'webb_ellis' | 'icc_pillars';
+                color: string;
+              }> = [
+                {
+                  id: 'rpl',
+                  title: 'RPL — Revenue Premier League Cup',
+                  subtitle: 'All-Time Gross Fee Revenue Collections Championship',
+                  icon: '💰',
+                  trophyType: 'fifa_globe',
+                  color: '#f59e0b',
+                },
+                {
+                  id: 'wpl',
+                  title: 'WPL — Walk-in Premier League Cup',
+                  subtitle: 'All-Time Physical Walk-in Footfall Championship',
+                  icon: '🚶',
+                  trophyType: 'webb_ellis',
+                  color: '#10b981',
+                },
+                {
+                  id: 'spl',
+                  title: 'SPL — Sales Premier League Cup',
+                  subtitle: 'All-Time Student Admissions Volume Championship',
+                  icon: '🎓',
+                  trophyType: 'icc_pillars',
+                  color: '#0284c7',
+                },
+              ];
+              const leaguesToRender = rawLeagues.filter(l => seasonCategoryFilter === 'all' || seasonCategoryFilter === l.id);
 
-                const mStudents = (students || []).filter((s: any) => {
-                  const d = new Date(s.createdAt);
-                  return !isNaN(d.getTime()) && d.getFullYear() === yrNum && (d.getMonth() + 1) === m;
-                });
+              // ─── IF ALL TIME: DISPLAY EXACTLY 3 GRAND LEAGUE TROPHIES ───
+              if (trophyYear === 'all_time') {
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: '24px',
+                    }}>
+                      {leaguesToRender.map((league) => {
+                        // Aggregate all historical winners across 2026 (completed) and 2025
+                        const allSeasonsCombined = [...monthsData2026.filter(d => !d.isFutureMonth), ...monthsData2025];
+                        const locWinMap: Record<string, { wins: number; totalSales: number; totalCount: number }> = {};
+                        
+                        LOCATIONS.forEach(l => {
+                          locWinMap[l] = { wins: 0, totalSales: 0, totalCount: 0 };
+                        });
 
-                const locSalesMap: Record<string, { sales: number; count: number; counselors: Set<string> }> = {};
-                const locWalkinMap: Record<string, number> = {};
-                const cMap = new Map<string, { name: string; sales: number; count: number }>();
+                        const allWinnersList: Array<{
+                          seasonNumber: number;
+                          monthName: string;
+                          year: number;
+                          winnerLoc: string;
+                          metricFormatted: string;
+                          counselors: string[];
+                        }> = [];
 
-                LOCATIONS.forEach(loc => {
-                  locSalesMap[loc] = { sales: 0, count: 0, counselors: new Set() };
-                  locWalkinMap[loc] = 0;
-                });
+                        allSeasonsCombined.forEach(d => {
+                          const winner = league.id === 'rpl' ? d.rplWinner : (league.id === 'wpl' ? d.wplWinner : d.splWinner);
+                          if (winner && winner.loc) {
+                            if (!locWinMap[winner.loc]) locWinMap[winner.loc] = { wins: 0, totalSales: 0, totalCount: 0 };
+                            locWinMap[winner.loc].wins += 1;
+                            locWinMap[winner.loc].totalSales += (winner as any).sales || d.locSalesMap[winner.loc]?.sales || 0;
+                            locWinMap[winner.loc].totalCount += (winner as any).count || 0;
 
-                mLeads.forEach((l: any) => {
-                  const coun = (l.counselorName || l.metadata?.['Counsellor'] || '').trim().replace(/_/g, ' ');
-                  const paid = Number(l.feePaid) || 0;
-                  const loc = coun ? getCounselorLocation(coun) : 'Hyderabad';
-                  if (locSalesMap[loc]) {
-                    locSalesMap[loc].sales += paid;
-                    locSalesMap[loc].count += 1;
-                    if (coun && !isExcludedFromTrophies(coun)) locSalesMap[loc].counselors.add(coun);
-                  }
-                  if (coun && !isExcludedFromTrophies(coun)) {
-                    const cCur = cMap.get(coun) || { name: coun, sales: 0, count: 0 };
-                    cCur.sales += paid;
-                    cCur.count += 1;
-                    cMap.set(coun, cCur);
-                  }
-                });
+                            const metricFormatted = league.id === 'rpl'
+                              ? `₹${(((winner as any).sales || 0) / 100000).toFixed(2)}L Revenue`
+                              : (league.id === 'wpl' ? `${(winner as any).count} Walk-ins` : `${(winner as any).count} Admissions`);
 
-                mStudents.forEach((s: any) => {
-                  const coun = (s.assignedCounselor?.name || s.metadata?.['Counsellor'] || '').trim().replace(/_/g, ' ');
-                  const loc = coun ? getCounselorLocation(coun) : (s.branch?.city || s.branch?.name || 'Visakhapatnam');
-                  if (locWalkinMap[loc] !== undefined) {
-                    locWalkinMap[loc] += 1;
-                  } else {
-                    const matched = LOCATIONS.find(l => loc.toLowerCase().includes(l.toLowerCase()));
-                    if (matched) locWalkinMap[matched] += 1;
-                  }
-                });
+                            allWinnersList.push({
+                              seasonNumber: d.m,
+                              monthName: d.mName,
+                              year: d.year || 2026,
+                              winnerLoc: winner.loc,
+                              metricFormatted,
+                              counselors: Array.from((winner as any).counselors || d.locSalesMap[winner.loc]?.counselors || []),
+                            });
+                          }
+                        });
 
-                // 1. RPL Winner (Revenue)
-                const rplSorted = LOCATIONS
-                  .map(loc => ({ loc, sales: locSalesMap[loc]?.sales || 0, count: locSalesMap[loc]?.count || 0, counselors: locSalesMap[loc]?.counselors || new Set<string>() }))
-                  .sort((a, b) => b.sales - a.sales);
-                const rplWinner = rplSorted[0]?.sales > 0 ? rplSorted[0] : null;
+                        const sortedRankings = Object.entries(locWinMap)
+                          .map(([name, data]) => ({
+                            name,
+                            wins: data.wins,
+                            totalMetric: league.id === 'rpl' 
+                              ? `₹${(data.totalSales / 100000).toFixed(2)}L Collected`
+                              : (league.id === 'wpl' ? `${data.totalCount} Walk-ins` : `${data.totalCount} Enrolled`),
+                          }))
+                          .sort((a, b) => b.wins - a.wins)
+                          .map((item, idx) => ({ ...item, rank: idx + 1 }));
 
-                // 2. WPL Winner (Walk-ins)
-                const wplSorted = LOCATIONS
-                  .map(loc => ({ loc, count: locWalkinMap[loc] || 0 }))
-                  .sort((a, b) => b.count - a.count);
-                const wplWinner = wplSorted[0]?.count > 0 
-                  ? wplSorted[0] 
-                  : (rplSorted[0]?.sales > 0 ? { loc: (m % 2 === 0 ? 'Visakhapatnam' : 'Hyderabad'), count: Math.round((locSalesMap[rplSorted[0].loc]?.count || 20) * 1.3) } : null);
+                        const topCampus = sortedRankings[0] || { name: 'Hyderabad', wins: 0, totalMetric: '0' };
 
-                // 3. SPL Winner (Sales)
-                const splSorted = LOCATIONS
-                  .map(loc => ({ loc, count: locSalesMap[loc]?.count || 0, sales: locSalesMap[loc]?.sales || 0, counselors: locSalesMap[loc]?.counselors || new Set<string>() }))
-                  .sort((a, b) => b.count - a.count);
-                const splWinner = splSorted[0]?.count > 0 ? splSorted[0] : null;
-
-                const sortedCoun = Array.from(cMap.values()).sort((a, b) => b.sales - a.sales);
-                const championCoun = sortedCoun[0] || null;
-
-                return {
-                  m,
-                  mName,
-                  totalMonthSales,
-                  mLeads,
-                  sortedCoun,
-                  championCoun,
-                  rplWinner,
-                  rplSorted,
-                  wplWinner,
-                  wplSorted,
-                  splWinner,
-                  splSorted,
-                  locSalesMap,
-                };
-              });
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                  
-                  {/* ══════════════════════════════════════════════════════════
-                      1. RPL SECTION: REVENUE PREMIER LEAGUE (12 BOXES)
-                  ══════════════════════════════════════════════════════════ */}
-                  {(seasonCategoryFilter === 'all' || seasonCategoryFilter === 'rpl') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '1.4rem' }}>💰</span>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                              RPL — Revenue Premier League Cups ({yrNum})
-                            </h3>
-                            <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
-                              12 Monthly Revenue Championship Cups awarded to #1 Location in Gross Collections
-                            </span>
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '3px 12px', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.3)' }}>
-                          12 Monthly Cups
-                        </span>
-                      </div>
-
-                      {/* 12 Boxes Grid for RPL (Exact Same as Badges Grid) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                        {monthsData.map((d) => (
+                        return (
                           <div
-                            key={`rpl-${d.m}`}
+                            key={league.id}
                             onClick={() => {
-                              if (d.rplWinner) {
-                                setSelectedSeasonModal({
-                                  seasonNumber: d.m,
-                                  seasonName: `Season ${d.m} (${d.mName} ${yrNum}) RPL Cup`,
-                                  totalMonthSales: d.totalMonthSales,
-                                  winnerBranch: { name: d.rplWinner.loc, sales: d.rplWinner.sales, team: Array.from(d.rplWinner.counselors) },
-                                  runnerBranch: d.rplSorted[1] ? { name: d.rplSorted[1].loc, sales: d.rplSorted[1].sales, team: Array.from(d.rplSorted[1].counselors) } : null,
-                                  championCoun: d.championCoun,
-                                  allCounselors: d.sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                                  mLeads: d.mLeads,
-                                });
-                              }
+                              setSelectedAllTimeLeagueModal({
+                                id: league.id,
+                                title: league.title,
+                                subtitle: league.subtitle,
+                                icon: league.icon,
+                                trophyType: league.trophyType,
+                                color: league.color,
+                                topCampus: { name: topCampus.name, wins: topCampus.wins, metricFormatted: topCampus.totalMetric },
+                                rankings: sortedRankings,
+                                allWinners: allWinnersList,
+                              });
                             }}
                             style={{
-                              background: 'var(--card-bg)',
-                              border: '1.5px solid var(--border)',
-                              borderRadius: '8px',
-                              padding: '20px 18px 16px',
+                              background: `radial-gradient(ellipse at top, ${league.color}18 0%, var(--card-bg) 70%)`,
+                              border: `1.5px solid ${league.color}44`,
+                              borderRadius: '16px',
+                              padding: '32px 24px 22px',
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
                               textAlign: 'center',
-                              gap: '8px',
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                              gap: '12px',
+                              boxShadow: `0 8px 30px ${league.color}14`,
                               cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              minHeight: '340px',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              minHeight: '420px',
+                              position: 'relative',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-4px)';
-                              e.currentTarget.style.borderColor = 'var(--primary)';
-                              e.currentTarget.style.boxShadow = '0 10px 28px rgba(99,102,241,0.16)';
+                              e.currentTarget.style.transform = 'translateY(-6px)';
+                              e.currentTarget.style.borderColor = league.color;
+                              e.currentTarget.style.boxShadow = `0 18px 45px ${league.color}28`;
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.borderColor = 'var(--border)';
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
+                              e.currentTarget.style.borderColor = `${league.color}44`;
+                              e.currentTarget.style.boxShadow = `0 8px 30px ${league.color}14`;
                             }}
                           >
-                            <ChampionshipTrophy3D type="fifa_globe" size={155} />
-                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
-                              RPL Cup
-                            </h4>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 900,
-                              padding: '4px 14px',
-                              borderRadius: '6px',
-                              background: d.rplWinner ? 'rgba(16,185,129,0.12)' : 'var(--surface-alt)',
-                              border: d.rplWinner ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border)',
-                              color: d.rplWinner ? '#10b981' : 'var(--muted)',
-                            }}>
-                              {d.rplWinner ? d.rplWinner.loc : 'In Progress'}
-                            </span>
-                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)' }}>
-                              Champions {d.mName} {yrNum}
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
-                              {d.rplWinner ? `₹${((d.rplWinner.sales || 0) / 100000).toFixed(2)}L Fee Revenue generated in Season ${d.m}.` : `Season ${d.m} collections in progress.`}
-                            </p>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', marginTop: 'auto' }}>
-                              View Leaderboard →
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ══════════════════════════════════════════════════════════
-                      2. WPL SECTION: WALK-IN PREMIER LEAGUE (12 BOXES)
-                  ══════════════════════════════════════════════════════════ */}
-                  {(seasonCategoryFilter === 'all' || seasonCategoryFilter === 'wpl') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '1.4rem' }}>🚶</span>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                              WPL — Walk-in Premier League Cups ({yrNum})
+                            <ChampionshipTrophy3D type={league.trophyType} size={180} />
+                            
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                              {league.icon} {league.title}
                             </h3>
-                            <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
-                              12 Monthly Walk-in Championship Cups awarded to #1 Location in Physical Footfall
-                            </span>
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 12px', borderRadius: '6px', border: '1px solid rgba(16,185,129,0.3)' }}>
-                          12 Monthly Cups
-                        </span>
-                      </div>
-
-                      {/* 12 Boxes Grid for WPL (Exact Same as Badges Grid) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                        {monthsData.map((d) => (
-                          <div
-                            key={`wpl-${d.m}`}
-                            onClick={() => {
-                              if (d.wplWinner) {
-                                setSelectedSeasonModal({
-                                  seasonNumber: d.m,
-                                  seasonName: `Season ${d.m} (${d.mName} ${yrNum}) WPL Cup`,
-                                  totalMonthSales: d.totalMonthSales,
-                                  winnerBranch: { name: d.wplWinner.loc, sales: d.locSalesMap[d.wplWinner.loc]?.sales || 0, team: Array.from(d.locSalesMap[d.wplWinner.loc]?.counselors || []) },
-                                  runnerBranch: d.wplSorted[1] ? { name: d.wplSorted[1].loc, sales: d.locSalesMap[d.wplSorted[1].loc]?.sales || 0, team: Array.from(d.locSalesMap[d.wplSorted[1].loc]?.counselors || []) } : null,
-                                  championCoun: d.championCoun,
-                                  allCounselors: d.sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                                  mLeads: d.mLeads,
-                                });
-                              }
-                            }}
-                            style={{
-                              background: 'var(--card-bg)',
-                              border: '1.5px solid var(--border)',
-                              borderRadius: '8px',
-                              padding: '20px 18px 16px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              textAlign: 'center',
-                              gap: '8px',
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              minHeight: '340px',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-4px)';
-                              e.currentTarget.style.borderColor = 'var(--primary)';
-                              e.currentTarget.style.boxShadow = '0 10px 28px rgba(99,102,241,0.16)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.borderColor = 'var(--border)';
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
-                            }}
-                          >
-                            <ChampionshipTrophy3D type="webb_ellis" size={155} />
-                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
-                              WPL Cup
-                            </h4>
+                            
                             <span style={{
-                              fontSize: '0.78rem',
+                              fontSize: '0.82rem',
                               fontWeight: 900,
-                              padding: '4px 14px',
-                              borderRadius: '6px',
-                              background: d.wplWinner ? 'rgba(16,185,129,0.12)' : 'var(--surface-alt)',
-                              border: d.wplWinner ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border)',
-                              color: d.wplWinner ? '#10b981' : 'var(--muted)',
+                              padding: '6px 18px',
+                              borderRadius: '9999px',
+                              background: `linear-gradient(135deg, ${league.color}26, ${league.color}14)`,
+                              border: `1.5px solid ${league.color}66`,
+                              color: league.color,
+                              letterSpacing: '0.02em',
                             }}>
-                              {d.wplWinner ? d.wplWinner.loc : 'In Progress'}
+                              👑 #1 All-Time: {topCampus.name} ({topCampus.wins} Titles)
                             </span>
-                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)' }}>
-                              Champions {d.mName} {yrNum}
+
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--muted)' }}>
+                              {league.subtitle}
                             </div>
-                            <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
-                              {d.wplWinner ? `${d.wplWinner.count} Walk-in Candidates handled in Season ${d.m}.` : `Season ${d.m} footfall in progress.`}
+
+                            <p style={{ margin: '4px 0 0 0', fontSize: '0.76rem', color: 'var(--text)', fontWeight: 800 }}>
+                              Total {allWinnersList.length} Historic Championship Seasons Awarded
                             </p>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', marginTop: 'auto' }}>
-                              View Leaderboard →
-                            </span>
+
+                            <button
+                              type="button"
+                              style={{
+                                marginTop: 'auto',
+                                width: '100%',
+                                padding: '10px 16px',
+                                borderRadius: '10px',
+                                border: `1.5px solid ${league.color}55`,
+                                background: `${league.color}18`,
+                                color: league.color,
+                                fontSize: '0.78rem',
+                                fontWeight: 900,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              View All-Time Leaderboard &amp; Winners ({allWinnersList.length} Seasons) →
+                            </button>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
-
-                  {/* ══════════════════════════════════════════════════════════
-                      3. SPL SECTION: SALES PREMIER LEAGUE (12 BOXES)
-                  ══════════════════════════════════════════════════════════ */}
-                  {(seasonCategoryFilter === 'all' || seasonCategoryFilter === 'spl') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '1.4rem' }}>🎓</span>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                              SPL — Sales Premier League Cups ({yrNum})
-                            </h3>
-                            <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
-                              12 Monthly Sales Championship Cups awarded to #1 Location in Student Admissions Count
-                            </span>
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#0284c7', background: 'rgba(56,189,248,0.12)', padding: '3px 12px', borderRadius: '6px', border: '1px solid rgba(56,189,248,0.3)' }}>
-                          12 Monthly Cups
-                        </span>
-                      </div>
-
-                      {/* 12 Boxes Grid for SPL (Exact Same as Badges Grid) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                        {monthsData.map((d) => (
-                          <div
-                            key={`spl-${d.m}`}
-                            onClick={() => {
-                              if (d.splWinner) {
-                                setSelectedSeasonModal({
-                                  seasonNumber: d.m,
-                                  seasonName: `Season ${d.m} (${d.mName} ${yrNum}) SPL Cup`,
-                                  totalMonthSales: d.totalMonthSales,
-                                  winnerBranch: { name: d.splWinner.loc, sales: d.splWinner.sales, team: Array.from(d.splWinner.counselors) },
-                                  runnerBranch: d.splSorted[1] ? { name: d.splSorted[1].loc, sales: d.splSorted[1].sales, team: Array.from(d.splSorted[1].counselors) } : null,
-                                  championCoun: d.championCoun,
-                                  allCounselors: d.sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                                  mLeads: d.mLeads,
-                                });
-                              }
-                            }}
-                            style={{
-                              background: 'var(--card-bg)',
-                              border: '1.5px solid var(--border)',
-                              borderRadius: '8px',
-                              padding: '20px 18px 16px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              textAlign: 'center',
-                              gap: '8px',
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              minHeight: '340px',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-4px)';
-                              e.currentTarget.style.borderColor = 'var(--primary)';
-                              e.currentTarget.style.boxShadow = '0 10px 28px rgba(99,102,241,0.16)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.borderColor = 'var(--border)';
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
-                            }}
-                          >
-                            <ChampionshipTrophy3D type="icc_pillars" size={155} />
-                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
-                              SPL Cup
-                            </h4>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 900,
-                              padding: '4px 14px',
-                              borderRadius: '6px',
-                              background: d.splWinner ? 'rgba(16,185,129,0.12)' : 'var(--surface-alt)',
-                              border: d.splWinner ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border)',
-                              color: d.splWinner ? '#10b981' : 'var(--muted)',
-                            }}>
-                              {d.splWinner ? d.splWinner.loc : 'In Progress'}
-                            </span>
-                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)' }}>
-                              Champions {d.mName} {yrNum}
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
-                              {d.splWinner ? `${d.splWinner.count} Student Admissions enrolled in Season ${d.m}.` : `Season ${d.m} admissions in progress.`}
-                            </p>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', marginTop: 'auto' }}>
-                              View Leaderboard →
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              );
-            })()}            {/* ══════════════════════════════════════════════════════════════
-                SECTION: 🥇 SEASON MEDALS (Branch Gold Medals & Silver Podium)
-            ══════════════════════════════════════════════════════════════ */}
-            {(seasonCategoryFilter === 'all' || seasonCategoryFilter === 'medals') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: seasonCategoryFilter === 'all' ? '1.5px solid var(--border)' : 'none', paddingTop: seasonCategoryFilter === 'all' ? '24px' : '0' }}>
-                  <span style={{ fontSize: '1.4rem' }}>🥇</span>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>Season Medals</h3>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
-                      Branch gold medals and runner-up silver medals awarded for seasonal excellence
-                    </p>
                   </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                  {ALL_BADGES.filter((b) => b.category === 'season' && (b.id === 'branch_gold_season_medal' || b.id === 'season_silver_medalist')).map((b) => {
-                    const qualifiers = counselorGamifications.filter((cg) => {
-                      const badgeObj = cg.badges.find((cb) => cb.id === b.id);
-                      return badgeObj?.isUnlocked;
-                    });
+                );
+              }
+
+              // ─── IF SINGLE YEAR (2026 OR 2025): DISPLAY 12 MONTHLY BOXES PER LEAGUE ───
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
+                  {leaguesToRender.map((league) => {
+                    const currYearData = yrNum === 2026 ? monthsData2026 : monthsData2025;
+
                     return (
-                      <div
-                        key={b.id}
-                        onClick={() => setSelectedBadgeModal(b)}
-                        style={{
-                          background: 'var(--card-bg)',
-                          border: '1.5px solid rgba(245,158,11,0.35)',
-                          borderRadius: '8px',
-                          padding: '28px 20px 22px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          gap: '12px',
-                          boxShadow: '0 4px 20px rgba(245,158,11,0.08)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          minHeight: '340px',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          e.currentTarget.style.borderColor = '#f59e0b';
-                          e.currentTarget.style.boxShadow = '0 12px 32px rgba(245,158,11,0.2)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.borderColor = 'rgba(245,158,11,0.35)';
-                          e.currentTarget.style.boxShadow = '0 4px 20px rgba(245,158,11,0.08)';
-                        }}
-                      >
-                        <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} />
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
-                          {b.name}
-                        </h4>
-                        <span style={{
-                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 12px', borderRadius: '6px',
-                          background: qualifiers.length > 0 ? 'rgba(16,185,129,0.12)' : 'var(--surface-alt)',
-                          border: qualifiers.length > 0 ? '1px solid rgba(16,185,129,0.4)' : '1px solid var(--border)',
-                          color: qualifiers.length > 0 ? '#f59e0b' : 'var(--muted)',
-                        }}>
-                          {qualifiers.length} Awarded
-                        </span>
-                        <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
-                          {b.description}
-                        </p>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', marginTop: 'auto' }}>
-                          View Leaderboard →
-                        </span>
+                      <div key={league.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '1.4rem' }}>{league.icon}</span>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+                                {league.title} ({yrNum})
+                              </h3>
+                              <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                                {league.subtitle}
+                              </span>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '0.74rem', fontWeight: 900, color: league.color,
+                            background: `${league.color}14`, padding: '3px 12px', borderRadius: '6px',
+                            border: `1px solid ${league.color}35`
+                          }}>
+                            12 Monthly Cups
+                          </span>
+                        </div>
+
+                        {/* 12 Monthly Boxes Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
+                          {currYearData.map((d) => {
+                            const winner = league.id === 'rpl' ? d.rplWinner : (league.id === 'wpl' ? d.wplWinner : d.splWinner);
+                            const sorted = league.id === 'rpl' ? d.rplSorted : (league.id === 'wpl' ? d.wplSorted : d.splSorted);
+
+                            return (
+                              <div
+                                key={`${league.id}-${yrNum}-${d.m}`}
+                                onClick={() => {
+                                  if (winner) {
+                                    setSelectedSeasonModal({
+                                      seasonNumber: d.m,
+                                      seasonName: `Season ${d.m} (${d.mName} ${yrNum}) ${league.id.toUpperCase()} Cup`,
+                                      totalMonthSales: d.totalMonthSales,
+                                      winnerBranch: { name: winner.loc, sales: (winner as any).sales || d.locSalesMap[winner.loc]?.sales || 0, team: Array.from((winner as any).counselors || d.locSalesMap[winner.loc]?.counselors || []) },
+                                      runnerBranch: sorted[1] ? { name: sorted[1].loc, sales: (sorted[1] as any).sales || d.locSalesMap[sorted[1].loc]?.sales || 0, team: Array.from((sorted[1] as any).counselors || d.locSalesMap[sorted[1].loc]?.counselors || []) } : null,
+                                      championCoun: d.championCoun,
+                                      allCounselors: d.sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
+                                      mLeads: d.mLeads,
+                                    });
+                                  }
+                                }}
+                                style={{
+                                  background: 'var(--card-bg)',
+                                  border: '1.5px solid var(--border)',
+                                  borderRadius: '8px',
+                                  padding: '20px 18px 16px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  textAlign: 'center',
+                                  gap: '8px',
+                                  boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                                  cursor: winner ? 'pointer' : 'default',
+                                  transition: 'all 0.15s ease',
+                                  minHeight: '340px',
+                                  opacity: d.isFutureMonth ? 0.85 : 1,
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (winner) {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = league.color;
+                                    e.currentTarget.style.boxShadow = `0 10px 28px ${league.color}26`;
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (winner) {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = 'var(--border)';
+                                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
+                                  }
+                                }}
+                              >
+                                <ChampionshipTrophy3D type={league.trophyType} size={155} />
+                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
+                                  {league.icon} {league.id.toUpperCase()} Cup
+                                </h4>
+                                <span style={{
+                                  fontSize: '0.78rem',
+                                  fontWeight: 900,
+                                  padding: '4px 14px',
+                                  borderRadius: '6px',
+                                  background: winner ? 'rgba(16,185,129,0.12)' : (d.isFutureMonth ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)'),
+                                  border: winner ? '1px solid rgba(16,185,129,0.3)' : (d.isFutureMonth ? '1px dashed rgba(245,158,11,0.4)' : '1px solid rgba(59,130,246,0.3)'),
+                                  color: winner ? '#10b981' : (d.isFutureMonth ? '#f59e0b' : '#3b82f6'),
+                                }}>
+                                  {winner ? winner.loc : (d.isFutureMonth ? 'Upcoming' : 'Active Season')}
+                                </span>
+                                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: winner ? 'var(--text)' : 'var(--muted)' }}>
+                                  {winner ? `Champions ${d.mName} ${yrNum}` : `Season ${d.m} • ${d.mName} ${yrNum}`}
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
+                                  {winner 
+                                    ? (league.id === 'rpl' ? `₹${(((winner as any).sales || 0) / 100000).toFixed(2)}L Fee Revenue generated.` : (league.id === 'wpl' ? `${(winner as any).count} Walk-in Candidates handled.` : `${(winner as any).count} Admissions enrolled.`))
+                                    : (d.isFutureMonth ? `Trophy awarded on ${d.unlockDateText} upon month conclusion.` : `Ongoing season tracking.`)}
+                                </p>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: winner ? league.color : 'var(--muted)', marginTop: 'auto' }}>
+                                  {winner ? 'View Leaderboard →' : (d.isFutureMonth ? '🔒 Upcoming Trophy' : 'View Live Standings →')}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </div>
+              );
+            })()}          </div>
         );
-      })()}
-
-      {/* ══════════════════════════════════════════════════════
+      })()}      {/* ══════════════════════════════════════════════════════
           TAB 1: 12-SEASONS GRAND TROPHIES & BADGES HALL OF FAME
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'badges' && (
@@ -1275,11 +1459,12 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           {/* Category Filter Tabs */}
           <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '4px' }}>
             {[
-              { id: 'all', label: '🌟 All Badges' },
+              { id: 'all', label: '🌟 All Badges & Medals' },
               { id: 'revenue', label: '💰 Revenue Badges' },
               { id: 'enrollment', label: '🎓 Enrollment Badges' },
               { id: 'walkin', label: '🚶 Walk-in Badges' },
               { id: 'dropout', label: '🛡️ Retention Badges' },
+              { id: 'season', label: '🥇 Season Medals' },
             ].map((cat) => (
               <button
                 key={cat.id}
@@ -1302,23 +1487,25 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           {/* ══════════════════════════════════════════════════════════════
               SECTION 2: MASTER BADGES & AWARDED COUNSELLORS (CLICKABLE)
           ══════════════════════════════════════════════════════════════ */}
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 2: MASTER BADGES & MILESTONES (SHIELD SHAPE)
+          ══════════════════════════════════════════════════════════ */}
           {(badgeCategoryFilter !== 'season') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                  Master Badges &amp; Milestone Trophies (Click any to view Leaderboard)
+                  🛡️ Master Milestone Badges (Click any to view Leaderboard)
                 </h3>
                 <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
                   Showing pure data-driven milestones unlocked by all counselors
                 </span>
               </div>
 
-              {/* Master Badges Grid */}
+              {/* Master Badges Grid (Shield Shapes) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
                 {ALL_BADGES
                   .filter((b) => b.category !== 'season' && (badgeCategoryFilter === 'all' || b.category === badgeCategoryFilter))
                   .map((b) => {
-                    // Find all counselors who unlocked this badge
                     const qualifiers = counselorGamifications.filter((cg) => {
                       const badgeObj = cg.badges.find((cb) => cb.id === b.id);
                       return badgeObj?.isUnlocked;
@@ -1354,8 +1541,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                           e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
                         }}
                       >
-                        {/* Portrait: icon top, name, count, description stacked */}
-                        <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} />
+                        <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} shape="shield" />
                         <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
                           {b.name}
                         </h4>
@@ -1380,6 +1566,85 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             </div>
           )}
 
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 3: OFFICIAL SEASON CHAMPIONSHIP MEDALS (MEDAL SHAPES ONLY)
+          ══════════════════════════════════════════════════════════ */}
+          {(badgeCategoryFilter === 'all' || badgeCategoryFilter === 'season') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: badgeCategoryFilter === 'all' ? '12px' : '0px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+                  🥇 Official Season Championship Medals (Pure Medal Shape)
+                </h3>
+                <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                  Awarded to top performing counselors upon calendar season conclusion
+                </span>
+              </div>
+
+              {/* Season Medals Grid (Pure Medal Shapes with Ribbon) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
+                {ALL_BADGES
+                  .filter((b) => b.category === 'season')
+                  .map((b) => {
+                    const qualifiers = counselorGamifications.filter((cg) => {
+                      const badgeObj = cg.badges.find((cb) => cb.id === b.id);
+                      return badgeObj?.isUnlocked;
+                    });
+
+                    return (
+                      <div
+                        key={b.id}
+                        onClick={() => setSelectedBadgeModal(b)}
+                        style={{
+                          background: 'var(--card-bg)',
+                          border: '1.5px solid var(--border)',
+                          borderRadius: '8px',
+                          padding: '28px 20px 22px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          gap: '12px',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          minHeight: '340px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                          e.currentTarget.style.borderColor = '#f59e0b';
+                          e.currentTarget.style.boxShadow = '0 10px 28px rgba(245,158,11,0.16)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
+                        }}
+                      >
+                        {/* Pure Championship Medal with Ribbon */}
+                        <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} shape="medal" />
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
+                          {b.name}
+                        </h4>
+                        <span style={{
+                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 12px', borderRadius: '6px',
+                          background: qualifiers.length > 0 ? 'rgba(245,158,11,0.14)' : 'var(--surface-alt)',
+                          border: qualifiers.length > 0 ? '1px solid rgba(245,158,11,0.35)' : '1px solid var(--border)',
+                          color: qualifiers.length > 0 ? '#f59e0b' : 'var(--muted)',
+                        }}>
+                          {qualifiers.length} Awarded
+                        </span>
+                        <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
+                          {b.description}
+                        </p>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', marginTop: 'auto' }}>
+                          View Medal Leaderboard →
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2848,6 +3113,369 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 style={{ padding: '8px 20px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
               >
                 Close Records
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      
+      {/* ── ALL-TIME LEAGUE GRAND TROPHY MODAL (FULL WINNERS LIST & RANKINGS) ── */}
+      {selectedAllTimeLeagueModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 12600, padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--card-bg, #0f172a)', border: `1.5px solid ${selectedAllTimeLeagueModal.color}66`,
+            borderRadius: '24px', width: '100%', maxWidth: '1020px', maxHeight: '88vh',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: `0 25px 80px ${selectedAllTimeLeagueModal.color}22`
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderBottom: '1.5px solid var(--border)', padding: '20px 24px',
+              background: `linear-gradient(135deg, ${selectedAllTimeLeagueModal.color}1a 0%, transparent 100%)`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <ChampionshipTrophy3D type={selectedAllTimeLeagueModal.trophyType} size={85} />
+                <div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 900, textTransform: 'uppercase', color: selectedAllTimeLeagueModal.color, letterSpacing: '0.06em' }}>
+                    🏆 All-Time Championship Hall of Fame
+                  </div>
+                  <h3 style={{ margin: '2px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>
+                    {selectedAllTimeLeagueModal.icon} {selectedAllTimeLeagueModal.title}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: selectedAllTimeLeagueModal.color, background: `${selectedAllTimeLeagueModal.color}1a`, padding: '3px 12px', borderRadius: '8px', border: `1px solid ${selectedAllTimeLeagueModal.color}44` }}>
+                      👑 All-Time Champion: {selectedAllTimeLeagueModal.topCampus.name} ({selectedAllTimeLeagueModal.topCampus.wins} Wins)
+                    </span>
+                    <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                      {selectedAllTimeLeagueModal.allWinners.length} Total Seasons
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAllTimeLeagueModal(null)}
+                style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', width: '36px', height: '36px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              
+              {/* 1. All-Time Campus Leaderboard Podium */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)' }}>
+                  📊 All-Time Campus Dominance Leaderboard
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  {selectedAllTimeLeagueModal.rankings.map((rk) => (
+                    <div key={rk.name} style={{
+                      background: 'var(--surface-alt)',
+                      border: rk.rank === 1 ? `1.5px solid ${selectedAllTimeLeagueModal.color}` : '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      boxShadow: rk.rank === 1 ? `0 4px 16px ${selectedAllTimeLeagueModal.color}22` : 'none',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          width: '26px', height: '26px', borderRadius: '7px',
+                          background: rk.rank === 1 ? `linear-gradient(135deg, ${selectedAllTimeLeagueModal.color}, #d97706)` : 'var(--surface)',
+                          color: rk.rank === 1 ? '#fff' : 'var(--muted)',
+                          fontSize: '0.74rem', fontWeight: 900,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          #{rk.rank}
+                        </span>
+                        <div>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--text)', display: 'block' }}>
+                            {rk.name}
+                          </strong>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>
+                            {rk.totalMetric}
+                          </span>
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.82rem', fontWeight: 900,
+                        color: rk.rank === 1 ? selectedAllTimeLeagueModal.color : 'var(--text)',
+                        background: 'var(--surface)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border)'
+                      }}>
+                        ⚡ {rk.wins} Wins
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Chronological List of All-Time Winners */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)' }}>
+                    📜 Complete Chronological List of All-Time Winners
+                  </h4>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 700 }}>
+                    {selectedAllTimeLeagueModal.allWinners.length} Official Championship Seasons
+                  </span>
+                </div>
+
+                <div className="table-wrapper" style={{ background: 'var(--surface-alt)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ textAlign: 'left', padding: '12px 16px' }}>Season &amp; Year</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px' }}>Champion Campus</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px' }}>Performance Metric</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px' }}>Winning Counselor Squad</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedAllTimeLeagueModal.allWinners.map((w, idx) => (
+                        <tr key={`${w.year}-${w.seasonNumber}-${idx}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{
+                                width: '26px', height: '26px', borderRadius: '7px',
+                                background: w.year === 2026 ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                color: '#fff', fontSize: '0.72rem', fontWeight: 900,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                              }}>
+                                S{w.seasonNumber}
+                              </span>
+                              <div>
+                                <strong style={{ fontSize: '0.88rem', color: 'var(--text)', display: 'block' }}>
+                                  {w.monthName} {w.year}
+                                </strong>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                                  Season {w.seasonNumber}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              fontSize: '0.8rem', fontWeight: 900, padding: '4px 12px', borderRadius: '6px',
+                              background: 'rgba(16, 185, 129, 0.14)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.35)'
+                            }}>
+                              🏆 {w.winnerLoc}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', fontWeight: 800, color: 'var(--text)' }}>
+                            {w.metricFormatted}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {w.counselors.slice(0, 3).map((cName) => (
+                                <span key={cName} style={{
+                                  fontSize: '0.7rem', fontWeight: 700, padding: '2px 7px', borderRadius: '5px',
+                                  background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)'
+                                }}>
+                                  👤 {cName}
+                                </span>
+                              ))}
+                              {w.counselors.length > 3 && (
+                                <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, alignSelf: 'center' }}>
+                                  +{w.counselors.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedAllTimeLeagueModal(null)}
+                style={{ padding: '8px 24px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.84rem', fontWeight: 800, cursor: 'pointer' }}
+              >
+                Close Leaderboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LOCATION CUP DRILLDOWN & LEADERBOARD MODAL ── */}
+      {selectedLocationCupModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 12500, padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--card-bg, #0f172a)', border: '1.5px solid rgba(245, 158, 11, 0.4)',
+            borderRadius: '24px', width: '100%', maxWidth: '980px', maxHeight: '88vh',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.6)'
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderBottom: '1.5px solid var(--border)', padding: '20px 24px',
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, transparent 100%)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <ChampionshipTrophy3D type={selectedLocationCupModal.trophyType} size={85} />
+                <div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 900, textTransform: 'uppercase', color: '#f59e0b', letterSpacing: '0.06em' }}>
+                    🏆 Official Championship Pedigree &amp; Leaderboards
+                  </div>
+                  <h3 style={{ margin: '2px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>
+                    {selectedLocationCupModal.location} • {selectedLocationCupModal.leagueTitle}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 900, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', padding: '3px 12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                      ⚡ {selectedLocationCupModal.winCount}x Total Champion
+                    </span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
+                      Grouped by Winning Periods
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLocationCupModal(null)}
+                style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', width: '36px', height: '36px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body: Winning Periods Table & Leaderboards */}
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Group by Year */}
+              {[2026, 2025].map((yr) => {
+                const yrSeasons = selectedLocationCupModal.winningSeasons.filter(s => (s as any).year === yr || (!(s as any).year && yr === 2026));
+                if (yrSeasons.length === 0) return null;
+
+                return (
+                  <div key={yr} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--border)', paddingBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1.1rem' }}>📅</span>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+                          {yr} Championship Era ({yrSeasons.length} Titles Won)
+                        </h4>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 10px', borderRadius: '6px' }}>
+                        {yrSeasons.length} Victorious Seasons
+                      </span>
+                    </div>
+
+                    <div className="table-wrapper" style={{ background: 'var(--surface-alt)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                            <th style={{ textAlign: 'left', padding: '12px 16px' }}>Winning Season</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px' }}>Performance Metric</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px' }}>Winning Counselor Squad</th>
+                            <th style={{ textAlign: 'center', padding: '12px 16px' }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {yrSeasons.map((s) => (
+                            <tr key={`${yr}-${s.seasonNumber}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{
+                                    width: '28px', height: '28px', borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#fff', fontSize: '0.78rem', fontWeight: 900,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}>
+                                    S{s.seasonNumber}
+                                  </span>
+                                  <div>
+                                    <strong style={{ fontSize: '0.9rem', color: 'var(--text)', display: 'block' }}>
+                                      {s.monthName} {yr}
+                                    </strong>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 700 }}>
+                                      Official Season {s.seasonNumber} Champion
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#10b981' }}>
+                                  {s.metricValue}
+                                </div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>
+                                  {s.metricLabel}
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                  {s.counselors.slice(0, 4).map((cName) => (
+                                    <span key={cName} style={{
+                                      fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: '6px',
+                                      background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)'
+                                    }}>
+                                      👤 {cName}
+                                    </span>
+                                  ))}
+                                  {s.counselors.length > 4 && (
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, alignSelf: 'center' }}>
+                                      +{s.counselors.length - 4} more
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                <span style={{
+                                  fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', borderRadius: '6px',
+                                  background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.35)'
+                                }}>
+                                  🏆 Champion
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedLocationCupModal(null)}
+                style={{ padding: '8px 24px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.84rem', fontWeight: 800, cursor: 'pointer' }}
+              >
+                Close Pedigree
               </button>
             </div>
           </div>
