@@ -59,6 +59,15 @@ export const navConfig: NavigationItem[] = [
     category: 'operations',
     visibilityFlags: { sidebar: true, quickAction: true, commandBar: true },
   },
+  {
+    id: 'converted-leads',
+    href: '/converted-leads',
+    label: 'Converted Leads',
+    icon: 'M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c0 2 2 3 6 3s6-1 6-3v-5',
+    rolePermissions: ['role_super_admin', 'role_admin', 'role_manager', 'role_frontdesk', 'role_counselor'],
+    category: 'operations',
+    visibilityFlags: { sidebar: true, quickAction: true, commandBar: true },
+  },
 
   // Analytics & Integrations Group
   {

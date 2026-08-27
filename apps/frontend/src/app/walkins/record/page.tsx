@@ -7,7 +7,7 @@ import RecordClient from './RecordClient';
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  searchParams: Promise<{ studentId?: string }>;
+  searchParams: Promise<{ studentId?: string; leadId?: string }>;
 }
 
 export default async function WalkinRecordPage({ searchParams }: PageProps) {
@@ -16,7 +16,12 @@ export default async function WalkinRecordPage({ searchParams }: PageProps) {
     redirect('/login');
   }
 
-  const { studentId } = await searchParams;
+  const { studentId, leadId } = await searchParams;
+  
+  if (leadId) {
+    redirect(`/converted-leads/${leadId}`);
+  }
+
   if (!studentId) {
     redirect('/walkins');
   }

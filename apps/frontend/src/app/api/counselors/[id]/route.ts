@@ -28,7 +28,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           : ((loc === 'Visakhapatnam' || loc === 'loc_vsp') ? 'loc_vsp' : 'loc_hyd');
       }
       if (Object.keys(userPatch).length > 0) {
-        await tx.user.update({ where: { id: targetUserId }, data: userPatch });
+        // Guard: only update if a real User record exists (system/admin profiles may not have one)
+        const existingUser = await tx.user.findUnique({ where: { id: targetUserId } });
+        if (existingUser) {
+          await tx.user.update({ where: { id: targetUserId }, data: userPatch });
+        }
       }
 
       const profilePatch: any = {};
@@ -66,5 +70,33 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   } catch (err: any) {
     console.error('Update counselor error:', err);
     return NextResponse.json({ error: err.message || 'Failed to update counselor details.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const counselorId = (await params).id;
+
+    await prisma.$transaction(async (tx: any) => {
+      // Find profile first
+      const profile = await tx.counselorProfile.findFirst({
+        where: { OR: [{ id: counselorId }, { userId: counselorId }] },
+      });
+      if (!profile) throw new Error('Counselor not found.');
+
+      // Nullify assignedStudentId references in sessions
+      await tx.session.updateMany({
+        where: { counselorId: profile.id },
+        data: { counselorId: null },
+      }).catch(() => {}); // soft-fail if no sessions column
+
+      // Delete the profile (cascade will handle related records if set in schema)
+      await tx.counselorProfile.delete({ where: { id: profile.id } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error('Delete counselor error:', err);
+    return NextResponse.json({ error: err.message || 'Failed to delete counselor.' }, { status: 500 });
   }
 }

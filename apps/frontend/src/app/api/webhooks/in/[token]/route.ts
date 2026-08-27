@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const { token } = await params;
     const webhook = await prisma.incomingWebhook.findUnique({ where: { token } });
-    if (!webhook || !webhook.isActive) {
+    if (!webhook || !webhook.active) {
       return NextResponse.json({ error: 'Unauthorized or inactive webhook token' }, { status: 401 });
     }
 

@@ -27,7 +27,7 @@ export default function Layout({ children, user }: LayoutProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   
   // Phase 2 foundations: Command palette state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
@@ -111,7 +111,7 @@ export default function Layout({ children, user }: LayoutProps) {
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('walkin-theme');
-    const nextTheme = savedTheme === 'light' ? 'light' : 'dark';
+    const nextTheme = savedTheme === 'dark' ? 'dark' : 'light';
     setTheme(nextTheme);
     document.documentElement.setAttribute('data-theme', nextTheme);
 

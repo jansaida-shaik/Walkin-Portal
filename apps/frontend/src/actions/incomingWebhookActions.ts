@@ -1,4 +1,5 @@
-"use server";
+'use server';
+
 import { prisma } from '../lib/db';
 import { revalidatePath } from 'next/cache';
 
@@ -14,10 +15,10 @@ export async function getIncomingWebhooks() {
   }
 }
 
-export async function createIncomingWebhook(name: string) {
+export async function createIncomingWebhook(name: string, source: string = 'custom') {
   try {
     const webhook = await prisma.incomingWebhook.create({
-      data: { name }
+      data: { name, source }
     });
     revalidatePath('/webhooks');
     return { success: true, webhook };
@@ -27,11 +28,11 @@ export async function createIncomingWebhook(name: string) {
   }
 }
 
-export async function toggleIncomingWebhook(id: string, isActive: boolean) {
+export async function toggleIncomingWebhook(id: string, active: boolean) {
   try {
     await prisma.incomingWebhook.update({
       where: { id },
-      data: { isActive }
+      data: { active }
     });
     revalidatePath('/webhooks');
     return { success: true };

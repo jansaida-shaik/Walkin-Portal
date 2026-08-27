@@ -53,7 +53,17 @@ export async function POST(req: NextRequest) {
     const assignedTime = counselor ? 'TBD' : 'Waitlist';
 
     const result = await prisma.$transaction(async (tx: any) => {
-      const student = await tx.student.create({ data: { name: studentName, phone, email: email || null, course, branchId, branchName, status, remarks: remarks || '', source: source || 'Walk-in API', details: { branchId, branchName, email } } });
+      const walkinType = body.walkinType || body.walkin_type || (body.details?.walkinType) || 'single';
+      const parentAccompanied = body.parentAccompanied || body.parent_accompanied || (body.details?.parentAccompanied) || 'solo';
+      const mergedDetails = {
+        branchId,
+        branchName,
+        email,
+        walkinType,
+        parentAccompanied,
+        ...(body.details || {}),
+      };
+      const student = await tx.student.create({ data: { name: studentName, phone, email: email || null, course, branchId, branchName, status, remarks: remarks || '', source: source || 'Walk-in API', details: mergedDetails } });
       const maxPosition = await tx.queueEntry.aggregate({ where: { student: { branchId }, status: 'active' }, _max: { position: true } });
       const nextPos = (maxPosition._max.position || 100) + 1;
       const queueEntry = await tx.queueEntry.create({ data: { id: String(nextPos), studentId: student.id, position: nextPos, status: 'active' } });

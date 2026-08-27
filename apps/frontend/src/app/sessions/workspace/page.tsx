@@ -7,7 +7,7 @@ import WorkspaceClient from './WorkspaceClient';
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  searchParams: Promise<{ studentId?: string }>;
+  searchParams: Promise<{ studentId?: string; id?: string }>;
 }
 
 export default async function WorkspacePage({ searchParams }: PageProps) {
@@ -16,19 +16,39 @@ export default async function WorkspacePage({ searchParams }: PageProps) {
     redirect('/login');
   }
 
-  const { studentId } = await searchParams;
-  if (!studentId) {
+  const { studentId, id } = await searchParams;
+  const targetId = studentId || id;
+
+  if (!targetId) {
     redirect('/sessions');
   }
 
-  // Fetch student, verify they exist
-  const student = await prisma.student.findUnique({
-    where: { id: studentId },
+  // 1. First try finding student directly by ID
+  let student = await prisma.student.findUnique({
+    where: { id: targetId },
     include: {
       sessions: true,
-      queueEntry: true
-    }
+      queueEntry: true,
+    },
   });
+
+  // 2. If not found by student ID, check if targetId is a CounselingSession ID
+  if (!student) {
+    const session = await prisma.counselingSession.findUnique({
+      where: { id: targetId },
+      include: {
+        student: {
+          include: {
+            sessions: true,
+            queueEntry: true,
+          },
+        },
+      },
+    });
+    if (session?.student) {
+      student = session.student;
+    }
+  }
 
   if (!student || student.deletedAt) {
     redirect('/sessions');

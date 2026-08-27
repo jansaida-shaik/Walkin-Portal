@@ -17,7 +17,7 @@ export default async function RootLayout({
   const user = await getSession();
 
   return (
-    <html lang="en" data-theme="dark" data-scroll-behavior="smooth">
+    <html lang="en" data-theme="light" data-scroll-behavior="smooth">
       <body>
         <Layout user={user}>{children}</Layout>
         <Analytics />

@@ -243,9 +243,14 @@ export default function SessionsClient({ initialWalkins, counselors, user }: Ses
   const handleStart = async (id: string) => {
     setLoading(true); setLoadingId(id); showMsg('Starting session…', 'info');
     const r = await startCounsellingSession(id);
-    r.success ? (showMsg('✅ Session started!', 'success'), router.refresh(), window.location.reload())
-              : showMsg(r.error || 'Failed.', 'error');
-    setLoading(false); setLoadingId(null);
+    if (r.success) {
+      showMsg('✅ Session started! Opening Live Workspace...', 'success');
+      router.refresh();
+      router.push(`/sessions/workspace?studentId=${id}`);
+    } else {
+      showMsg(r.error || 'Failed to start session.', 'error');
+      setLoading(false); setLoadingId(null);
+    }
   };
 
   const handleOpenAndStartWorkspace = async (student: Student) => {

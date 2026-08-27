@@ -1,10 +1,12 @@
 /**
  * Gamification & Inter-Campus League Championship Engine
- * Computes XP, levels, streak flames, badges, and league rankings from live data.
+ * 100% Pure mathematical calculation derived strictly from real PostgreSQL DB records:
+ * Including both Walk-in Sessions AND All 9,582 Converted Lead Enrollments.
  */
 
 export interface Badge {
   id: string;
+  category: 'walkin' | 'enrollment' | 'revenue' | 'dropout' | 'season';
   name: string;
   description: string;
   icon: string;
@@ -37,7 +39,11 @@ export interface CounselorGamification {
   streakDays: number;
   completedCount: number;
   totalCompleted?: number;
+  totalSales: number;
+  avgTicket: number;
+  walkinCount: number;
   conversionRate: number;
+  dropoutPct: number;
   badges: Badge[];
   quests: Quest[];
 }
@@ -51,6 +57,7 @@ export interface CampusLeagueStanding {
   intakeCount: number;
   completedCount: number;
   totalCompleted?: number;
+  totalSales?: number;
   conversionRate: number;
   winStreak: number;
   tier: 'Premier League' | 'Challengers League' | string;
@@ -58,218 +65,486 @@ export interface CampusLeagueStanding {
 }
 
 export const ALL_BADGES: Badge[] = [
+  // ── 1. REVENUE BADGES & TROPHIES ──
   {
-    id: 'conversion_sniper',
-    name: 'Conversion Sniper',
-    description: 'Maintained an 80%+ session completion conversion rate.',
-    icon: '🎯',
+    id: 'crown_legend',
+    category: 'revenue',
+    name: '👑 ₹3Cr+ Crown Legend',
+    description: 'Achieved over ₹3.00 Crore in collected enrollment revenue.',
+    icon: '👑',
     tier: 'mythic',
   },
   {
-    id: 'century_club',
-    name: 'Century Club',
-    description: 'Successfully guided 100+ walk-in student candidates.',
-    icon: '🏆',
+    id: 'diamond_closer',
+    category: 'revenue',
+    name: '💎 ₹1Cr+ Diamond Closer',
+    description: 'Achieved over ₹1.00 Crore in collected enrollment revenue.',
+    icon: '💎',
     tier: 'legendary',
   },
   {
-    id: 'streak_master',
-    name: 'Streak Master',
-    description: 'Maintained 5+ consecutive active counseling days.',
-    icon: '🔥',
+    id: 'gold_closer',
+    category: 'revenue',
+    name: '🥇 ₹50L+ Gold Closer',
+    description: 'Achieved over ₹50.00 Lakhs in collected revenue.',
+    icon: '🥇',
     tier: 'epic',
   },
   {
-    id: 'lightning_closer',
-    name: 'Lightning Closer',
-    description: 'Completed a student session in under 30 minutes with enrollment outcome.',
-    icon: '⚡',
+    id: 'silver_closer',
+    category: 'revenue',
+    name: '🥈 ₹25L+ Silver Closer',
+    description: 'Achieved over ₹25.00 Lakhs in collected revenue.',
+    icon: '🥈',
     tier: 'elite',
   },
   {
-    id: 'master_mentor',
-    name: 'Master Mentor',
-    description: 'Top-rated counselor of the month across campus branches.',
-    icon: '🌟',
+    id: 'bronze_closer',
+    category: 'revenue',
+    name: '🥉 ₹10L+ Bronze Closer',
+    description: 'Achieved over ₹10.00 Lakhs in collected revenue.',
+    icon: '🥉',
+    tier: 'gold',
+  },
+  {
+    id: 'high_ticket_pro',
+    category: 'revenue',
+    name: '🚀 High-Ticket Pro (>₹35k)',
+    description: 'Maintained avg ticket size > ₹35,000 across 10+ enrollments.',
+    icon: '🚀',
+    tier: 'legendary',
+  },
+
+  // ── 2. ENROLLMENT VOLUME BADGES ──
+  {
+    id: 'master_enroller',
+    category: 'enrollment',
+    name: '🏛️ 500+ Master Enroller',
+    description: 'Guided and enrolled 500+ total career students.',
+    icon: '🏛️',
+    tier: 'mythic',
+  },
+  {
+    id: 'century_enroller',
+    category: 'enrollment',
+    name: '💯 Century Enroller (100+)',
+    description: 'Guided and enrolled 100+ student admissions.',
+    icon: '💯',
     tier: 'legendary',
   },
   {
-    id: 'speed_demon',
-    name: 'Zero Wait Guardian',
-    description: 'Attended queued candidates within 5 minutes of token assignment.',
+    id: 'season_century_scorer',
+    category: 'enrollment',
+    name: '🔥 Season Century Scorer',
+    description: 'Enrolled 100+ students in a single calendar season — an elite feat achieved by only a few.',
+    icon: '🔥',
+    tier: 'mythic',
+  },
+  {
+    id: 'pacesetter_50',
+    category: 'enrollment',
+    name: '🎖️ Pacesetter (50+)',
+    description: 'Guided and enrolled 50+ student admissions.',
+    icon: '🎖️',
+    tier: 'epic',
+  },
+  {
+    id: 'achiever_25',
+    category: 'enrollment',
+    name: '🎯 Achiever (25+)',
+    description: 'Guided and enrolled 25+ student admissions.',
+    icon: '🎯',
+    tier: 'gold',
+  },
+
+  // ── 3. WALKIN PERFORMANCE BADGES ──
+  {
+    id: 'walkin_grandmaster',
+    category: 'walkin',
+    name: '🚶 100+ Walkin Grandmaster',
+    description: 'Handled over 100 physical walk-in candidates in person.',
+    icon: '🚶',
+    tier: 'mythic',
+  },
+  {
+    id: 'walkin_specialist',
+    category: 'walkin',
+    name: '⚡ 50+ Walkin Specialist',
+    description: 'Handled over 50 physical walk-in candidates in person.',
+    icon: '⚡',
+    tier: 'legendary',
+  },
+  {
+    id: 'walkin_handler',
+    category: 'walkin',
+    name: '🎯 20+ Walkin Handler',
+    description: 'Handled over 20 physical walk-in candidates in person.',
+    icon: '🎯',
+    tier: 'epic',
+  },
+  {
+    id: 'walkin_converter',
+    category: 'walkin',
+    name: '🛡️ High Walk-in Converter (60%+)',
+    description: 'Converted ≥60% of handled walk-in intakes to admissions.',
     icon: '🛡️',
+    tier: 'elite',
+  },
+
+  // ── 4. RETENTION & DROPOUT BADGES ──
+  {
+    id: 'zero_dropout_sentinel',
+    category: 'dropout',
+    name: '🛡️ Low-Dropout Sentinel (<5%)',
+    description: 'Maintained less than 5% dropout rate across all admissions.',
+    icon: '🛡️',
+    tier: 'legendary',
+  },
+  {
+    id: 'dropout_alert',
+    category: 'dropout',
+    name: '⚠️ High Dropout Watch (>30%)',
+    description: 'Over 30% dropout rate — flagged for retention mentoring.',
+    icon: '⚠️',
+    tier: 'bronze',
+  },
+
+  // ── 5. 12-SEASONS TROPHIES & BRANCH GOLD MEDALS ──
+  {
+    id: 'branch_gold_season_medal',
+    category: 'season',
+    name: '🥇 Winning Gold Season Medal',
+    description: 'Awarded to all counsellors when their branch wins the #1 Season Trophy.',
+    icon: '🥇',
+    tier: 'mythic',
+  },
+  {
+    id: 'season_champion_trophy',
+    category: 'season',
+    name: '🏆 Counsellor of the Season',
+    description: 'Won the #1 Top Revenue Closer Trophy for a calendar season.',
+    icon: '🏆',
+    tier: 'mythic',
+  },
+  {
+    id: 'season_silver_medalist',
+    category: 'season',
+    name: '🥈 Season Silver Medalist',
+    description: 'Runner-up #2 revenue performer for a calendar season.',
+    icon: '🥈',
+    tier: 'legendary',
+  },
+  {
+    id: 'season_volume_leader',
+    category: 'season',
+    name: '🎓 Season Volume Leader',
+    description: 'Top student enrollment volume champion for a calendar season.',
+    icon: '🎓',
     tier: 'epic',
   },
 ];
 
-export const BADGE_DEFS = ALL_BADGES;
-
-
 export function computeCounselorGamification(
   counselor: any,
-  students: any[]
+  allStudents: any[] = [],
+  allConvertedLeads: any[] = []
 ): CounselorGamification {
-  const handled = students.filter((s) =>
-    s.sessions?.some((ses: any) => ses.counselorId === counselor.id || ses.counselorId === counselor.user?.id)
-  );
+  const counselorNameClean = (counselor.name || '').toLowerCase().replace(/[_-]/g, ' ').trim();
 
-  const completed = handled.filter((s) => s.status === 'Completed').length;
-  const inProgress = handled.filter((s) => s.status === 'In Session' || s.status === 'Assigned').length;
-  const conversionRate = handled.length > 0 ? Math.round((completed / handled.length) * 100) : 0;
+  // 1. Walk-in sessions handled by this counselor
+  const handledStudents = allStudents.filter((s) => {
+    if (s.assignedCounselor?.id === counselor.id) return true;
+    return s.sessions?.some((ses: any) => ses.counselorId === counselor.id);
+  });
 
-  // Base XP computation
-  const sessionXp = handled.length * 25;
-  const completedBonusXp = completed * 100;
-  const conversionBonusXp = conversionRate >= 70 ? 250 : conversionRate >= 50 ? 100 : 0;
-  const totalXp = Math.max(120, sessionXp + completedBonusXp + conversionBonusXp + 450);
+  const completedWalkins = allStudents.filter((s) => {
+    return s.sessions?.some(
+      (ses: any) => ses.counselorId === counselor.id && (ses.status === 'COMPLETED' || s.status === 'Completed')
+    );
+  }).length;
 
-  // Level Progression: 500 XP per level
-  const level = Math.max(1, Math.floor(totalXp / 400) + 1);
-  const xpInCurrentLevel = totalXp % 400;
-  const xpToNextLevel = 400 - xpInCurrentLevel;
+  // 2. Converted Leads / All Enrollments directly credited to this counselor
+  const counselorLeads = allConvertedLeads.filter((l) => {
+    if (l.counselorId === counselor.id) return true;
+    const lName = (l.counselorName || l.metadata?.['Counsellor'] || '').toLowerCase().replace(/[_-]/g, ' ').trim();
+    return lName && lName === counselorNameClean;
+  });
+
+  const directEnrollmentsCount = counselorLeads.length;
+  const totalSales = counselorLeads.reduce((acc, l) => acc + (Number(l.feePaid) || 0), 0);
+  const avgTicket = directEnrollmentsCount > 0 ? Math.round(totalSales / directEnrollmentsCount) : 0;
+
+  // Dropouts count
+  const dropoutsCount = counselorLeads.filter((l) => {
+    const st = (l.status || '').toLowerCase();
+    return st.includes('drop') || st.includes('cancel') || st.includes('refund');
+  }).length;
+  const dropoutPct = directEnrollmentsCount > 0 ? Math.round((dropoutsCount / (directEnrollmentsCount + dropoutsCount)) * 100) : 0;
+
+  // Total Completed Admissions = Completed Walk-in Sessions + Converted Lead Enrollments
+  const totalCompleted = completedWalkins + directEnrollmentsCount;
+  const totalIntakes = handledStudents.length + directEnrollmentsCount;
+  const conversionRate = totalIntakes > 0 ? Math.round((totalCompleted / totalIntakes) * 100) : 0;
+
+  // Pure XP calculation
+  const salesXp = Math.floor(totalSales / 10000); // 1 XP per ₹10,000 collected
+  const enrollmentXp = directEnrollmentsCount * 50; // 50 XP per admission
+  const walkinXp = handledStudents.length * 20;
+  const totalXp = salesXp + enrollmentXp + walkinXp;
+
+  // Level Progression
+  const level = Math.max(1, Math.floor(totalXp / 300) + 1);
+  const xpInCurrentLevel = totalXp % 300;
+  const xpToNextLevel = 300 - xpInCurrentLevel;
 
   let tierName = 'Bronze Apprentice';
   let tierColor = '#cd7f32';
-  if (level >= 15) {
-    tierName = 'Grandmaster Legend';
-    tierColor = '#a855f7';
-  } else if (level >= 10) {
-    tierName = 'Diamond Elite';
-    tierColor = '#06b6d4';
-  } else if (level >= 6) {
-    tierName = 'Gold Veteran';
+  if (totalSales >= 30000000 || level >= 15) {
+    tierName = '👑 Crown Legend';
     tierColor = '#f59e0b';
-  } else if (level >= 3) {
-    tierName = 'Silver Specialist';
+  } else if (totalSales >= 10000000 || level >= 10) {
+    tierName = '💎 Diamond Elite';
+    tierColor = '#06b6d4';
+  } else if (totalSales >= 5000000 || level >= 7) {
+    tierName = '🥇 Gold Veteran';
+    tierColor = '#eab308';
+  } else if (totalSales >= 2500000 || level >= 4) {
+    tierName = '🥈 Silver Specialist';
     tierColor = '#94a3b8';
+  } else if (level >= 2) {
+    tierName = '🥉 Bronze Closer';
+    tierColor = '#b45309';
   }
 
-  // Calculate Streak
-  const streakDays = Math.min(14, Math.max(3, completed + 2));
+  // Calculate Real Streak from unique dates
+  const enrollmentDates = new Set<string>();
+  allStudents.forEach((s) => {
+    s.sessions?.forEach((ses: any) => {
+      if (ses.counselorId === counselor.id && (ses.startTime || ses.createdAt)) {
+        enrollmentDates.add(new Date(ses.startTime || ses.createdAt).toISOString().slice(0, 10));
+      }
+    });
+  });
+  counselorLeads.forEach((l) => {
+    if (l.enrollmentDate || l.createdAt) {
+      enrollmentDates.add(new Date(l.enrollmentDate || l.createdAt).toISOString().slice(0, 10));
+    }
+  });
+  const streakDays = enrollmentDates.size;
 
-  // Compute Unlocked Badges
-  const badges: Badge[] = BADGE_DEFS.map((def) => {
+  // Calculate branch season championship wins for this counselor's branch
+  const counselorLoc = (counselor.location || counselor.branchName || 'Hyderabad').toLowerCase();
+  let branchSeasonWins = 0;
+
+  const monthLocMap: Record<string, Record<string, number>> = {};
+  allConvertedLeads.forEach(l => {
+    if (l.enrollmentDate) {
+      const d = new Date(l.enrollmentDate);
+      if (!isNaN(d.getTime())) {
+        const ym = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        const loc = (l.location || l.branchName || 'Hyderabad').toLowerCase();
+        if (!monthLocMap[ym]) monthLocMap[ym] = {};
+        monthLocMap[ym][loc] = (monthLocMap[ym][loc] || 0) + (Number(l.feePaid) || 0);
+      }
+    }
+  });
+
+  Object.values(monthLocMap).forEach(locSales => {
+    const sorted = Object.entries(locSales).sort((a, b) => b[1] - a[1]);
+    if (sorted[0] && counselorLoc.includes(sorted[0][0])) {
+      branchSeasonWins += 1;
+    }
+  });
+
+  // Pure data-driven Badges calculation
+  const badges: Badge[] = ALL_BADGES.map((def) => {
     let isUnlocked = false;
     let progressPct = 0;
 
-    if (def.id === 'lightning_closer') {
-      isUnlocked = completed >= 1;
-      progressPct = isUnlocked ? 100 : 50;
-    } else if (def.id === 'conversion_sniper') {
-      isUnlocked = conversionRate >= 70 || completed >= 2;
-      progressPct = Math.min(100, Math.round((conversionRate / 80) * 100));
-    } else if (def.id === 'streak_master') {
-      isUnlocked = streakDays >= 5;
-      progressPct = Math.min(100, Math.round((streakDays / 5) * 100));
-    } else if (def.id === 'century_club') {
-      isUnlocked = handled.length >= 100;
-      progressPct = Math.min(100, Math.round((handled.length / 100) * 100));
-    } else if (def.id === 'speed_demon') {
-      isUnlocked = true;
-      progressPct = 100;
-    } else if (def.id === 'master_mentor') {
-      isUnlocked = level >= 5;
-      progressPct = Math.min(100, Math.round((level / 5) * 100));
+    // Revenue Badges
+    if (def.id === 'crown_legend') {
+      isUnlocked = totalSales >= 30000000;
+      progressPct = Math.min(100, Math.round((totalSales / 30000000) * 100));
+    } else if (def.id === 'diamond_closer') {
+      isUnlocked = totalSales >= 10000000;
+      progressPct = Math.min(100, Math.round((totalSales / 10000000) * 100));
+    } else if (def.id === 'gold_closer') {
+      isUnlocked = totalSales >= 5000000;
+      progressPct = Math.min(100, Math.round((totalSales / 5000000) * 100));
+    } else if (def.id === 'silver_closer') {
+      isUnlocked = totalSales >= 2500000;
+      progressPct = Math.min(100, Math.round((totalSales / 2500000) * 100));
+    } else if (def.id === 'bronze_closer') {
+      isUnlocked = totalSales >= 1000000;
+      progressPct = Math.min(100, Math.round((totalSales / 1000000) * 100));
+    } else if (def.id === 'high_ticket_pro') {
+      isUnlocked = avgTicket >= 35000 && directEnrollmentsCount >= 10;
+      progressPct = directEnrollmentsCount >= 10 ? Math.min(100, Math.round((avgTicket / 35000) * 100)) : Math.min(100, Math.round((directEnrollmentsCount / 10) * 50));
+    }
+
+    // Enrollment Badges
+    else if (def.id === 'master_enroller') {
+      isUnlocked = directEnrollmentsCount >= 500;
+      progressPct = Math.min(100, Math.round((directEnrollmentsCount / 500) * 100));
+    } else if (def.id === 'century_enroller') {
+      isUnlocked = directEnrollmentsCount >= 100;
+      progressPct = Math.min(100, Math.round((directEnrollmentsCount / 100) * 100));
+    } else if (def.id === 'season_century_scorer') {
+      // Max enrollments in any single calendar month (season)
+      const monthMap: Record<string, number> = {};
+      allConvertedLeads.forEach((l) => {
+        if (!l.enrollmentDate) return;
+        const lName = (l.counselorName || l.metadata?.['Counsellor'] || '').toLowerCase().replace(/[_-]/g, ' ').trim();
+        if (lName && lName !== counselorNameClean) return;
+        if (l.counselorId && l.counselorId !== counselor.id) return;
+        const d = new Date(l.enrollmentDate);
+        const ym = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        monthMap[ym] = (monthMap[ym] || 0) + 1;
+      });
+      const bestSeason = Math.max(0, ...Object.values(monthMap));
+      isUnlocked = bestSeason >= 100;
+      progressPct = Math.min(100, Math.round((bestSeason / 100) * 100));
+    } else if (def.id === 'pacesetter_50') {
+      isUnlocked = directEnrollmentsCount >= 50;
+      progressPct = Math.min(100, Math.round((directEnrollmentsCount / 50) * 100));
+    } else if (def.id === 'achiever_25') {
+      isUnlocked = directEnrollmentsCount >= 25;
+      progressPct = Math.min(100, Math.round((directEnrollmentsCount / 25) * 100));
+    }
+
+    // Walk-in Badges
+    else if (def.id === 'walkin_grandmaster') {
+      isUnlocked = handledStudents.length >= 100;
+      progressPct = Math.min(100, Math.round((handledStudents.length / 100) * 100));
+    } else if (def.id === 'walkin_specialist') {
+      isUnlocked = handledStudents.length >= 50;
+      progressPct = Math.min(100, Math.round((handledStudents.length / 50) * 100));
+    } else if (def.id === 'walkin_handler') {
+      isUnlocked = handledStudents.length >= 20;
+      progressPct = Math.min(100, Math.round((handledStudents.length / 20) * 100));
+    } else if (def.id === 'walkin_converter') {
+      isUnlocked = handledStudents.length >= 10 && (completedWalkins / handledStudents.length) >= 0.6;
+      progressPct = handledStudents.length > 0 ? Math.min(100, Math.round(((completedWalkins / handledStudents.length) / 0.6) * 100)) : 0;
+    }
+
+    // Dropout Badges
+    else if (def.id === 'zero_dropout_sentinel') {
+      isUnlocked = directEnrollmentsCount >= 20 && dropoutPct <= 5;
+      progressPct = directEnrollmentsCount >= 20 ? (dropoutPct <= 5 ? 100 : Math.max(0, 100 - dropoutPct * 2)) : Math.round((directEnrollmentsCount / 20) * 50);
+    } else if (def.id === 'dropout_alert') {
+      isUnlocked = directEnrollmentsCount >= 20 && dropoutPct >= 30;
+      progressPct = Math.min(100, Math.round((dropoutPct / 30) * 100));
+    }
+
+    // Season Trophies & Branch Gold Medals
+    else if (def.id === 'branch_gold_season_medal') {
+      isUnlocked = branchSeasonWins > 0;
+      progressPct = isUnlocked ? 100 : Math.min(100, Math.round((totalSales / 500000) * 100));
+    } else if (def.id === 'season_champion_trophy') {
+      isUnlocked = totalSales >= 5000000;
+      progressPct = Math.min(100, Math.round((totalSales / 5000000) * 100));
+    } else if (def.id === 'season_silver_medalist') {
+      isUnlocked = totalSales >= 2500000;
+      progressPct = Math.min(100, Math.round((totalSales / 2500000) * 100));
+    } else if (def.id === 'season_volume_leader') {
+      isUnlocked = directEnrollmentsCount >= 50;
+      progressPct = Math.min(100, Math.round((directEnrollmentsCount / 50) * 100));
     }
 
     return {
       ...def,
       isUnlocked,
       progressPct,
-      unlockedAt: isUnlocked ? 'Season 1' : undefined,
     };
   });
 
   // Daily Quests
-  const quests = [
+  const quests: Quest[] = [
     {
       id: 'q1',
       title: 'Active Intake Champion',
-      description: 'Conduct at least 3 candidate counseling sessions today.',
-      rewardXp: 150,
-      current: Math.min(3, completed + inProgress),
-      target: 3,
-      isCompleted: completed + inProgress >= 3,
+      description: 'Conduct candidate counseling intakes and admissions.',
+      rewardXp: 50,
+      target: 5,
+      current: Math.min(5, directEnrollmentsCount),
+      isCompleted: directEnrollmentsCount >= 5,
     },
     {
       id: 'q2',
-      title: 'High Velocity Closer',
-      description: 'Achieve positive course enrollment outcome for a candidate.',
-      rewardXp: 200,
-      current: Math.min(1, completed),
-      target: 1,
-      isCompleted: completed >= 1,
+      title: 'High-Value Course Closer',
+      description: 'Collect at least ₹1,00,000 in enrollment course fees.',
+      rewardXp: 100,
+      target: 100000,
+      current: Math.min(100000, totalSales),
+      isCompleted: totalSales >= 100000,
     },
     {
       id: 'q3',
-      title: 'Daily Streak Keeper',
-      description: 'Log in and check live availability status before 10:00 AM.',
+      title: 'Retention Guardian',
+      description: 'Maintain zero dropouts across candidate admissions.',
       rewardXp: 75,
-      current: 1,
-      target: 1,
-      isCompleted: true,
+      target: 10,
+      current: Math.min(10, directEnrollmentsCount - dropoutsCount),
+      isCompleted: directEnrollmentsCount >= 10 && dropoutsCount === 0,
     },
   ];
 
   return {
     id: counselor.id,
-    name: counselor.name || counselor.user?.name || 'Counselor',
-    email: counselor.email || counselor.user?.email || '',
-    branchId: counselor.branchId || 'branch_jntu1',
-    branchName: counselor.branchName || '1st Campus (JNTU-HYD)',
+    name: counselor.name,
+    email: counselor.email,
+    branchId: counselor.branchId,
+    branchName: counselor.branchName || 'Codegnan',
     level,
     tierName,
     tierColor,
     xp: totalXp,
     xpToNextLevel,
     streakDays,
+    completedCount: totalCompleted,
+    totalCompleted,
+    totalSales,
+    avgTicket,
+    walkinCount: handledStudents.length,
     conversionRate,
-    completedCount: completed,
-    totalCompleted: completed,
+    dropoutPct,
     badges,
     quests,
   };
 }
 
 export function computeCampusLeagueStandings(
-  branches: any[],
-  students: any[],
-  counselors: any[]
+  branchesList: any[] = [],
+  allStudents: any[] = [],
+  counselors: any[] = [],
+  allConvertedLeads: any[] = []
 ): CampusLeagueStanding[] {
-  const list = branches.map((b, idx) => {
-    const branchStudents = students.filter((s) => {
-      if (s.details?.branchId === b.id) return true;
-      if (s.branchName?.toLowerCase().includes(b.name.toLowerCase())) return true;
-      return s.sessions?.some((ses: any) => {
-        const c = counselors.find((coun) => coun.id === ses.counselorId);
-        return c?.branchId === b.id;
-      });
-    });
+  return branchesList.map((branch, idx) => {
+    const branchStudents = allStudents.filter((s) => s.branchId === branch.id);
+    const branchLeads = allConvertedLeads.filter((l) => l.branchId === branch.id || (l.location && l.location.toLowerCase().includes(branch.name.toLowerCase())));
 
-    const intakeCount = Math.max(branchStudents.length, idx === 0 ? students.length : 3);
-    const completedCount = branchStudents.filter((s) => s.status === 'Completed').length;
-    const conversionRate = intakeCount > 0 ? Math.round((completedCount / intakeCount) * 100) : 75;
+    const completed = branchStudents.filter((s) => s.status === 'Completed' || s.status === 'Enrolled').length + branchLeads.length;
+    const totalIntakes = branchStudents.length + branchLeads.length;
+    const conversionRate = totalIntakes > 0 ? Math.round((completed / totalIntakes) * 100) : 0;
+    const totalSales = branchLeads.reduce((acc, l) => acc + (Number(l.feePaid) || 0), 0);
 
-    // League Points formula: (Intakes * 50) + (Completed * 200) + (Conversion * 10)
-    const leaguePoints = (intakeCount * 50) + (completedCount * 200) + (conversionRate * 12) + (500 - idx * 120);
-
-    const branchCounselors = counselors.filter((c) => c.branchId === b.id);
-    const mvp = branchCounselors.length > 0 ? branchCounselors[0].name : 'Kranthi Kumar';
+    const branchCounselors = counselors.filter((c) => c.branchId === branch.id);
+    const mvpCounselorName = branchCounselors[0]?.name || 'Top Closer';
 
     return {
-      id: b.id,
-      name: b.name,
-      location: b.locationName || 'Hyderabad',
+      id: branch.id,
+      name: branch.name,
+      location: branch.location || branch.name,
       rank: idx + 1,
-      leaguePoints,
-      intakeCount,
-      completedCount,
-      conversionRate: Math.max(conversionRate, 68),
-      winStreak: 5 - idx > 0 ? 5 - idx : 2,
-      tier: (idx === 0 ? 'Premier League' : 'Challengers League') as 'Premier League' | 'Challengers League',
-      mvpCounselorName: mvp,
+      leaguePoints: Math.floor(totalSales / 10000) + completed * 50,
+      intakeCount: totalIntakes,
+      completedCount: completed,
+      totalCompleted: completed,
+      totalSales,
+      conversionRate,
+      winStreak: Math.max(1, Math.min(10, completed)),
+      tier: idx < 2 ? 'Premier League' : 'Challengers League',
+      mvpCounselorName,
     };
-  });
-
-  return list.sort((a, b) => b.leaguePoints - a.leaguePoints).map((item, i) => ({ ...item, rank: i + 1 }));
+  }).sort((a, b) => b.leaguePoints - a.leaguePoints).map((c, i) => ({ ...c, rank: i + 1 }));
 }

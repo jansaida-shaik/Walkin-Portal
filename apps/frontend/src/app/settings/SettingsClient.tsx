@@ -52,7 +52,7 @@ interface SettingsClientProps {
   currentUser: SessionUser | null;
 }
 
-type SectionKey = 'general' | 'campuses' | 'team' | 'appearance' | 'ai' | 'security';
+type SectionKey = 'general' | 'campuses' | 'team' | 'roles' | 'appearance' | 'ai' | 'security';
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);

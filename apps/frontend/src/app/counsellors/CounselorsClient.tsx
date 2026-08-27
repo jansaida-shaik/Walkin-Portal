@@ -3,13 +3,15 @@
 import SearchInput from '../../components/SearchInput';
 
 import CustomSelect from '../../components/CustomSelect';
+import BadgeCrest from '../../components/BadgeCrest';
+import { ALL_BADGES, computeCounselorGamification } from '../../lib/gamification';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SessionUser } from '../../lib/auth';
 import StatusBadge from '../../components/StatusBadge';
 import InputField from '../../components/InputField';
-import { createCounselor, updateCounselorDetails, updateCounselorStatus } from '../../actions/counselorActions';
+import { createCounselor, updateCounselorDetails, updateCounselorStatus, deleteCounselor } from '../../actions/counselorActions';
 
 interface Branch {
   id: string;
@@ -30,6 +32,8 @@ interface Counselor {
   location?: string;
   availability?: string[];
   status?: string;
+  sessions?: any[];
+  convertedLeads?: any[];
 }
 
 interface CounselorsClientProps {
@@ -56,6 +60,21 @@ export const mapLocationIdToName = (locId: string) => {
 };
 
 
+// Verified counselors list — all others are "unidentified" (inactive pending verification)
+const KNOWN_COUNSELORS = [
+  'kranthi','battula','shireesha','shirisha','sasank','vamshi','subramanyam','devalla',
+  'jahnavi','phanindra','vishal','koushik',
+  'naveen','naveen babu','monika','sunandha','sunanda','lekha','priyanka','akhila','parvathi','maruthi',
+  'vinay botcha','vinay kumar','doddipatla','siva kumar','siva nagasundhar','sravanthi','prashanthi','kiran','sai krishna',
+  'pushpa',
+];
+
+function isUnidentified(name: string): boolean {
+  if (!name) return true;
+  const n = name.toLowerCase().trim();
+  return !KNOWN_COUNSELORS.some(k => n.includes(k));
+}
+
 interface TableSelectProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -76,16 +95,37 @@ function TableSelect({ value, onChange, options, placeholder, style }: TableSele
   );
 }
 
+function getInitials(name: string): string {
+  if (!name) return '??';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function formatSlotTime(slot: string): string {
+  if (!slot) return '';
+  if (slot.includes('AM') || slot.includes('PM')) return slot;
+  const parts = slot.split(':');
+  if (parts.length >= 2) {
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+  }
+  return slot;
+}
+
 export default function CounselorsClient({ initialCounselors, branches, user }: CounselorsClientProps) {
   const router = useRouter();
   const [counselors, setCounselors] = useState<Counselor[]>(initialCounselors);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'busy' | 'break' | 'offline'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'busy' | 'break' | 'offline' | 'inactive'>('all');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [branchFilter, setBranchFilter] = useState<string>('');
   const [message, setMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [selectedCounselorShowcase, setSelectedCounselorShowcase] = useState<Counselor | null>(null);
   
   const [newCounselor, setNewCounselor] = useState({
     name: '',
@@ -131,6 +171,19 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
     }
   }
 
+  async function handleDeleteCounselor(counselorId: string, name: string) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}"? This cannot be undone.`)) return;
+    setMessage('Deleting counselor...');
+    const res = await deleteCounselor(counselorId);
+    if (res.success) {
+      setCounselors(prev => prev.filter(c => c.id !== counselorId));
+      setMessage(`Counselor "${name}" deleted successfully.`);
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      setMessage(res.error || 'Failed to delete counselor.');
+    }
+  }
+
   async function handleAddCounselorSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newCounselor.name || !newCounselor.branchId) {
@@ -161,6 +214,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
   const canManage = user?.roleId === 'role_super_admin' || user?.roleId === 'role_admin' || user?.roleId === 'role_manager';
 
   const totalCount = counselors.length;
+  const inactiveCount = counselors.filter(c => isUnidentified(c.name || '')).length;
   const availableCount = counselors.filter(c => (c.status || '').toLowerCase() === 'available').length;
   const busyCount = counselors.filter(c => (c.status || '').toLowerCase() === 'busy' || (c.status || '').toLowerCase() === 'in session' || (c.status || '').toLowerCase() === 'in_session').length;
   const breakCount = counselors.filter(c => (c.status || '').toLowerCase() === 'break').length;
@@ -183,12 +237,14 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
       department.toLowerCase().includes(searchQuery.toLowerCase())
     ) : true;
 
-    // 2. Status Bubble Filter
+    // 2. Status Bubble Filter (inactive = unidentified counselors)
+    const unidentified = isUnidentified(name);
     const matchStatus = statusFilter !== 'all' ? (
-      statusFilter === 'available' ? status === 'available' :
-      statusFilter === 'busy' ? (status === 'busy' || status === 'in session' || status === 'in_session') :
-      statusFilter === 'break' ? status === 'break' :
-      statusFilter === 'offline' ? status === 'offline' : true
+      statusFilter === 'inactive' ? unidentified :
+      statusFilter === 'available' ? (!unidentified && status === 'available') :
+      statusFilter === 'busy' ? (!unidentified && (status === 'busy' || status === 'in session' || status === 'in_session')) :
+      statusFilter === 'break' ? (!unidentified && status === 'break') :
+      statusFilter === 'offline' ? (!unidentified && status === 'offline') : true
     ) : true;
 
     // 3. Location Filter
@@ -221,10 +277,64 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
 
       <div className="dash-table-card">
         <div className="dash-table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800 }}>
-              All Counselors
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+              Counselors
             </h2>
+
+            {/* ── Top Location Filter Tabs ── */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              background: 'var(--surface-alt, rgba(0,0,0,0.04))',
+              padding: '3px',
+              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              gap: '4px',
+            }}>
+              {[
+                { id: '', label: 'All', count: counselors.length },
+                { id: 'Hyderabad', label: 'Hyderabad', count: counselors.filter(c => mapLocationIdToName(c.location) === 'Hyderabad').length },
+                { id: 'Vijayawada', label: 'Vijayawada', count: counselors.filter(c => mapLocationIdToName(c.location) === 'Vijayawada').length },
+                { id: 'Visakhapatnam', label: 'Visakhapatnam', count: counselors.filter(c => mapLocationIdToName(c.location) === 'Visakhapatnam').length },
+              ].map(tab => {
+                const isActive = locationFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id || 'all'}
+                    type="button"
+                    onClick={() => setLocationFilter(tab.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: isActive ? 800 : 600,
+                      border: 'none',
+                      background: isActive ? 'var(--primary)' : 'transparent',
+                      color: isActive ? '#fff' : 'var(--text)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isActive ? '0 2px 8px rgba(99, 102, 241, 0.35)' : 'none',
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    <span style={{
+                      padding: '1px 6px',
+                      borderRadius: '9999px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--surface, rgba(0,0,0,0.06))',
+                      color: isActive ? '#fff' : 'var(--muted)',
+                    }}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Real-time Status Counter Bubbles */}
@@ -354,6 +464,38 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
               }}>{breakCount}</span>
             </button>
 
+            {/* Inactive (Unidentified / Pending Verification) */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                border: statusFilter === 'inactive' ? '1.5px solid #ef4444' : '1.5px solid rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.10)',
+                color: '#dc2626',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: statusFilter === 'inactive' ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none',
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+              <span>INACTIVE</span>
+              <span style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#dc2626',
+              }}>{inactiveCount}</span>
+            </button>
+
             {/* Offline */}
             <button
               type="button"
@@ -453,6 +595,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                 <th>Department</th>
                 <th>Status</th>
                 <th>Availability</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -460,9 +603,36 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                 filteredCounselors.map((c) => (
                   <tr key={c.id}>
                     <td className="counselor-name-cell">
-                      <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text)' }}>
-                        {c.name || 'Counselor'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '34px', height: '34px', borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                          color: '#fff', fontWeight: 900, fontSize: '0.76rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {getInitials(c.name || 'Counselor')}
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCounselorShowcase(c)}
+                            style={{
+                              background: 'none', border: 'none', padding: 0,
+                              cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
+                              color: 'var(--primary)', fontFamily: 'inherit', textAlign: 'left',
+                              display: 'block',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                          >
+                            {c.name || 'Counselor'}
+                          </button>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
+                            {c.email || `${(c.name || 'counselor').toLowerCase().replace(/[^a-z0-9]/g, '')}@office.com`}
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       {canManage ? (
@@ -488,31 +658,115 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                     </td>
                     <td>{c.departmentName || "Sales"}</td>
                     <td>
-                      <StatusBadge status={c.status || 'Available'} />
+                      {isUnidentified(c.name || '') ? (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '3px 10px', borderRadius: '9999px', fontSize: '0.72rem',
+                          fontWeight: 800, background: 'rgba(239,68,68,0.12)',
+                          color: '#dc2626', border: '1px solid rgba(239,68,68,0.3)',
+                        }}>
+                          ⚠️ Inactive — Pending Verification
+                        </span>
+                      ) : (
+                        <StatusBadge status={c.status || 'Available'} />
+                      )}
                     </td>
                     <td className="availability-cell">
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {(c.availability && c.availability.length > 0 ? c.availability : ["09:00 AM - 06:00 PM"]).map((slot) => (
+                        {(c.availability && c.availability.length > 0 ? c.availability : ["09:00", "12:00", "15:00"]).map((slot) => (
                           <span key={slot} style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '4px 10px',
+                            padding: '3px 8px',
                             background: 'rgba(99, 102, 241, 0.08)',
                             border: '1px solid rgba(99, 102, 241, 0.2)',
                             borderRadius: '6px',
-                            fontSize: '0.78rem',
-                            fontWeight: 600,
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
                             color: 'var(--text)',
                           }}>
-                            {slot}
+                            {formatSlotTime(slot)}
                           </span>
                         ))}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCounselorShowcase(c)}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface-alt)',
+                            color: 'var(--text)',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          👁️ View
+                        </button>
+                        {canManage && (
+                          <button
+                            type="button"
+                            id={`delete-counselor-${c.id}`}
+                            onClick={() => handleDeleteCounselor(c.id, c.name || 'Counselor')}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              border: '1.5px solid rgba(239,68,68,0.5)',
+                              background: 'rgba(239,68,68,0.08)',
+                              color: '#ef4444',
+                              fontSize: '0.76rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = '#ef4444';
+                              e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'rgba(239,68,68,0.08)';
+                              e.currentTarget.style.color = '#ef4444';
+                            }}
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/counsellors/${c.id}/edit`)}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            border: '1.5px solid var(--primary)',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            color: 'var(--primary)',
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'var(--primary)';
+                            e.currentTarget.style.color = '#fff';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)';
+                            e.currentTarget.style.color = 'var(--primary)';
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={6} className="empty-row">No counselors found</td></tr>
+                <tr><td colSpan={7} className="empty-row">No counselors found</td></tr>
               )}
             </tbody>
           </table>
@@ -571,6 +825,124 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
           </div>
         </div>
       )}
+      {/* ── Counselor Public Achievement Showcase Modal ── */}
+      {selectedCounselorShowcase && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000, padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--card-bg, #111827)', border: '1.5px solid var(--border)',
+            borderRadius: '20px', width: '100%', maxWidth: '640px', padding: '24px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '18px',
+          }}>
+            {/* Header */}
+            {(() => {
+              const gam = computeCounselorGamification(selectedCounselorShowcase, selectedCounselorShowcase.sessions || [], selectedCounselorShowcase.convertedLeads || []);
+              const unlockedBadges = gam.badges.filter(b => b.isUnlocked);
+
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{
+                        width: '56px', height: '56px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '1.4rem', fontWeight: 900, border: '2px solid rgba(255,255,255,0.2)',
+                      }}>
+                        {getInitials(selectedCounselorShowcase.name || 'Counselor')}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--text)' }}>
+                            {selectedCounselorShowcase.name}
+                          </h2>
+                          <span style={{
+                            fontSize: '0.68rem', fontWeight: 900, padding: '2px 8px', borderRadius: '6px',
+                            background: gam.tierColor || '#cd7f32', color: '#fff', textTransform: 'uppercase',
+                          }}>
+                            {gam.tierName} • Lvl {gam.level}
+                          </span>
+                        </div>
+                        <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                          📍 {selectedCounselorShowcase.branchName || 'Campus Branch'} • {selectedCounselorShowcase.departmentName || 'Sales'} • 🔥 {gam.streakDays}-Day Active Streak
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCounselorShowcase(null)}
+                      style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Real Performance Stats Strip */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
+                    <div style={{ background: 'var(--surface)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--text)' }}>{gam.completedCount}</div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Sessions Completed</div>
+                    </div>
+                    <div style={{ background: 'var(--surface)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 900, color: gam.conversionRate > 0 ? '#10b981' : 'var(--muted)' }}>{gam.conversionRate}%</div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>Conversion %</div>
+                    </div>
+                    <div style={{ background: 'var(--surface)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{gam.xp} PTS</div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)' }}>League Points</div>
+                    </div>
+                  </div>
+
+                  {/* Achievement Badges Trophy Shelf */}
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>
+                      🎖️ Achievement Badges ({unlockedBadges.length}/{gam.badges.length} Unlocked)
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                      {gam.badges.slice(0, 3).map((b) => (
+                        <div key={b.id} style={{
+                          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px',
+                          padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                          opacity: b.isUnlocked ? 1 : 0.65,
+                        }}>
+                          <BadgeCrest tier={b.tier} size={48} isUnlocked={b.isUnlocked} icon={b.icon} />
+                          <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text)', marginTop: '6px' }}>{b.name}</div>
+                          <div style={{
+                            fontSize: '0.66rem',
+                            color: b.isUnlocked ? '#10b981' : 'var(--muted)',
+                            fontWeight: 800,
+                            marginTop: '2px'
+                          }}>
+                            {b.isUnlocked ? 'UNLOCKED ✔' : `${b.progressPct || 0}% Progress`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedCounselorShowcase(null)}
+                style={{
+                  padding: '8px 20px', borderRadius: '8px',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Close Showcase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

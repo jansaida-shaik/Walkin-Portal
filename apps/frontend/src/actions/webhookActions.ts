@@ -133,7 +133,7 @@ export async function toggleSubscription(id: string) {
     if (!sub) return { error: 'Not found' };
     const updated = await prisma.webhookSubscription.update({
       where: { id },
-      data: { enabled: !sub.enabled }
+      data: { active: !sub.active }
     });
     revalidatePath('/webhooks');
     return { success: true, subscription: updated };

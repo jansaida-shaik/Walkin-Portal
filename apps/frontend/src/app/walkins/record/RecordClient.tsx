@@ -318,12 +318,13 @@ export default function RecordClient({ student, counselors, user }: RecordClient
     showToast('Starting counselling session…', 'info');
     const r = await startCounsellingSession(student.id);
     if (r.success) {
-      showToast('✅ Session started!', 'success');
-      setTimeout(() => window.location.reload(), 1200);
+      showToast('✅ Session started! Opening Live Workspace...', 'success');
+      router.refresh();
+      router.push(`/sessions/workspace?studentId=${student.id}`);
     } else {
       showToast(r.error || 'Failed to start session.', 'error');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSaveNotes = async () => {

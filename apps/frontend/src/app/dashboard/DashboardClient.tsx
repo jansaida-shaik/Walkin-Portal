@@ -66,9 +66,30 @@ interface Counselor {
   assignedStudentId: string | null;
 }
 
+interface ConvertedLead {
+  id: string;
+  studentId?: string | null;
+  studentName: string;
+  studentPhone?: string | null;
+  studentEmail?: string | null;
+  course: string;
+  location?: string | null;
+  branchName?: string | null;
+  counselorId?: string | null;
+  counselorName?: string | null;
+  leadOwner?: string | null;
+  leadSource: string;
+  feePaid?: number | null;
+  totalFee?: number | null;
+  status: string;
+  enrollmentDate: string | Date;
+  metadata?: Record<string, any> | null;
+}
+
 interface DashboardClientProps {
   initialWalkins: Student[];
   initialCounselors: Counselor[];
+  convertedLeads?: ConvertedLead[];
   user: SessionUser | null;
   dbLatency: number | null;
   webhookStatus: string | null;
@@ -88,6 +109,7 @@ function getInitials(name: string) {
 export default function DashboardClient({
   initialWalkins,
   initialCounselors,
+  convertedLeads = [],
   user,
   dbLatency,
   webhookStatus,
@@ -164,6 +186,45 @@ export default function DashboardClient({
     (w.status === 'Assigned' || w.status === 'In Session') && 
     (isCounselor ? w.sessions.some(s => s.counselorId === user?.id && s.status !== 'COMPLETED') : true)
   );
+
+  // Master Executive Metrics from 100% Live PostgreSQL convertedLeads
+  const totalConvertedLeadsCount = convertedLeads.length;
+  const totalMasterSales = useMemo(() => convertedLeads.reduce((acc, l) => acc + (l.feePaid || 0), 0), [convertedLeads]);
+  const totalMasterGross = useMemo(() => convertedLeads.reduce((acc, l) => acc + (l.totalFee || 0), 0), [convertedLeads]);
+
+  // MoM growth
+  const momGrowth = useMemo(() => {
+    const now = new Date();
+    const currYear = now.getFullYear();
+    const currMonth = now.getMonth() + 1;
+    const prevMonth = currMonth === 1 ? 12 : currMonth - 1;
+    const prevYear = currMonth === 1 ? currYear - 1 : currYear;
+
+    let currMonthSales = 0;
+    let prevMonthSales = 0;
+    let currMonthCount = 0;
+    let prevMonthCount = 0;
+
+    convertedLeads.forEach(l => {
+      const d = new Date(l.enrollmentDate);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        if (y === currYear && m === currMonth) {
+          currMonthSales += (l.feePaid || 0);
+          currMonthCount += 1;
+        } else if (y === prevYear && m === prevMonth) {
+          prevMonthSales += (l.feePaid || 0);
+          prevMonthCount += 1;
+        }
+      }
+    });
+
+    const salesPct = prevMonthSales > 0 ? Math.round(((currMonthSales - prevMonthSales) / prevMonthSales) * 100) : (currMonthSales > 0 ? 100 : 0);
+    const countPct = prevMonthCount > 0 ? Math.round(((currMonthCount - prevMonthCount) / prevMonthCount) * 100) : (currMonthCount > 0 ? 100 : 0);
+
+    return { currMonthSales, prevMonthSales, currMonthCount, prevMonthCount, salesPct, countPct };
+  }, [convertedLeads]);
 
   // Memoized activity log feed
   const recentActivities = useMemo(() => {
@@ -306,6 +367,97 @@ export default function DashboardClient({
             Refresh
           </button>
         </div>
+      </div>
+
+      {/* ─── Executive Master KPI Grid (100% Live PostgreSQL Data) ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+        
+        {/* 1. Total Converted Leads */}
+        <div
+          onClick={() => router.push('/reports?pillar=overview')}
+          style={{
+            background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px',
+            padding: '18px 20px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>Master Enrollments</span>
+            <span style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>🎓</span>
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text)', marginTop: '6px' }}>
+            {totalConvertedLeadsCount.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700, marginTop: '4px' }}>
+            +{momGrowth.countPct}% MoM Growth • View in Reports →
+          </div>
+        </div>
+
+        {/* 2. Total Sales Collected */}
+        <div
+          onClick={() => router.push('/reports?pillar=monthly-sales')}
+          style={{
+            background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px',
+            padding: '18px 20px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#10b981')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>Total Sales Collected</span>
+            <span style={{ color: '#10b981', fontSize: '0.9rem' }}>💰</span>
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#10b981', marginTop: '6px' }}>
+            {totalMasterSales >= 10000000 ? `₹${(totalMasterSales / 10000000).toFixed(2)} Cr` : `₹${(totalMasterSales / 100000).toFixed(2)} L`}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, marginTop: '4px' }}>
+            Exact: ₹{totalMasterSales.toLocaleString()}
+          </div>
+        </div>
+
+        {/* 3. Current Month Sales */}
+        <div
+          onClick={() => router.push('/reports?pillar=monthly-sales')}
+          style={{
+            background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px',
+            padding: '18px 20px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>Current Month Sales</span>
+            <span style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>📅</span>
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)', marginTop: '6px' }}>
+            {momGrowth.currMonthSales >= 10000000 ? `₹${(momGrowth.currMonthSales / 10000000).toFixed(2)} Cr` : `₹${(momGrowth.currMonthSales / 100000).toFixed(2)} L`}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: momGrowth.salesPct >= 0 ? '#10b981' : '#ef4444', fontWeight: 700, marginTop: '4px' }}>
+            {momGrowth.salesPct >= 0 ? `▲ +${momGrowth.salesPct}%` : `▼ ${momGrowth.salesPct}%`} vs prior month
+          </div>
+        </div>
+
+        {/* 4. Live Operations Quick Link */}
+        <div
+          onClick={() => router.push('/reports?pillar=counsellors')}
+          style={{
+            background: 'var(--card-bg)', border: '1.5px solid var(--border)', borderRadius: '16px',
+            padding: '18px 20px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#06b6d4')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>Counsellor Scorecards</span>
+            <span style={{ color: '#06b6d4', fontSize: '0.9rem' }}>👥</span>
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#06b6d4', marginTop: '6px' }}>
+            {counselors.length} Active
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, marginTop: '4px' }}>
+            View Top Performers & Scorecards →
+          </div>
+        </div>
+
       </div>
 
       {/* ─── Live Telemetry Status Bubbles ─── */}

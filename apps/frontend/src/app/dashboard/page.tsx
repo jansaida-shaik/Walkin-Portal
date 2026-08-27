@@ -9,7 +9,6 @@ import { getBranchName } from '../../lib/constants';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  // Step 1: Auth check
   let user;
   try {
     user = await getSession();
@@ -22,7 +21,7 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  // Step 2: DB latency check (non-critical)
+  // DB latency check
   let dbLatency: number | null = null;
   try {
     const startDb = Date.now();
@@ -32,7 +31,7 @@ export default async function DashboardPage() {
     console.error('[Dashboard] DB latency check failed:', e);
   }
 
-  // Step 3: Webhook status (non-critical)
+  // Webhook status
   let webhookStatus: string | null = null;
   try {
     const totalSubs = await prisma.webhookSubscription.count({ where: { deletedAt: null } });
@@ -50,16 +49,23 @@ export default async function DashboardPage() {
     console.error('[Dashboard] Webhook status failed:', e);
   }
 
-  // Step 4: Load students and counselors
+  // Load 100% LIVE data (Master Converted Leads, Walk-ins, and Counselors)
   let students: any[] = [];
   let rawCounselors: any[] = [];
+  let convertedLeads: any[] = [];
+
   try {
-    [students, rawCounselors] = await Promise.all([getStudents(), getCounselors()]);
+    [students, rawCounselors, convertedLeads] = await Promise.all([
+      getStudents(),
+      getCounselors(),
+      prisma.convertedLead.findMany({
+        orderBy: { enrollmentDate: 'desc' },
+      }),
+    ]);
   } catch (e) {
-    console.error('[Dashboard] Failed to load students/counselors:', e);
+    console.error('[Dashboard] Failed to load dashboard data:', e);
   }
 
-  // Step 5: Map raw Prisma CounselorProfile (nested user) to flat shape
   const counselors = rawCounselors.map((c: any) => ({
     id: c.id,
     name: c.user?.name || c.name || '',
@@ -79,6 +85,7 @@ export default async function DashboardPage() {
     <DashboardClient
       initialWalkins={students as any}
       initialCounselors={counselors}
+      convertedLeads={convertedLeads as any}
       user={user}
       dbLatency={dbLatency}
       webhookStatus={webhookStatus}

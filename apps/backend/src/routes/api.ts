@@ -481,6 +481,16 @@ router.post('/walkins', async (req: Request, res: Response): Promise<any> => {
     const status = counselor ? 'Assigned' : 'Waiting';
 
     const result = await prisma.$transaction(async (tx) => {
+      const walkinType = req.body.walkinType || req.body.walkin_type || (req.body.details?.walkinType) || 'single';
+      const parentAccompanied = req.body.parentAccompanied || req.body.parent_accompanied || (req.body.details?.parentAccompanied) || 'solo';
+      const mergedDetails = {
+        branchId,
+        branchName,
+        email,
+        walkinType,
+        parentAccompanied,
+        ...(req.body.details || {}),
+      };
       const student = await tx.student.create({
         data: {
           name: studentName,
@@ -492,7 +502,7 @@ router.post('/walkins', async (req: Request, res: Response): Promise<any> => {
           status,
           remarks: remarks || '',
           source: source || 'Walk-in API',
-          details: { branchId, branchName, email }
+          details: mergedDetails
         }
       });
 

@@ -1,6 +1,5 @@
 import { getSession } from '../../lib/auth';
-import { getStudents } from '../../actions/walkinActions';
-import { getCounselors } from '../../actions/counselorActions';
+import { prisma } from '../../lib/db';
 import { branches } from '../../lib/constants';
 import ReportsClient from './ReportsClient';
 import { redirect } from 'next/navigation';
@@ -21,10 +20,28 @@ export default async function ReportsPage() {
 
   if (!canAccess) redirect('/dashboard');
 
-  const [students, counselors] = await Promise.all([getStudents(), getCounselors()]);
+  // Load 100% LIVE data from PostgreSQL
+  const [convertedLeads, students, counselors] = await Promise.all([
+    prisma.convertedLead.findMany({
+      include: { counselor: true },
+      orderBy: { enrollmentDate: 'desc' },
+    }),
+    prisma.student.findMany({
+      where: { deletedAt: null },
+      include: {
+        sessions: true,
+        queueEntry: true,
+      },
+      orderBy: { walkinDate: 'desc' },
+    }),
+    prisma.counselorProfile.findMany({
+      orderBy: { name: 'asc' },
+    }),
+  ]);
 
   return (
     <ReportsClient
+      convertedLeads={convertedLeads as any}
       students={students as any}
       counselors={counselors as any}
       branches={branches as any}
