@@ -477,7 +477,7 @@ const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
 
   // Temporary state while picking in popup
   const [tempStart, setTempStart] = useState(startDate || '2026-08-01');
-  const [tempEnd, setTempEnd] = useState(endDate || '2026-08-31');
+  const [tempEnd, setTempEnd] = useState(endDate || '2026-08-28');
 
   // Active month view for left calendar
   const [leftYear, setLeftYear] = useState(2026);
@@ -1561,7 +1561,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
       </div>
 
       {/* ─── Executive Monthly KPI Metric Grid ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         
         {/* Card 1: Monthly Target Completion */}
         <div style={{
@@ -1689,14 +1689,14 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
         {/* Tab Buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
-            { id: 'trophies', label: '🏆 Trophies' },
-            { id: 'badges', label: '🎖️ Badges & Medals' },
-            { id: 'points_table', label: '📊 Counselor Table' },
-            { id: 'league', label: '🏆 Campus Standings' },
-            { id: 'targets', label: '🎯 Target Hub & Incentives' },
-            { id: 'clash', label: '📈 Campus Comparison' },
-            { id: 'counselors', label: '🌟 Counselor Roster' },
-            { id: 'quests', label: '🎯 Daily Quests' },
+            { id: 'trophies', label: 'Trophies' },
+            { id: 'badges', label: 'Badges & Medals' },
+            { id: 'points_table', label: 'Counselor Table' },
+            { id: 'league', label: 'Campus Standings' },
+            { id: 'targets', label: 'Target Hub & Incentives' },
+            { id: 'clash', label: 'Campus Comparison' },
+            { id: 'counselors', label: 'Counselor Roster' },
+            { id: 'quests', label: 'Daily Quests' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1939,7 +1939,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                   {[
                     { id: '2026', label: '2026' },
                     { id: '2025', label: '2025' },
-                    { id: 'all_time', label: '🏆 All Time' },
+                    { id: 'all_time', label: 'All Time' },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -1966,7 +1966,17 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             </div>
 
             {/* ─── Trophies Filter & Navigation Bar ─── */}
-            <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '4px' }}>
+            <div style={{
+              display: 'inline-flex',
+              background: 'var(--surface)',
+              border: '1.5px solid var(--border)',
+              borderRadius: '11px',
+              padding: '4px 6px',
+              gap: '4px',
+              flexWrap: 'wrap',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+              marginBottom: '4px',
+            }}>
               {[
                 { id: 'all', label: 'All Trophies' },
                 { id: 'locations', label: 'Location Trophies' },
@@ -2596,7 +2606,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
 
                               <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                                 gap: '14px',
                               }}>
                                 {sortedRankings.slice(0, 3).map((item, idx) => {
@@ -2633,11 +2643,11 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                                       style={{
                                         background: styles.bg,
                                         border: styles.border,
-                                        borderRadius: '22px',
-                                        padding: '18px 20px',
+                                        borderRadius: '18px',
+                                        padding: '14px 16px',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '16px',
+                                        gap: '12px',
                                         boxShadow: styles.glow,
                                         position: 'relative',
                                         overflow: 'hidden',
@@ -2645,18 +2655,16 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                                       }}
                                     >
                                       {/* Modern Luxury 3D Rank Badge */}
-                                      <LaurelRankMedal rank={rankNum} size={62} />
+                                      <LaurelRankMedal rank={rankNum} size={50} />
 
                                       {/* Campus Info */}
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0, flex: 1 }}>
                                         <div style={{
-                                          fontSize: '1.18rem',
+                                          fontSize: '1.02rem',
                                           fontWeight: 950,
                                           color: 'var(--text)',
-                                          letterSpacing: '-0.02em',
+                                          letterSpacing: '-0.01em',
                                           whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
                                         }}>
                                           {item.name}
                                         </div>
@@ -3027,10 +3035,10 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             {/* Badges Category Filter */}
             <div style={{ display: 'inline-flex', background: 'rgba(15, 23, 42, 0.75)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.12)', flexWrap: 'wrap', gap: '4px' }}>
               {[
-                { id: 'all', label: '🌟 All Badges & Medals' },
-                { id: 'milestone', label: '🛡️ Milestones' },
-                { id: 'season', label: '🥇 Season Medals' },
-                { id: 'special', label: '💎 Special Honors' },
+                { id: 'all', label: 'All Badges & Medals' },
+                { id: 'milestone', label: 'Milestones' },
+                { id: 'season', label: 'Season Medals' },
+                { id: 'special', label: 'Special Honors' },
               ].map((cat) => (
                 <button
                   key={cat.id}
@@ -4904,7 +4912,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text)' }}>
                   📊 All-Time Campus Dominance Leaderboard
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                   {selectedAllTimeLeagueModal.rankings.map((rk) => (
                     <div key={rk.name} style={{
                       background: 'var(--surface-alt)',
