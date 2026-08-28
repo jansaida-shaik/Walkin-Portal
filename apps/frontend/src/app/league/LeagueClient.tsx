@@ -2643,8 +2643,8 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                                       style={{
                                         background: styles.bg,
                                         border: styles.border,
-                                        borderRadius: '18px',
-                                        padding: '14px 16px',
+                                        borderRadius: '16px',
+                                        padding: '12px 14px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '12px',
@@ -2655,32 +2655,41 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                                       }}
                                     >
                                       {/* Modern Luxury 3D Rank Badge */}
-                                      <LaurelRankMedal rank={rankNum} size={50} />
+                                      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <LaurelRankMedal rank={rankNum} size={46} />
+                                      </div>
 
-                                      {/* Campus Info */}
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0, flex: 1 }}>
+                                      {/* Campus Info - Clean Structured Column */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1, textAlign: 'left' }}>
                                         <div style={{
-                                          fontSize: '1.02rem',
+                                          fontSize: '0.98rem',
                                           fontWeight: 950,
                                           color: 'var(--text)',
                                           letterSpacing: '-0.01em',
                                           whiteSpace: 'nowrap',
+                                          lineHeight: 1.2,
                                         }}>
                                           {item.name}
                                         </div>
 
                                         <div style={{
-                                          fontSize: '0.84rem',
-                                          fontWeight: 900,
+                                          fontSize: '0.78rem',
+                                          fontWeight: 800,
                                           color: styles.titleColor,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '6px',
+                                          whiteSpace: 'nowrap',
+                                          lineHeight: 1.2,
                                         }}>
-                                          <span>🏆</span> {item.wins} Championship {item.wins === 1 ? 'Title' : 'Titles'}
+                                          🏆 {item.wins} {item.wins === 1 ? 'Championship Title' : 'Championship Titles'}
                                         </div>
 
-                                        <div style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                                        <div style={{
+                                          fontSize: '0.72rem',
+                                          color: 'var(--muted)',
+                                          fontWeight: 700,
+                                          fontFamily: 'var(--font-mono)',
+                                          whiteSpace: 'nowrap',
+                                          lineHeight: 1.2,
+                                        }}>
                                           {item.totalMetric}
                                         </div>
                                       </div>
