@@ -2,14 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Student } from '../../types';
-import { Counselor } from '../../actions/counselorActions';
 import { Branch } from '../../lib/constants';
-import { computeCounselorGamification, computeCampusStandings } from '../../lib/gamification';
+import { computeCounselorGamification, computeCampusLeagueStandings } from '../../lib/gamification';
 
 interface TargetsClientProps {
-  students: Student[];
-  counselors: Counselor[];
+  students: any[];
+  counselors: any[];
   convertedLeads: any[];
   branches: Branch[];
   user: any;
@@ -100,11 +98,13 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
 
   // Gamification & Real-time actuals
   const counselorGamifications = useMemo(() => {
-    return computeCounselorGamification(students);
-  }, [students]);
+    return (counselors || [])
+      .filter((c: any) => c.status === 'Active' || c.isActive !== false)
+      .map((c: any) => computeCounselorGamification(c, students, convertedLeads));
+  }, [counselors, students, convertedLeads]);
 
   const campusStandings = useMemo(() => {
-    return computeCampusStandings(branches, students);
+    return computeCampusLeagueStandings(branches, students);
   }, [branches, students]);
 
   // Handle Target Creation
