@@ -215,7 +215,7 @@ export default function StudentContextDrawer({
                 <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{student.course}</span>
                 {student.branchName && (
                   <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                    📍 {student.branchName}
+                    {student.branchName}
                   </span>
                 )}
               </div>

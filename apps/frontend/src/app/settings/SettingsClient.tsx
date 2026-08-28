@@ -581,7 +581,7 @@ export default function SettingsClient({
             </div>
           )}
 
-          {/* 📍 SECTION 2: CAMPUSES & LOCATIONS */}
+          {/* SECTION 2: CAMPUSES & LOCATIONS */}
           {activeSection === 'campuses' && (
             <div className="dash-table-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -623,7 +623,7 @@ export default function SettingsClient({
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                      <span>📍</span>
+                      <span></span>
                       <span>{b.locationName || 'Hyderabad Region'}</span>
                     </div>
 
@@ -727,7 +727,7 @@ export default function SettingsClient({
                             </span>
                           </td>
                           <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--muted)' }}>
-                            📍 {branch?.name || 'All Campuses'}
+                            {branch?.name || 'All Campuses'}
                           </td>
                           <td style={{ padding: '12px 14px' }}>
                             <span style={{

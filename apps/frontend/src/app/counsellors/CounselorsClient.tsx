@@ -945,7 +945,7 @@ export default function CounselorsClient({ initialCounselors, branches, user }: 
                           </span>
                         </div>
                         <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                          📍 {selectedCounselorShowcase.branchName || 'Campus Branch'} • {selectedCounselorShowcase.departmentName || 'Sales'} • 🔥 {gam.streakDays}-Day Active Streak
+                          {selectedCounselorShowcase.branchName || 'Campus Branch'} • {selectedCounselorShowcase.departmentName || 'Sales'} • 🔥 {gam.streakDays}-Day Active Streak
                         </p>
                       </div>
                     </div>

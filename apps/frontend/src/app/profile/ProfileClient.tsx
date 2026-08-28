@@ -213,7 +213,7 @@ export default function ProfileClient({ currentUser, userRecord }: ProfileClient
               </span>
             </div>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: 'var(--muted)' }}>
-              @{userRecord.username} • 📍 {currentUser.branchName || '1st Campus (JNTU-HYD)'} • 🔥 6-Day Streak
+              @{userRecord.username} • {currentUser.branchName || '1st Campus (JNTU-HYD)'} • 🔥 6-Day Streak
             </p>
           </div>
         </div>
@@ -455,7 +455,7 @@ export default function ProfileClient({ currentUser, userRecord }: ProfileClient
                   background: 'var(--surface)', border: '1px solid var(--border)',
                   fontSize: '0.74rem', color: 'var(--text)', fontWeight: 700,
                 }}>
-                  📍 Supervised Branch: <strong>{currentUser.branchName || '1st Campus (JNTU-HYD)'}</strong>
+                  Supervised Branch: <strong>{currentUser.branchName || '1st Campus (JNTU-HYD)'}</strong>
                 </div>
               </div>
 

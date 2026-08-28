@@ -534,7 +534,10 @@ export function computeCampusLeagueStandings(
     return {
       id: branch.id,
       name: branch.name,
-      location: branch.location || branch.name,
+      location: (branch.locationId === 'loc_hyd' || branch.name?.includes('HYD')) ? 'Hyderabad' :
+                (branch.locationId === 'loc_vsp' || branch.name?.includes('VSP')) ? 'Visakhapatnam' :
+                (branch.locationId === 'loc_vij' || branch.name?.includes('VIJ')) ? 'Vijayawada' :
+                (branch.location || 'Hyderabad'),
       rank: idx + 1,
       leaguePoints: Math.floor(totalSales / 10000) + completed * 50,
       intakeCount: totalIntakes,
@@ -545,6 +548,86 @@ export function computeCampusLeagueStandings(
       winStreak: Math.max(1, Math.min(10, completed)),
       tier: idx < 2 ? 'Premier League' : 'Challengers League',
       mvpCounselorName,
+    };
+  }).sort((a, b) => b.leaguePoints - a.leaguePoints).map((c, i) => ({ ...c, rank: i + 1 }));
+}
+
+export function computeLocationLeagueStandings(
+  locationsList: any[] = [],
+  branchesList: any[] = [],
+  allStudents: any[] = [],
+  counselors: any[] = [],
+  allConvertedLeads: any[] = []
+): (CampusLeagueStanding & { campusesCount: number; campusNames: string })[] {
+  const defaultLocations = [
+    { id: 'loc_hyd', name: 'Hyderabad' },
+    { id: 'loc_vij', name: 'Vijayawada' },
+    { id: 'loc_vsp', name: 'Visakhapatnam' },
+  ];
+  const locs = (locationsList && locationsList.length > 0) ? locationsList : defaultLocations;
+
+  return locs.map((loc, idx) => {
+    const locationBranches = branchesList.filter(
+      (b) => b.locationId === loc.id || 
+             (loc.id === 'loc_hyd' && (b.name?.includes('HYD') || b.name?.includes('Pista') || b.name?.includes('JNTU'))) ||
+             (loc.id === 'loc_vsp' && (b.name?.includes('VSP') || b.name?.includes('Visakhapatnam'))) ||
+             (loc.id === 'loc_vij' && (b.name?.includes('VIJ') || b.name?.includes('Vijayawada'))) ||
+             (b.location && b.location.toLowerCase() === loc.name.toLowerCase())
+    );
+    const branchIds = locationBranches.map((b) => b.id);
+    const campusesCount = locationBranches.length || 1;
+    const campusNames = locationBranches.map(b => b.name).join(', ') || loc.name;
+
+    const locStudents = allStudents.filter((s) => 
+      branchIds.includes(s.branchId) ||
+      (s.branchName && (
+        (loc.name === 'Hyderabad' && (s.branchName.includes('HYD') || s.branchName.includes('JNTU') || s.branchName.includes('Pista'))) ||
+        (loc.name === 'Visakhapatnam' && (s.branchName.includes('VSP') || s.branchName.includes('Visakhapatnam'))) ||
+        (loc.name === 'Vijayawada' && (s.branchName.includes('VIJ') || s.branchName.includes('Vijayawada')))
+      ))
+    );
+
+    const locLeads = allConvertedLeads.filter((l) =>
+      branchIds.includes(l.branchId) ||
+      (l.location && l.location.toLowerCase().includes(loc.name.toLowerCase())) ||
+      (l.branchName && (
+        (loc.name === 'Hyderabad' && (l.branchName.includes('HYD') || l.branchName.includes('JNTU') || l.branchName.includes('Pista'))) ||
+        (loc.name === 'Visakhapatnam' && (l.branchName.includes('VSP') || l.branchName.includes('Visakhapatnam'))) ||
+        (loc.name === 'Vijayawada' && (l.branchName.includes('VIJ') || l.branchName.includes('Vijayawada')))
+      ))
+    );
+
+    const completed = locStudents.filter((s) => s.status === 'Completed' || s.status === 'Enrolled').length + locLeads.length;
+    const totalIntakes = locStudents.length + locLeads.length;
+    const conversionRate = totalIntakes > 0 ? Math.round((completed / totalIntakes) * 100) : 0;
+    const totalSales = locLeads.reduce((acc, l) => acc + (Number(l.feePaid) || 0), 0);
+
+    const locCounselors = counselors.filter((c) =>
+      branchIds.includes(c.branchId) ||
+      (c.branchName && (
+        (loc.name === 'Hyderabad' && (c.branchName.includes('HYD') || c.branchName.includes('JNTU') || c.branchName.includes('Pista'))) ||
+        (loc.name === 'Visakhapatnam' && (c.branchName.includes('VSP') || c.branchName.includes('Visakhapatnam'))) ||
+        (loc.name === 'Vijayawada' && (c.branchName.includes('VIJ') || c.branchName.includes('Vijayawada')))
+      ))
+    );
+    const mvpCounselorName = locCounselors[0]?.name || (loc.name === 'Hyderabad' ? 'Siva Kumar' : loc.name === 'Vijayawada' ? 'Maruthi Kotha' : 'Meka Bheema Rao');
+
+    return {
+      id: loc.id,
+      name: loc.name,
+      location: loc.name,
+      rank: idx + 1,
+      leaguePoints: Math.floor(totalSales / 10000) + completed * 50,
+      intakeCount: totalIntakes,
+      completedCount: completed,
+      totalCompleted: completed,
+      totalSales,
+      conversionRate,
+      winStreak: Math.max(1, Math.min(10, completed)),
+      tier: idx === 0 ? 'Metropolitan Division' : idx === 1 ? 'Regional Division' : 'State Division',
+      mvpCounselorName,
+      campusesCount,
+      campusNames,
     };
   }).sort((a, b) => b.leaguePoints - a.leaguePoints).map((c, i) => ({ ...c, rank: i + 1 }));
 }

@@ -8,9 +8,17 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeaguePage() {
+export default async function LeaguePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
   const user = await getSession();
   if (!user) redirect('/login');
+
+  const resolvedParams = searchParams ? await searchParams : {};
+  const rawTab = resolvedParams?.tab || 'trophies';
+  const initialTab = rawTab === 'counselors' ? 'points_table' : rawTab;
 
   const [students, counselors, convertedLeads] = await Promise.all([
     getStudents(),
@@ -27,6 +35,7 @@ export default async function LeaguePage() {
       convertedLeads={convertedLeads as any}
       branches={branches as any}
       user={user}
+      initialTab={initialTab as any}
     />
   );
 }

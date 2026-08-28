@@ -161,7 +161,7 @@ export default function CounselorEditClient({
               <StatusBadge status={form.status} />
             </div>
             <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-              Counselor ID: <span style={{ fontFamily: 'var(--font-mono)' }}>#{counselor.id}</span> • 📍 {counselor.branchName || 'Campus Branch'}
+              Counselor ID: <span style={{ fontFamily: 'var(--font-mono)' }}>#{counselor.id}</span> • {counselor.branchName || 'Campus Branch'}
             </p>
           </div>
         </div>
@@ -300,7 +300,7 @@ export default function CounselorEditClient({
                 >
                   {locations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
-                      📍 {loc.name}
+                      {loc.name}
                     </option>
                   ))}
                 </select>

@@ -545,7 +545,7 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
                       {plan.entityName}
                     </h4>
                     <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>
-                      📍 {plan.location}
+                      {plan.location}
                     </p>
                   </div>
 
@@ -645,7 +645,7 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
                       cursor: 'pointer',
                     }}
                   >
-                    🏢 Campus / Location
+                    Campus / Location
                   </button>
                 </div>
               </div>
@@ -1011,7 +1011,7 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
                   cursor: 'pointer',
                 }}
               >
-                🏢 Campuses
+                Campuses
               </button>
             </div>
 
@@ -1075,7 +1075,7 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
                       </td>
 
                       <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>
-                        📍 {t.location}
+                        {t.location}
                       </td>
 
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
@@ -1221,7 +1221,7 @@ export default function TargetsClient({ students, counselors, convertedLeads = [
                       {t.name}
                     </td>
                     <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 700 }}>
-                      📍 {t.location}
+                      {t.location}
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 900, color: '#10b981' }}>
                       {t.compositePct}%
