@@ -1235,3 +1235,100 @@ html[data-theme="light"] .ops-activity-item::before,
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PORTAL-WIDE MASTER RESPONSIVE SYSTEM (MOBILE, TABLET, DESKTOP)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Desktop Grid definitions */
+.portal-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+  position: relative;
+  transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.portal-shell.collapsed {
+  grid-template-columns: var(--sidebar-collapsed-width) 1fr;
+}
+
+.portal-shell.no-sidebar {
+  grid-template-columns: 1fr !important;
+}
+
+/* Tablet & Mobile Breakpoints (<1024px) */
+@media (max-width: 1024px) {
+  .portal-shell,
+  .portal-shell.collapsed {
+    grid-template-columns: 1fr !important;
+  }
+
+  .portal-main {
+    padding: 16px 14px 70px 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .page-title-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .page-title {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* Table Responsive Container */
+.table-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+.table-wrapper table {
+  min-width: 700px;
+}
+
+/* Mobile Breakpoints (<768px) */
+@media (max-width: 768px) {
+  .portal-main {
+    padding: 12px 10px 80px 10px !important;
+  }
+
+  /* Grid Columns collapse to 1 or 2 on small screens */
+  .stats-grid,
+  .kpi-grid,
+  .ops-metric-compact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .cards-grid,
+  .roster-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Modals Full Screen on Mobile */
+  .modal-dialog,
+  .dialog-container,
+  .command-palette-container {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 10px auto !important;
+  }
+
+  /* Buttons and Touch Targets */
+  button,
+  .btn,
+  .icon-btn {
+    touch-action: manipulation;
+  }
+}

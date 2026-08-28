@@ -3228,6 +3228,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             borderRadius: '11px',
             padding: '6px 12px',
             boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
           }}>
             {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3660,6 +3663,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             borderRadius: '11px',
             padding: '6px 12px',
             boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
           }}>
             {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

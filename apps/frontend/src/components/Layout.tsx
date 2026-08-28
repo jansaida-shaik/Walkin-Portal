@@ -152,13 +152,35 @@ export default function Layout({ children, user }: LayoutProps) {
   const analyticsGroup = visibleItems.filter(item => item.category === 'analytics');
   const configGroup = visibleItems.filter(item => item.category === 'configuration');
 
+  // Auto close mobile drawer on navigation
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
   const activeItem = navConfig.find(item => item.href === pathname);
 
   return (
-    <div className={`portal-shell ${hideNav ? 'no-sidebar' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`} style={{ gridTemplateColumns: hideNav ? '1fr' : sidebarCollapsed ? 'var(--sidebar-collapsed-width) 1fr' : 'var(--sidebar-width) 1fr' }}>
+    <div className={`portal-shell ${hideNav ? 'no-sidebar' : ''} ${sidebarCollapsed ? 'collapsed' : ''} ${menuOpen ? 'mobile-menu-active' : ''}`}>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {!hideNav && menuOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setMenuOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(3, 7, 18, 0.65)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            zIndex: 9990,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        />
+      )}
+
       {/* Sidebar navigation */}
       {!hideNav && (
-        <aside className={`sidebar ${menuOpen ? 'open' : ''}`} style={{ width: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)', overflow: 'visible' }}>
+        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${menuOpen ? 'open' : ''}`}>
           {/* Logo container with Top-Right Circular Toggle */}
           <div className={`sidebar-brand relative flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`} style={{ overflow: 'visible' }}>
             {!sidebarCollapsed ? (
