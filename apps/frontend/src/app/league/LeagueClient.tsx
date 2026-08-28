@@ -42,7 +42,7 @@ interface ModernDropdownProps {
   align?: 'left' | 'right';
 }
 
-const ModernDropdownMenu: React.FC<ModernDropdownProps> = ({ value, options, onChange, width = 'auto', height = '26px', prefix, align = 'left' }) => {
+const ModernDropdownMenu: React.FC<ModernDropdownProps> = ({ value, options, onChange, width = 'auto', height = '26px', prefix, align = 'right' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +118,7 @@ const ModernDropdownMenu: React.FC<ModernDropdownProps> = ({ value, options, onC
             position: 'absolute',
             top: 'calc(100% + 4px)',
             ...(align === 'right' ? { right: 0 } : { left: 0 }),
-            zIndex: 9999,
+            zIndex: 99999,
             minWidth: width === 'auto' ? '140px' : `max(${width}, 140px)`,
             background: 'var(--card-bg)',
             border: '1.5px solid var(--border)',
@@ -297,7 +297,7 @@ const ModernDatePicker: React.FC<ModernDatePickerProps> = ({ value, onChange, wi
             position: 'absolute',
             top: 'calc(100% + 4px)',
             right: 0,
-            zIndex: 9999,
+            zIndex: 99999,
             width: '210px',
             background: 'var(--card-bg)',
             border: '1.5px solid var(--border)',
@@ -750,7 +750,7 @@ const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
             position: 'absolute',
             top: 'calc(100% + 4px)',
             right: 0,
-            zIndex: 9999,
+            zIndex: 99999,
             background: 'var(--card-bg)',
             border: '1.5px solid var(--border)',
             borderRadius: '12px',
@@ -3228,9 +3228,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             borderRadius: '11px',
             padding: '6px 12px',
             boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            maxWidth: '100%',
+            position: 'relative',
+            zIndex: 40,
+            overflow: 'visible',
           }}>
             {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3663,9 +3663,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             borderRadius: '11px',
             padding: '6px 12px',
             boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            maxWidth: '100%',
+            position: 'relative',
+            zIndex: 40,
+            overflow: 'visible',
           }}>
             {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -5216,7 +5216,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 99999,
+          zIndex: 999999,
           padding: '20px',
         }}>
           <div style={{
