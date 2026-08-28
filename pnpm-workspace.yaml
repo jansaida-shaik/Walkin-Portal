@@ -8,13 +8,6 @@ onlyBuiltDependencies:
   - prisma
   - sharp
 
-alwaysApproveBuilds:
-  - "@prisma/client"
-  - "@prisma/engines"
-  - esbuild
-  - prisma
-  - sharp
-
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

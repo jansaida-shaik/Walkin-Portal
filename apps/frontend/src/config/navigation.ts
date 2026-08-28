@@ -71,6 +71,15 @@ export const navConfig: NavigationItem[] = [
 
   // Analytics & Integrations Group
   {
+    id: 'targets',
+    href: '/targets',
+    label: 'Targets & Incentives',
+    icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z',
+    rolePermissions: ['role_super_admin', 'role_admin', 'role_manager', 'role_counselor', 'role_frontdesk'],
+    category: 'analytics',
+    visibilityFlags: { sidebar: true, quickAction: true, commandBar: true },
+  },
+  {
     id: 'league',
     href: '/league',
     label: 'Championship League',

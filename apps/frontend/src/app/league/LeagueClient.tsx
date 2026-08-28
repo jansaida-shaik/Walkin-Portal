@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import LaurelRankMedal from '../../components/LaurelRankMedal';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import SearchInput from '../../components/SearchInput';
 import BadgeCrest from '../../components/BadgeCrest';
@@ -30,17 +31,849 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Custom Ultra-Modern Dropdown Component (Opens Downwards with Glassmorphism)
+interface ModernDropdownProps {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (val: string) => void;
+  width?: string;
+  height?: string;
+  prefix?: React.ReactNode;
+  align?: 'left' | 'right';
+}
+
+const ModernDropdownMenu: React.FC<ModernDropdownProps> = ({ value, options, onChange, width = 'auto', height = '26px', prefix, align = 'left' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((o) => o.value === value) || options[0];
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height,
+          width: width === 'auto' ? 'auto' : width,
+          minWidth: width === 'auto' ? '112px' : width,
+          padding: '0 10px',
+          borderRadius: '7px',
+          border: '1.2px solid var(--border)',
+          background: 'var(--card-bg)',
+          color: 'var(--text)',
+          fontSize: '0.74rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px',
+          outline: 'none',
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          transition: 'all 0.15s ease',
+          lineHeight: height,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+          {prefix}
+          <span style={{ whiteSpace: 'nowrap', lineHeight: '1' }}>
+            {selectedOption?.label || value}
+          </span>
+        </div>
+        <svg
+          style={{
+            width: '10px',
+            height: '10px',
+            flexShrink: 0,
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            color: 'var(--primary)',
+            marginLeft: '4px',
+          }}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2.5"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            ...(align === 'right' ? { right: 0 } : { left: 0 }),
+            zIndex: 9999,
+            minWidth: width === 'auto' ? '140px' : `max(${width}, 140px)`,
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '9px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.14), 0 4px 10px rgba(0,0,0,0.06)',
+            padding: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            backdropFilter: 'blur(12px)',
+            animation: 'fadeIn 0.15s ease-out',
+          }}
+        >
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.73rem',
+                  fontWeight: isSelected ? 800 : 600,
+                  color: isSelected ? 'var(--primary)' : 'var(--text)',
+                  background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'background 0.12s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                }}
+              >
+                <span>{opt.label}</span>
+                {isSelected && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--primary)', marginLeft: '6px' }}>✓</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Custom Ultra-Modern Date Picker Component (Opens Downwards with Glassmorphic Calendar)
+interface ModernDatePickerProps {
+  value: string; // "YYYY-MM-DD"
+  onChange: (val: string) => void;
+  width?: string;
+  height?: string;
+}
+
+const ModernDatePicker: React.FC<ModernDatePickerProps> = ({ value, onChange, width = '112px', height = '26px' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  const parsedDate = value ? new Date(value) : new Date(2026, 7, 28);
+  const [viewYear, setViewYear] = useState(parsedDate.getFullYear() || 2026);
+  const [viewMonth, setViewMonth] = useState(parsedDate.getMonth() || 7);
+
+  useEffect(() => {
+    if (value) {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        setViewYear(d.getFullYear());
+        setViewMonth(d.getMonth());
+      }
+    }
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  const handleSelectDay = (day: number) => {
+    const mm = String(viewMonth + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    onChange(`${viewYear}-${mm}-${dd}`);
+    setIsOpen(false);
+  };
+
+  const formattedDisplay = useMemo(() => {
+    if (!value) return 'Select date';
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return value;
+  }, [value]);
+
+  return (
+    <div ref={datePickerRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height,
+          width,
+          padding: '0 6px',
+          borderRadius: '7px',
+          border: '1px solid var(--border)',
+          background: 'var(--card-bg)',
+          color: 'var(--text)',
+          fontSize: '0.73rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          outline: 'none',
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+          transition: 'all 0.15s ease',
+          lineHeight: height,
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1' }}>
+          {formattedDisplay}
+        </span>
+        <svg
+          style={{ width: '11px', height: '11px', flexShrink: 0, color: 'var(--primary)', marginLeft: '3px' }}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 9999,
+            width: '210px',
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '12px',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.08)',
+            padding: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          {/* Header Month / Year controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                width: '22px',
+                height: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+              }}
+            >
+              ‹
+            </button>
+            <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--text)' }}>
+              {fullMonthNames[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                width: '22px',
+                height: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+              }}
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Days of week header */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', gap: '2px' }}>
+            {daysOfWeek.map((d) => (
+              <span key={d} style={{ fontSize: '0.64rem', fontWeight: 800, color: 'var(--muted)' }}>
+                {d}
+              </span>
+            ))}
+          </div>
+
+          {/* Calendar Day Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+            {Array.from({ length: firstDayIndex }).map((_, idx) => (
+              <div key={`empty-${idx}`} />
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, idx) => {
+              const dayNum = idx + 1;
+              const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+              const isSelected = value === dateStr;
+              const isToday = viewYear === 2026 && viewMonth === 7 && dayNum === 28;
+
+              return (
+                <button
+                  key={dayNum}
+                  type="button"
+                  onClick={() => handleSelectDay(dayNum)}
+                  style={{
+                    height: '24px',
+                    width: '100%',
+                    borderRadius: '6px',
+                    border: isToday && !isSelected ? '1px solid var(--primary)' : 'none',
+                    background: isSelected ? 'var(--primary)' : 'transparent',
+                    color: isSelected ? '#ffffff' : 'var(--text)',
+                    fontSize: '0.72rem',
+                    fontWeight: isSelected || isToday ? 800 : 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.12s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                  }}
+                >
+                  {dayNum}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Action Footer: Reset / Today */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => {
+                onChange('2026-08-28');
+                setIsOpen(false);
+              }}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '5px',
+                color: 'var(--text)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '2px 8px',
+              }}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange('2026-08-28');
+                setIsOpen(false);
+              }}
+              style={{
+                background: 'rgba(99, 102, 241, 0.1)',
+                border: 'none',
+                borderRadius: '5px',
+                padding: '2px 8px',
+                color: 'var(--primary)',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              Today
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// Custom Ultra-Modern Dual-Month Date Range Picker Component
+interface ModernDateRangePickerProps {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  onChange: (start: string, end: string) => void;
+  height?: string;
+}
+
+const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
+  startDate,
+  endDate,
+  onChange,
+  height = '26px',
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Temporary state while picking in popup
+  const [tempStart, setTempStart] = useState(startDate || '2026-08-01');
+  const [tempEnd, setTempEnd] = useState(endDate || '2026-08-31');
+
+  // Active month view for left calendar
+  const [leftYear, setLeftYear] = useState(2026);
+  const [leftMonth, setLeftMonth] = useState(7); // August (0-indexed)
+
+  useEffect(() => {
+    if (startDate) setTempStart(startDate);
+    if (endDate) setTempEnd(endDate);
+    if (startDate) {
+      const d = new Date(startDate);
+      if (!isNaN(d.getTime())) {
+        setLeftYear(d.getFullYear());
+        setLeftMonth(d.getMonth());
+      }
+    }
+  }, [startDate, endDate, isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  // Right calendar month/year is 1 month after left
+  const rightMonth = leftMonth === 11 ? 0 : leftMonth + 1;
+  const rightYear = leftMonth === 11 ? leftYear + 1 : leftYear;
+
+  const handlePrevMonth = () => {
+    if (leftMonth === 0) {
+      setLeftMonth(11);
+      setLeftYear(leftYear - 1);
+    } else {
+      setLeftMonth(leftMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (leftMonth === 11) {
+      setLeftMonth(0);
+      setLeftYear(leftYear + 1);
+    } else {
+      setLeftMonth(leftMonth + 1);
+    }
+  };
+
+  const handleDayClick = (dateStr: string) => {
+    if (!tempStart || (tempStart && tempEnd)) {
+      setTempStart(dateStr);
+      setTempEnd('');
+    } else if (tempStart && !tempEnd) {
+      if (new Date(dateStr) < new Date(tempStart)) {
+        setTempEnd(tempStart);
+        setTempStart(dateStr);
+      } else {
+        setTempEnd(dateStr);
+      }
+    }
+  };
+
+  const renderMonthGrid = (year: number, month: number, isLeft: boolean) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+
+    return (
+      <div style={{ width: '200px' }}>
+        {/* Symmetrical & Non-Overlapping Month Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '10px',
+          height: '24px',
+        }}>
+          {isLeft ? (
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                flexShrink: 0,
+              }}
+            >
+              ‹
+            </button>
+          ) : (
+            <div style={{ width: '24px' }} />
+          )}
+
+          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', textAlign: 'center', flexGrow: 1 }}>
+            {fullMonthNames[month]} {year}
+          </span>
+
+          {!isLeft ? (
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                flexShrink: 0,
+              }}
+            >
+              ›
+            </button>
+          ) : (
+            <div style={{ width: '24px' }} />
+          )}
+        </div>
+
+        {/* Days of Week */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', gap: '2px', marginBottom: '6px' }}>
+          {daysOfWeek.map((d) => (
+            <span key={d} style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--primary)' }}>
+              {d}
+            </span>
+          ))}
+        </div>
+
+        {/* Day Cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+          {Array.from({ length: firstDayIndex }).map((_, idx) => (
+            <div key={`empty-${idx}`} />
+          ))}
+          {Array.from({ length: daysInMonth }).map((_, idx) => {
+            const dayNum = idx + 1;
+            const mm = String(month + 1).padStart(2, '0');
+            const dd = String(dayNum).padStart(2, '0');
+            const dateStr = `${year}-${mm}-${dd}`;
+
+            const isStart = tempStart === dateStr;
+            const isEnd = tempEnd === dateStr;
+            const inRange = tempStart && tempEnd && new Date(dateStr) > new Date(tempStart) && new Date(dateStr) < new Date(tempEnd);
+
+            return (
+              <button
+                key={dayNum}
+                type="button"
+                onClick={() => handleDayClick(dateStr)}
+                style={{
+                  height: '24px',
+                  width: '100%',
+                  borderRadius: isStart ? '6px 0 0 6px' : isEnd ? '0 6px 6px 0' : inRange ? '0' : '6px',
+                  border: 'none',
+                  background: isStart || isEnd ? 'var(--primary)' : inRange ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
+                  color: isStart || isEnd ? '#ffffff' : inRange ? 'var(--primary)' : 'var(--text)',
+                  fontSize: '0.72rem',
+                  fontWeight: isStart || isEnd || inRange ? 800 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.1s ease',
+                  padding: 0,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isStart && !isEnd && !inRange) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isStart && !isEnd && !inRange) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                }}
+              >
+                {dayNum}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const formatDisplay = (dStr: string) => {
+    if (!dStr) return '--/--/----';
+    const parts = dStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dStr;
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>From:</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height,
+          width: '112px',
+          padding: '0 6px',
+          borderRadius: '6px',
+          border: '1px solid var(--border)',
+          background: 'var(--card-bg)',
+          color: 'var(--text)',
+          fontSize: '0.73rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          outline: 'none',
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+        }}
+      >
+        <span>{formatDisplay(startDate)}</span>
+        <svg style={{ width: '10px', height: '10px', color: 'var(--primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </button>
+
+      <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>To:</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height,
+          width: '112px',
+          padding: '0 6px',
+          borderRadius: '6px',
+          border: '1px solid var(--border)',
+          background: 'var(--card-bg)',
+          color: 'var(--text)',
+          fontSize: '0.73rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          outline: 'none',
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+        }}
+      >
+        <span>{formatDisplay(endDate)}</span>
+        <svg style={{ width: '10px', height: '10px', color: 'var(--primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </button>
+
+      {/* Dual Month Popover */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 9999,
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '12px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.16), 0 4px 12px rgba(0,0,0,0.08)',
+            padding: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          {/* Dual Month Headers & Grids with Symmetrical Layout & Full Month Names */}
+          <div style={{ display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
+            <div>
+              {renderMonthGrid(leftYear, leftMonth, true)}
+            </div>
+
+            <div style={{ borderLeft: '1.5px solid var(--border)', paddingLeft: '18px' }}>
+              {renderMonthGrid(rightYear, rightMonth, false)}
+            </div>
+          </div>
+
+          {/* Footer: Date Range String, Reset, Cancel & Apply Button */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: '8px',
+            borderTop: '1px solid var(--border)',
+            gap: '12px',
+          }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+              {tempStart || '----'} {tempEnd ? `– ${tempEnd}` : ''}
+            </span>
+
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTempStart('2026-08-01');
+                  setTempEnd('2026-08-31');
+                  setLeftYear(2026);
+                  setLeftMonth(7);
+                }}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '5px',
+                  color: 'var(--text)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: '3px 8px',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(tempStart, tempEnd || tempStart);
+                  setIsOpen(false);
+                }}
+                style={{
+                  background: 'var(--primary)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 14px',
+                  color: '#ffffff',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(99, 102, 241, 0.3)',
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 export default function LeagueClient({ students, counselors, convertedLeads = [], branches, user }: LeagueClientProps) {
-  const [activeTab, setActiveTab] = useState<'trophies' | 'badges' | 'points_table' | 'league' | 'clash' | 'counselors' | 'quests'>('trophies');
+  const [activeTab, setActiveTab] = useState<'trophies' | 'badges' | 'points_table' | 'league' | 'targets' | 'clash' | 'counselors' | 'quests'>('trophies');
   const [selectedMonth, setSelectedMonth] = useState<string>('August 2026');
   const [trophyYear, setTrophyYear] = useState<'2026' | '2025' | 'all_time'>('2026');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('all');
+  const [leagueMetricFilter, setLeagueMetricFilter] = useState<'all' | 'rpl' | 'wpl' | 'spl'>('all');
   
   // Interactive Campus Comparison Selectors
   const [campusAId, setCampusAId] = useState<string>('branch_jntu1');
   const [campusBId, setCampusBId] = useState<string>('branch_pista');
   const [claimedQuests, setClaimedQuests] = useState<Record<string, boolean>>({ q3: true });
+  // Target Management & Incentive Tracking State
+  const [targetHorizon, setTargetHorizon] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+  const [targetScope, setTargetScope] = useState<'counselor' | 'campus'>('counselor');
+  const [isEditTargetModalOpen, setIsEditTargetModalOpen] = useState(false);
+  const [editingTargetEntity, setEditingTargetEntity] = useState<{ id: string; name: string; type: 'counselor' | 'campus' } | null>(null);
+  
+  // Customizable target multipliers or overrides
+  const [customTargetsOverride, setCustomTargetsOverride] = useState<Record<string, { revenue: number; walkins: number; admissions: number; baseIncentive: number; stretchBonus: number }>>({});
+
 
   const monthShortName = selectedMonth.split(' ')[0]; // e.g. "August", "September"
 
@@ -48,6 +881,33 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
   const [selectedCounselorId, setSelectedCounselorId] = useState<string>('');
   const [badgeCategoryFilter, setBadgeCategoryFilter] = useState<'all' | 'revenue' | 'enrollment' | 'walkin' | 'dropout' | 'season'>('all');
   const [seasonCategoryFilter, setSeasonCategoryFilter] = useState<'all' | 'locations' | 'rpl' | 'wpl' | 'spl' | 'table' | 'medals'>('all');
+  const [expandedAllTimeRolls, setExpandedAllTimeRolls] = useState<Record<string, boolean>>({});
+  // Advanced Universal Analytics Timeframe Filter State
+  interface AnalyticsTimeframeState {
+    mode: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all_time' | 'custom';
+    dailySub: 'today' | 'yesterday' | 'custom_day';
+    customDay: string;
+    weeklySub: 'this_week' | 'last_week' | 'last_7_days';
+    monthlySub: 'current_month' | 'prev_month' | 'specific_month';
+    specificMonth: string;
+    yearlySub: '2026' | '2025';
+    customType: 'between' | 'after' | 'before';
+    customStartDate: string;
+    customEndDate: string;
+  }
+
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframeState>({
+    mode: 'monthly',
+    dailySub: 'today',
+    customDay: '2026-08-28',
+    weeklySub: 'this_week',
+    monthlySub: 'current_month',
+    specificMonth: 'August 2026',
+    yearlySub: '2026',
+    customType: 'between',
+    customStartDate: '2026-08-01',
+    customEndDate: '2026-08-28',
+  });
   const [selectedBadgeModal, setSelectedBadgeModal] = useState<Badge | null>(null);
   const [selectedSeasonModal, setSelectedSeasonModal] = useState<{
     seasonNumber: number;
@@ -99,6 +959,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
   const campusStandings = useMemo(() => {
     return computeCampusLeagueStandings(branches, students, counselors, convertedLeads);
   }, [branches, students, counselors, convertedLeads]);
+
 
   const isExcludedFromTrophies = (name: string) => {
     const n = (name || '').toLowerCase().trim();
@@ -194,6 +1055,139 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
       .sort((a, b) => b.xp - a.xp);
   }, [counselors, students, convertedLeads]);
 
+  // Universal Record Date Parser
+  const parseRecordDate = (rec: any): Date | null => {
+    if (!rec) return null;
+    const raw = rec.date || rec.createdAt || rec.sessionDate || rec.timestamp || rec.metadata?.['Created At'] || rec.metadata?.['Date'] || rec.metadata?.['Enrollment Date'] || rec.leadDate;
+    if (!raw) return null;
+    if (typeof raw === 'number') {
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+    if (typeof raw === 'string') {
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return parsed;
+      const parts = raw.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      }
+    }
+    return null;
+  };
+
+  const isDateInAnalyticsTimeframe = (recordDate: Date | null, tf: AnalyticsTimeframeState): boolean => {
+    if (tf.mode === 'all_time') return true;
+    if (!recordDate) return true;
+
+    const rYear = recordDate.getFullYear();
+    const rMonth = recordDate.getMonth(); // 0-11
+    const rDate = recordDate.getDate();
+    const recTime = recordDate.getTime();
+
+    // Any Custom range selection (between start and end date)
+    const isCustomActive = 
+      tf.mode === 'custom' ||
+      (tf.mode === 'daily' && tf.dailySub === 'custom_day') ||
+      (tf.mode === 'weekly' && (tf.weeklySub as string) === 'custom') ||
+      (tf.mode === 'monthly' && tf.monthlySub === 'specific_month') ||
+      (tf.mode === 'yearly' && (tf.yearlySub as string) === 'custom');
+
+    if (isCustomActive) {
+      const start = tf.customStartDate ? new Date(tf.customStartDate).getTime() : 0;
+      const end = tf.customEndDate ? new Date(`${tf.customEndDate}T23:59:59`).getTime() : Infinity;
+      return recTime >= start && recTime <= end;
+    }
+
+    if (tf.mode === 'daily') {
+      if (tf.dailySub === 'today') return rYear === 2026 && rMonth === 7 && rDate === 28;
+      if (tf.dailySub === 'yesterday') return rYear === 2026 && rMonth === 7 && rDate === 27;
+      return rYear === 2026 && rMonth === 7 && rDate === 28;
+    }
+
+    if (tf.mode === 'weekly') {
+      if (tf.weeklySub === 'this_week') {
+        const start = new Date(2026, 7, 24).getTime();
+        const end = new Date(2026, 7, 30, 23, 59, 59).getTime();
+        return recTime >= start && recTime <= end;
+      }
+      if (tf.weeklySub === 'last_week') {
+        const start = new Date(2026, 7, 17).getTime();
+        const end = new Date(2026, 7, 23, 23, 59, 59).getTime();
+        return recTime >= start && recTime <= end;
+      }
+      if (tf.weeklySub === 'last_7_days') {
+        const start = new Date(2026, 7, 21).getTime();
+        const end = new Date(2026, 7, 28, 23, 59, 59).getTime();
+        return recTime >= start && recTime <= end;
+      }
+      return true;
+    }
+
+    if (tf.mode === 'monthly') {
+      if (tf.monthlySub === 'current_month') return rYear === 2026 && rMonth === 7;
+      if (tf.monthlySub === 'prev_month') return rYear === 2026 && rMonth === 6;
+      return true;
+    }
+
+    if (tf.mode === 'yearly') {
+      if (tf.yearlySub === '2026') return rYear === 2026;
+      if (tf.yearlySub === '2025') return rYear === 2025;
+      return rYear === 2026;
+    }
+
+    return true;
+  };
+
+  const timeframeSummaryLabel = useMemo(() => {
+    if (analyticsTimeframe.mode === 'all_time') return 'All-Time Historical Analytics';
+    if (analyticsTimeframe.mode === 'daily') {
+      return `Date: ${analyticsTimeframe.customDay}`;
+    }
+    if (analyticsTimeframe.mode === 'weekly') {
+      if (analyticsTimeframe.weeklySub === 'this_week') return 'This Week (Aug 24 – 30, 2026)';
+      if (analyticsTimeframe.weeklySub === 'last_week') return 'Last Week (Aug 17 – 23, 2026)';
+      return 'Last 7 Days Rolling';
+    }
+    if (analyticsTimeframe.mode === 'monthly') {
+      if (analyticsTimeframe.monthlySub === 'current_month') return 'Current Month (August 2026)';
+      if (analyticsTimeframe.monthlySub === 'prev_month') return 'Previous Month (July 2026)';
+      return analyticsTimeframe.specificMonth;
+    }
+    if (analyticsTimeframe.mode === 'yearly') {
+      return `${analyticsTimeframe.yearlySub} Annual Edition`;
+    }
+    if (analyticsTimeframe.mode === 'custom') {
+      return `${analyticsTimeframe.customStartDate} to ${analyticsTimeframe.customEndDate}`;
+    }
+    return 'Analytics Period';
+  }, [analyticsTimeframe]);
+
+  // Period Filtered Gamification for Counselor Table Tab
+  const counselorGamificationsForPeriod = useMemo(() => {
+    if (analyticsTimeframe.mode === 'all_time') return counselorGamifications;
+
+    const filteredStudents = students.filter((s) => isDateInAnalyticsTimeframe(parseRecordDate(s), analyticsTimeframe));
+    const filteredLeads = convertedLeads.filter((l) => isDateInAnalyticsTimeframe(parseRecordDate(l), analyticsTimeframe));
+
+    return counselors
+      .filter((c) => !isExcludedFromTrophies(c.name || ''))
+      .map((c) => computeCounselorGamification(c, filteredStudents, filteredLeads))
+      .sort((a, b) => b.xp - a.xp);
+  }, [counselors, students, convertedLeads, counselorGamifications, analyticsTimeframe]);
+
+  // Period Filtered Campus Standings
+  const campusStandingsForPeriod = useMemo(() => {
+    if (analyticsTimeframe.mode === 'all_time') return campusStandings;
+
+    const filteredStudents = students.filter((s) => isDateInAnalyticsTimeframe(parseRecordDate(s), analyticsTimeframe));
+    const filteredLeads = convertedLeads.filter((l) => isDateInAnalyticsTimeframe(parseRecordDate(l), analyticsTimeframe));
+
+    return computeCampusLeagueStandings(branches, filteredStudents, counselors, filteredLeads);
+  }, [branches, students, counselors, convertedLeads, campusStandings, analyticsTimeframe]);
+
+
   // Current active gamification stats (selected counselor or logged in user)
   const currentUserGamification = useMemo(() => {
     if (selectedCounselorId) {
@@ -233,14 +1227,184 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
     });
   }, [campusStandings, regionFilter, searchQuery]);
 
-  // Filtered Counselors
+  // Filtered & Ranked Counselors based on League Metric (Overall XP, RPL Revenue, WPL Walk-ins, SPL Admissions)
   const filteredCounselors = useMemo(() => {
-    if (!searchQuery.trim()) return counselorGamifications;
-    const q = searchQuery.toLowerCase();
-    return counselorGamifications.filter((cg) =>
-      cg.name.toLowerCase().includes(q) || cg.branchName.toLowerCase().includes(q) || cg.tierName.toLowerCase().includes(q)
-    );
-  }, [counselorGamifications, searchQuery]);
+    let list = [...counselorGamifications];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((cg) =>
+        cg.name.toLowerCase().includes(q) || cg.branchName.toLowerCase().includes(q) || cg.tierName.toLowerCase().includes(q)
+      );
+    }
+
+    if (leagueMetricFilter === 'rpl') {
+      list.sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0));
+    } else if (leagueMetricFilter === 'wpl') {
+      list.sort((a, b) => (b.walkinCount || 0) - (a.walkinCount || 0));
+    } else if (leagueMetricFilter === 'spl') {
+      list.sort((a, b) => (b.completedCount || 0) - (a.completedCount || 0));
+    } else {
+      list.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+    }
+
+    return list;
+  }, [counselorGamifications, searchQuery, leagueMetricFilter]);
+
+  // ─── TARGETS & INCENTIVES CALCULATION ENGINE ───
+  const targetAchievements = useMemo(() => {
+    const horizonMultiplier = targetHorizon === 'daily' ? (1 / 26) : targetHorizon === 'weekly' ? (1 / 4) : 1;
+    
+    if (targetScope === 'counselor') {
+      return counselorGamifications.map((cg, idx) => {
+        // Base monthly benchmarks per counselor
+        const defaultRevTarget = 500000 * horizonMultiplier; // ₹5L monthly
+        const defaultWalkinTarget = Math.round(50 * horizonMultiplier); // 50 walkins monthly
+        const defaultAdmTarget = Math.round(20 * horizonMultiplier); // 20 admissions monthly
+        const defaultBaseIncentive = 5000 * horizonMultiplier;
+        const defaultStretchBonus = 3000 * horizonMultiplier;
+
+        const override = customTargetsOverride[cg.name] || customTargetsOverride[cg.id];
+        const revTarget = override ? override.revenue : defaultRevTarget;
+        const walkinTarget = override ? override.walkins : defaultWalkinTarget;
+        const admTarget = override ? override.admissions : defaultAdmTarget;
+        const baseInc = override ? override.baseIncentive : defaultBaseIncentive;
+        const stretchInc = override ? override.stretchBonus : defaultStretchBonus;
+
+        // Actuals scaled according to horizon
+        const actRev = cg.totalSales || 0;
+        const actWalkin = cg.walkinCount || 0;
+        const actAdm = cg.completedCount || 0;
+
+        const revPct = revTarget > 0 ? Math.min(200, Math.round((actRev / revTarget) * 100)) : 0;
+        const walkinPct = walkinTarget > 0 ? Math.min(200, Math.round((actWalkin / walkinTarget) * 100)) : 0;
+        const admPct = admTarget > 0 ? Math.min(200, Math.round((actAdm / admTarget) * 100)) : 0;
+
+        // Composite weighted score: 40% Revenue, 40% Admissions, 20% Walk-ins
+        const compositePct = Math.round((revPct * 0.4) + (admPct * 0.4) + (walkinPct * 0.2));
+
+        // Incentive calculation
+        let incentiveEarned = 0;
+        let status = 'On Track ⚡';
+        let statusColor = '#3b82f6';
+
+        if (compositePct >= 120) {
+          incentiveEarned = baseInc + stretchInc + (Math.max(0, actAdm - admTarget) * 500);
+          status = 'Super Stretch 🚀';
+          statusColor = '#8b5cf6';
+        } else if (compositePct >= 100) {
+          incentiveEarned = baseInc + (Math.max(0, actAdm - admTarget) * 300);
+          status = 'Target Hit 🎉';
+          statusColor = '#10b981';
+        } else if (compositePct >= 75) {
+          incentiveEarned = Math.round(baseInc * 0.5);
+          status = 'On Track ⚡';
+          statusColor = '#0284c7';
+        } else if (compositePct >= 50) {
+          incentiveEarned = 0;
+          status = 'In Progress ⏳';
+          statusColor = '#f59e0b';
+        } else {
+          incentiveEarned = 0;
+          status = 'Behind Target ⚠️';
+          statusColor = '#ef4444';
+        }
+
+        return {
+          id: cg.id,
+          name: cg.name,
+          location: cg.branchName,
+          type: 'counselor' as const,
+          streakDays: cg.streakDays,
+          targetRevenue: revTarget,
+          actualRevenue: actRev,
+          revenuePct: revPct,
+          targetWalkins: walkinTarget,
+          actualWalkins: actWalkin,
+          walkinsPct: walkinPct,
+          targetAdmissions: admTarget,
+          actualAdmissions: actAdm,
+          admissionsPct: admPct,
+          compositePct,
+          status,
+          statusColor,
+          incentiveEarned: Math.round(incentiveEarned),
+        };
+      }).sort((a, b) => b.compositePct - a.compositePct);
+    } else {
+      // Campus level targets
+      return campusStandings.map((c, idx) => {
+        const defaultRevTarget = 2500000 * horizonMultiplier; // ₹25L monthly
+        const defaultWalkinTarget = Math.round(250 * horizonMultiplier); // 250 walkins monthly
+        const defaultAdmTarget = Math.round(100 * horizonMultiplier); // 100 admissions monthly
+        const defaultBaseIncentive = 25000 * horizonMultiplier;
+        const defaultStretchBonus = 15000 * horizonMultiplier;
+
+        const override = customTargetsOverride[c.name] || customTargetsOverride[c.id];
+        const revTarget = override ? override.revenue : defaultRevTarget;
+        const walkinTarget = override ? override.walkins : defaultWalkinTarget;
+        const admTarget = override ? override.admissions : defaultAdmTarget;
+        const baseInc = override ? override.baseIncentive : defaultBaseIncentive;
+        const stretchInc = override ? override.stretchBonus : defaultStretchBonus;
+
+        const actRev = c.totalSales || (c.intakeCount * 45000) || 0;
+        const actWalkin = c.intakeCount || 0;
+        const actAdm = c.completedCount || 0;
+
+        const revPct = revTarget > 0 ? Math.min(200, Math.round((actRev / revTarget) * 100)) : 0;
+        const walkinPct = walkinTarget > 0 ? Math.min(200, Math.round((actWalkin / walkinTarget) * 100)) : 0;
+        const admPct = admTarget > 0 ? Math.min(200, Math.round((actAdm / admTarget) * 100)) : 0;
+
+        const compositePct = Math.round((revPct * 0.4) + (admPct * 0.4) + (walkinPct * 0.2));
+
+        let incentiveEarned = 0;
+        let status = 'On Track ⚡';
+        let statusColor = '#3b82f6';
+
+        if (compositePct >= 120) {
+          incentiveEarned = baseInc + stretchInc;
+          status = 'Super Stretch 🚀';
+          statusColor = '#8b5cf6';
+        } else if (compositePct >= 100) {
+          incentiveEarned = baseInc;
+          status = 'Target Hit 🎉';
+          statusColor = '#10b981';
+        } else if (compositePct >= 75) {
+          incentiveEarned = Math.round(baseInc * 0.5);
+          status = 'On Track ⚡';
+          statusColor = '#0284c7';
+        } else if (compositePct >= 50) {
+          incentiveEarned = 0;
+          status = 'In Progress ⏳';
+          statusColor = '#f59e0b';
+        } else {
+          incentiveEarned = 0;
+          status = 'Behind Target ⚠️';
+          statusColor = '#ef4444';
+        }
+
+        return {
+          id: c.id,
+          name: c.name,
+          location: c.location,
+          type: 'campus' as const,
+          streakDays: c.winStreak,
+          targetRevenue: revTarget,
+          actualRevenue: actRev,
+          revenuePct: revPct,
+          targetWalkins: walkinTarget,
+          actualWalkins: actWalkin,
+          walkinsPct: walkinPct,
+          targetAdmissions: admTarget,
+          actualAdmissions: actAdm,
+          admissionsPct: admPct,
+          compositePct,
+          status,
+          statusColor,
+          incentiveEarned: Math.round(incentiveEarned),
+        };
+      }).sort((a, b) => b.compositePct - a.compositePct);
+    }
+  }, [counselorGamifications, campusStandings, targetHorizon, targetScope, customTargetsOverride]);
 
   // Selected Comparison Campuses
   const selectedCampusA = useMemo(() => {
@@ -300,57 +1464,98 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           </p>
         </div>
 
-        {/* Header Right Controls */}
+        {/* Header Right Controls - Executive Symmetrical Glassmorphic Badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Month Selector */}
+          {/* Dynamic Status Month Selector (Sequence: September, August, July) */}
+          <ModernDropdownMenu
+            value={selectedMonth}
+            options={[
+              { value: 'September 2026', label: 'September 2026' },
+              { value: 'August 2026', label: 'August 2026' },
+              { value: 'July 2026', label: 'July 2026' },
+            ]}
+            onChange={(val) => setSelectedMonth(val)}
+            width="176px"
+            height="32px"
+            prefix={
+              selectedMonth === 'August 2026' ? (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  color: '#10b981',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  padding: '0 5px',
+                  borderRadius: '4px',
+                  height: '18px',
+                  lineHeight: '18px',
+                  boxSizing: 'border-box',
+                }}>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                  LIVE
+                </span>
+              ) : selectedMonth === 'September 2026' ? (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  color: '#3b82f6',
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  padding: '0 5px',
+                  borderRadius: '4px',
+                  height: '18px',
+                  lineHeight: '18px',
+                  boxSizing: 'border-box',
+                }}>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                  UPCOMING
+                </span>
+              ) : (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  color: '#6b7280',
+                  background: 'rgba(107, 114, 128, 0.12)',
+                  padding: '0 5px',
+                  borderRadius: '4px',
+                  height: '18px',
+                  lineHeight: '18px',
+                  boxSizing: 'border-box',
+                }}>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6b7280', display: 'inline-block' }} />
+                  ARCHIVE
+                </span>
+              )
+            }
+          />
+
+          {/* Consistent Size Streak Pill (Exact 32px Height, Matching 8px Radius) */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            background: 'var(--surface)',
-            border: '1.5px solid var(--border)',
-            borderRadius: '10px',
-            padding: '6px 12px',
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(239, 68, 68, 0.04))',
+            border: '1.5px solid rgba(245, 158, 11, 0.25)',
+            borderRadius: '7px',
+            padding: '0 12px',
+            height: '32px',
+            boxSizing: 'border-box',
+            boxShadow: '0 1px 3px rgba(245, 158, 11, 0.05)',
           }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--muted)' }}>League Month:</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text)',
-                fontSize: '0.84rem',
-                fontWeight: 800,
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="August 2026">August 2026 (Live)</option>
-              <option value="September 2026">September 2026 (Upcoming)</option>
-              <option value="July 2026">July 2026 (Archive)</option>
-            </select>
-          </div>
-
-          {/* User Streak Badge */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'var(--surface)',
-            border: '1.5px solid var(--border)',
-            borderRadius: '10px',
-            padding: '6px 14px',
-          }}>
-            <span style={{ fontSize: '1rem' }}>🔥</span>
-            <div>
-              <div style={{ fontSize: '0.84rem', fontWeight: 900, color: '#f59e0b', lineHeight: 1.1 }}>
-                {currentUserGamification.streakDays} Days
-              </div>
-              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>
-                Monthly Streak
-              </div>
-            </div>
+            <span style={{ fontSize: '0.88rem' }}>🔥</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 900, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
+              {currentUserGamification.streakDays}
+            </span>
+            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+              Day Streak
+            </span>
           </div>
         </div>
       </div>
@@ -463,10 +1668,10 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             </div>
           </div>
           <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--text)', marginTop: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {counselorGamifications[0]?.name || 'Kranthi Kumar'}
+            {counselorGamificationsForPeriod[0]?.name || 'Kranthi Kumar'}
           </div>
           <div style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, marginTop: '2px' }}>
-            Lvl {counselorGamifications[0]?.level || 5} • {counselorGamifications[0]?.xp || 0} PTS
+            Lvl {counselorGamificationsForPeriod[0]?.level || 5} • {counselorGamificationsForPeriod[0]?.xp || 0} PTS
           </div>
         </div>
       </div>
@@ -486,8 +1691,9 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           {[
             { id: 'trophies', label: '🏆 Trophies' },
             { id: 'badges', label: '🎖️ Badges & Medals' },
-            { id: 'points_table', label: '📊 Points Table' },
+            { id: 'points_table', label: '📊 Counselor Table' },
             { id: 'league', label: '🏆 Campus Standings' },
+            { id: 'targets', label: '🎯 Target Hub & Incentives' },
             { id: 'clash', label: '📈 Campus Comparison' },
             { id: 'counselors', label: '🌟 Counselor Roster' },
             { id: 'quests', label: '🎯 Daily Quests' },
@@ -517,14 +1723,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
           ))}
         </div>
 
-        {/* Search Input */}
-        <div style={{ width: '240px' }}>
-          <SearchInput
-            placeholder="Search badges, counselors..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
-        </div>
+
       </div>
 
 
@@ -769,11 +1968,11 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             {/* ─── Trophies Filter & Navigation Bar ─── */}
             <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '4px' }}>
               {[
-                { id: 'all', label: trophyYear === 'all_time' ? `🏆 All Trophies (${totalAchievedCups} Cups)` : `🏆 All Trophies (${yrNum === 2026 ? '24' : '36'} Cups)` },
-                { id: 'locations', label: '📍 Location Trophies' },
-                { id: 'rpl', label: trophyYear === 'all_time' ? '💰 RPL Cup (20 Seasons)' : '💰 RPL Cups (Revenue)' },
-                { id: 'wpl', label: trophyYear === 'all_time' ? '🚶 WPL Cup (20 Seasons)' : '🚶 WPL Cups (Walk-ins)' },
-                { id: 'spl', label: trophyYear === 'all_time' ? '🎓 SPL Cup (20 Seasons)' : '🎓 SPL Cups (Sales)' },
+                { id: 'all', label: 'All Trophies' },
+                { id: 'locations', label: 'Location Trophies' },
+                { id: 'rpl', label: 'RPL Cups' },
+                { id: 'wpl', label: 'WPL Cups' },
+                { id: 'spl', label: 'SPL Cups' },
               ].map((cat) => (
                 <button
                   key={cat.id}
@@ -802,7 +2001,13 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             ══════════════════════════════════════════════════════════ */}
             {seasonCategoryFilter === 'locations' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                {LOCATIONS.map((loc) => {
+                {LOCATIONS.filter((loc) => {
+                  // Only display campuses that have actually won at least 1 championship trophy
+                  const hasRpl = monthsData.some(d => d.rplWinner && d.rplWinner.loc.toLowerCase() === loc.toLowerCase());
+                  const hasWpl = monthsData.some(d => d.wplWinner && d.wplWinner.loc.toLowerCase() === loc.toLowerCase());
+                  const hasSpl = monthsData.some(d => d.splWinner && d.splWinner.loc.toLowerCase() === loc.toLowerCase());
+                  return hasRpl || hasWpl || hasSpl;
+                }).map((loc) => {
                   const rplWinningSeasons: any[] = [];
                   const wplWinningSeasons: any[] = [];
                   const splWinningSeasons: any[] = [];
@@ -881,10 +2086,11 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                         </span>
                       </div>
 
-                      {/* Exactly 3 Grand Cups for this Location: RPL, WPL, SPL */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+                      {/* Grand Cups Actually Won by this Location */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))', gap: '18px' }}>
                         
-                        {/* 1. RPL Cup Card - Luxury 3D Pedestal */}
+                        {/* 1. RPL Cup Card (Only shown if won > 0) */}
+                        {rplWinningSeasons.length > 0 && (
                         <div
                           onClick={() => {
                             setSelectedLocationCupModal({
@@ -962,8 +2168,10 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                             View Ceremony ({rplWinningSeasons.length} Seasons) →
                           </span>
                         </div>
+                        )}
 
-                        {/* 2. WPL Cup Card - Luxury 3D Pedestal */}
+                        {/* 2. WPL Cup Card (Only shown if won > 0) */}
+                        {wplWinningSeasons.length > 0 && (
                         <div
                           onClick={() => {
                             setSelectedLocationCupModal({
@@ -1041,8 +2249,10 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                             View Ceremony ({wplWinningSeasons.length} Seasons) →
                           </span>
                         </div>
+                        )}
 
-                        {/* 3. SPL Cup Card - Luxury 3D Pedestal */}
+                        {/* 3. SPL Cup Card (Only shown if won > 0) */}
+                        {splWinningSeasons.length > 0 && (
                         <div
                           onClick={() => {
                             setSelectedLocationCupModal({
@@ -1120,7 +2330,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                             View Ceremony ({splWinningSeasons.length} Seasons) →
                           </span>
                         </div>
-
+                        )}
                       </div>
                     </div>
                   );
@@ -1138,31 +2348,28 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 id: 'rpl' | 'wpl' | 'spl';
                 title: string;
                 subtitle: string;
-                icon: string;
+                icon?: string;
                 trophyType: 'fifa_globe' | 'webb_ellis' | 'icc_pillars';
                 color: string;
               }> = [
                 {
                   id: 'rpl',
-                  title: 'RPL — Revenue Premier League Cup',
+                  title: 'Revenue Premier League (RPL)',
                   subtitle: 'All-Time Gross Fee Revenue Collections Championship',
-                  icon: '💰',
                   trophyType: 'fifa_globe',
                   color: '#f59e0b',
                 },
                 {
                   id: 'wpl',
-                  title: 'WPL — Walk-in Premier League Cup',
+                  title: 'Walk-in Premier League (WPL)',
                   subtitle: 'All-Time Physical Walk-in Footfall Championship',
-                  icon: '🚶',
                   trophyType: 'webb_ellis',
                   color: '#10b981',
                 },
                 {
                   id: 'spl',
-                  title: 'SPL — Sales Premier League Cup',
+                  title: 'Sales Premier League (SPL)',
                   subtitle: 'All-Time Student Admissions Volume Championship',
-                  icon: '🎓',
                   trophyType: 'icc_pillars',
                   color: '#0284c7',
                 },
@@ -1170,273 +2377,601 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
               const leaguesToRender = rawLeagues.filter(l => seasonCategoryFilter === 'all' || seasonCategoryFilter === l.id);
 
               // ─── IF ALL TIME: DISPLAY EXACTLY 3 GRAND LEAGUE TROPHIES ───
-              if (trophyYear === 'all_time') {
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: '24px',
-                    }}>
-                      {leaguesToRender.map((league) => {
-                        // Aggregate all historical winners across 2026 (completed) and 2025
-                        const allSeasonsCombined = [...monthsData2026.filter(d => !d.isFutureMonth), ...monthsData2025];
-                        const locWinMap: Record<string, { wins: number; totalSales: number; totalCount: number }> = {};
-                        
-                        LOCATIONS.forEach(l => {
-                          locWinMap[l] = { wins: 0, totalSales: 0, totalCount: 0 };
-                        });
-
-                        const allWinnersList: Array<{
-                          seasonNumber: number;
-                          monthName: string;
-                          year: number;
-                          winnerLoc: string;
-                          metricFormatted: string;
-                          counselors: string[];
-                        }> = [];
-
-                        allSeasonsCombined.forEach(d => {
-                          const winner = league.id === 'rpl' ? d.rplWinner : (league.id === 'wpl' ? d.wplWinner : d.splWinner);
-                          if (winner && winner.loc) {
-                            if (!locWinMap[winner.loc]) locWinMap[winner.loc] = { wins: 0, totalSales: 0, totalCount: 0 };
-                            locWinMap[winner.loc].wins += 1;
-                            locWinMap[winner.loc].totalSales += (winner as any).sales || d.locSalesMap[winner.loc]?.sales || 0;
-                            locWinMap[winner.loc].totalCount += (winner as any).count || 0;
-
-                            const metricFormatted = league.id === 'rpl'
-                              ? `₹${(((winner as any).sales || 0) / 100000).toFixed(2)}L Revenue`
-                              : (league.id === 'wpl' ? `${(winner as any).count} Walk-ins` : `${(winner as any).count} Admissions`);
-
-                            allWinnersList.push({
-                              seasonNumber: d.m,
-                              monthName: d.mName,
-                              year: d.year || 2026,
-                              winnerLoc: winner.loc,
-                              metricFormatted,
-                              counselors: Array.from((winner as any).counselors || d.locSalesMap[winner.loc]?.counselors || []),
-                            });
-                          }
-                        });
-
-                        const sortedRankings = Object.entries(locWinMap)
-                          .map(([name, data]) => ({
-                            name,
-                            wins: data.wins,
-                            totalMetric: league.id === 'rpl' 
-                              ? `₹${(data.totalSales / 100000).toFixed(2)}L Collected`
-                              : (league.id === 'wpl' ? `${data.totalCount} Walk-ins` : `${data.totalCount} Enrolled`),
-                          }))
-                          .sort((a, b) => b.wins - a.wins)
-                          .map((item, idx) => ({ ...item, rank: idx + 1 }));
-
-                        const topCampus = sortedRankings[0] || { name: 'Hyderabad', wins: 0, totalMetric: '0' };
-
-                        return (
-                          <div
-                            key={league.id}
-                            onClick={() => {
-                              setSelectedAllTimeLeagueModal({
-                                id: league.id,
-                                title: league.title,
-                                subtitle: league.subtitle,
-                                icon: league.icon,
-                                trophyType: league.trophyType,
-                                color: league.color,
-                                topCampus: { name: topCampus.name, wins: topCampus.wins, metricFormatted: topCampus.totalMetric },
-                                rankings: sortedRankings,
-                                allWinners: allWinnersList,
-                              });
-                            }}
-                            style={{
-                              background: `radial-gradient(ellipse at top, ${league.color}18 0%, var(--card-bg) 70%)`,
-                              border: `1.5px solid ${league.color}44`,
-                              borderRadius: '16px',
-                              padding: '32px 24px 22px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              textAlign: 'center',
-                              gap: '12px',
-                              boxShadow: `0 8px 30px ${league.color}14`,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                              minHeight: '420px',
-                              position: 'relative',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-6px)';
-                              e.currentTarget.style.borderColor = league.color;
-                              e.currentTarget.style.boxShadow = `0 18px 45px ${league.color}28`;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.borderColor = `${league.color}44`;
-                              e.currentTarget.style.boxShadow = `0 8px 30px ${league.color}14`;
-                            }}
-                          >
-                            <ChampionshipTrophy3D type={league.trophyType} size={180} />
-                            
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
-                              {league.icon} {league.title}
-                            </h3>
-                            
-                            <span style={{
-                              fontSize: '0.82rem',
-                              fontWeight: 900,
-                              padding: '6px 18px',
-                              borderRadius: '9999px',
-                              background: `linear-gradient(135deg, ${league.color}26, ${league.color}14)`,
-                              border: `1.5px solid ${league.color}66`,
-                              color: league.color,
-                              letterSpacing: '0.02em',
-                            }}>
-                              👑 #1 All-Time: {topCampus.name} ({topCampus.wins} Titles)
-                            </span>
-
-                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--muted)' }}>
-                              {league.subtitle}
-                            </div>
-
-                            <p style={{ margin: '4px 0 0 0', fontSize: '0.76rem', color: 'var(--text)', fontWeight: 800 }}>
-                              Total {allWinnersList.length} Historic Championship Seasons Awarded
-                            </p>
-
-                            <button
-                              type="button"
-                              style={{
-                                marginTop: 'auto',
-                                width: '100%',
-                                padding: '10px 16px',
-                                borderRadius: '10px',
-                                border: `1.5px solid ${league.color}55`,
-                                background: `${league.color}18`,
-                                color: league.color,
-                                fontSize: '0.78rem',
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              View All-Time Leaderboard &amp; Winners ({allWinnersList.length} Seasons) →
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
-
-              // ─── IF SINGLE YEAR (2026 OR 2025): DISPLAY 12 MONTHLY BOXES PER LEAGUE ───
+              // ─── UNIFIED LUXURY TROPHY STAGE & SEASONS REGISTER (ALL TIME, 2026, 2025) ───
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
                   {leaguesToRender.map((league) => {
-                    const currYearData = yrNum === 2026 ? monthsData2026 : monthsData2025;
+                    // Determine seasons dataset based on trophyYear
+                    let targetMonthsData = monthsData2026;
+                    let periodLabel = `${yrNum} Championship Seasons`;
+                    let totalSeasonsCount = 12;
+
+                    if (trophyYear === 'all_time') {
+                      targetMonthsData = [...monthsData2026.filter(d => !d.isFutureMonth), ...monthsData2025];
+                      periodLabel = 'All-Time Historic Championship Seasons';
+                    } else if (trophyYear === '2025') {
+                      targetMonthsData = monthsData2025;
+                      periodLabel = '2025 Championship Seasons';
+                    } else {
+                      targetMonthsData = monthsData2026;
+                      periodLabel = '2026 Championship Seasons';
+                    }
+
+                    // Compute campus win aggregation for this specific period
+                    const locWinMap: Record<string, { wins: number; totalSales: number; totalCount: number }> = {};
+                    LOCATIONS.forEach(l => {
+                      locWinMap[l] = { wins: 0, totalSales: 0, totalCount: 0 };
+                    });
+
+                    const allWinnersList: Array<{
+                      seasonNumber: number;
+                      monthName: string;
+                      year: number;
+                      winnerLoc: string;
+                      metricFormatted: string;
+                      counselors: string[];
+                      isFutureMonth?: boolean;
+                      unlockDateText?: string;
+                    }> = [];
+
+                    targetMonthsData.forEach(d => {
+                      const winner = league.id === 'rpl' ? d.rplWinner : (league.id === 'wpl' ? d.wplWinner : d.splWinner);
+                      if (winner && winner.loc) {
+                        if (!locWinMap[winner.loc]) locWinMap[winner.loc] = { wins: 0, totalSales: 0, totalCount: 0 };
+                        locWinMap[winner.loc].wins += 1;
+                        locWinMap[winner.loc].totalSales += (winner as any).sales || d.locSalesMap[winner.loc]?.sales || 0;
+                        locWinMap[winner.loc].totalCount += (winner as any).count || 0;
+
+                        const metricFormatted = league.id === 'rpl' 
+                          ? `₹${(((winner as any).sales || 0) / 100000).toFixed(2)}L Revenue` 
+                          : (league.id === 'wpl' ? `${(winner as any).count} Walk-ins` : `${(winner as any).count} Admissions`);
+
+                        allWinnersList.push({
+                          seasonNumber: d.m,
+                          monthName: d.mName,
+                          year: d.year || (trophyYear === '2025' ? 2025 : 2026),
+                          winnerLoc: winner.loc,
+                          metricFormatted,
+                          counselors: Array.from((winner as any).counselors || d.locSalesMap[winner.loc]?.counselors || []),
+                          isFutureMonth: false,
+                        });
+                      } else if (d.isFutureMonth) {
+                        allWinnersList.push({
+                          seasonNumber: d.m,
+                          monthName: d.mName,
+                          year: d.year || 2026,
+                          winnerLoc: 'Upcoming Season',
+                          metricFormatted: 'Unlocks ' + d.unlockDateText,
+                          counselors: [],
+                          isFutureMonth: true,
+                          unlockDateText: d.unlockDateText,
+                        });
+                      }
+                    });
+
+                    const sortedRankings = Object.entries(locWinMap)
+                      .map(([name, data]) => ({
+                        name,
+                        wins: data.wins,
+                        totalMetric: league.id === 'rpl' 
+                          ? `₹${(data.totalSales / 100000).toFixed(2)}L Collected`
+                          : (league.id === 'wpl' ? `${data.totalCount} Walk-ins` : `${data.totalCount} Enrolled`),
+                      }))
+                      .sort((a, b) => b.wins - a.wins)
+                      .map((item, idx) => ({ ...item, rank: idx + 1 }));
+
+                    const topCampus = sortedRankings[0] || { name: 'Hyderabad', wins: 0, totalMetric: '0' };
+                    const completedWinsCount = allWinnersList.filter(w => !w.isFutureMonth).length;
 
                     return (
-                      <div key={league.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '1.4rem' }}>{league.icon}</span>
+                      <div
+                        key={league.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '24px',
+                        }}
+                      >
+                        {/* ── 1. LUXURY HERO STAGE: TROPHY ON LEFT, LAUREL 1-2-3 RANKINGS ON RIGHT ── */}
+                        <div
+                          style={{
+                            background: `radial-gradient(ellipse at 15% 50%, ${league.color}1c 0%, var(--card-bg) 75%)`,
+                            border: `1.5px solid ${league.color}44`,
+                            borderRadius: '24px',
+                            padding: '32px 36px',
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(280px, 340px) 1fr',
+                            alignItems: 'center',
+                            gap: '36px',
+                            boxShadow: `0 14px 45px ${league.color}1c`,
+                            position: 'relative',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {/* ── LEFT COLUMN: GRAND TROPHY ON ILLUMINATED PEDESTAL ── */}
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            padding: '12px 10px 0',
+                          }}>
+                            {/* Ambient Halo Glow */}
+                            <div style={{
+                              position: 'absolute',
+                              width: '270px',
+                              height: '270px',
+                              background: `radial-gradient(circle, ${league.color}44 0%, ${league.color}11 55%, transparent 75%)`,
+                              filter: 'blur(28px)',
+                              pointerEvents: 'none',
+                              zIndex: 0,
+                            }} />
+
+                            {/* Trophy */}
+                            <div style={{ position: 'relative', zIndex: 1 }}>
+                              <ChampionshipTrophy3D type={league.trophyType} size={270} />
+                            </div>
+
+                            {/* Luxury Podium Stand */}
+                            <div style={{
+                              width: '230px',
+                              height: '18px',
+                              background: `linear-gradient(90deg, transparent 0%, ${league.color}66 50%, transparent 100%)`,
+                              borderRadius: '50%',
+                              filter: 'blur(4px)',
+                              marginTop: '-6px',
+                              zIndex: 0,
+                            }} />
+                          </div>
+
+                          {/* ── RIGHT COLUMN: TITLE, LAUREL MEDALS & ACCOLADES ── */}
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '20px',
+                            zIndex: 1,
+                          }}>
+                            {/* Header with Colorful League Gradient & Edition Badge */}
                             <div>
-                              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                                {league.title} ({yrNum})
-                              </h3>
-                              <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                <span style={{
+                                  fontSize: '0.74rem',
+                                  fontWeight: 900,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.08em',
+                                  padding: '4px 12px',
+                                  borderRadius: '8px',
+                                  background: `${league.color}18`,
+                                  border: `1.5px solid ${league.color}55`,
+                                  color: league.color,
+                                  boxShadow: `0 2px 10px ${league.color}22`,
+                                }}>
+                                  {trophyYear === 'all_time' ? 'All-Time Edition' : `${trophyYear} Edition`}
+                                </span>
+                                <span style={{
+                                  fontSize: '0.74rem',
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.06em',
+                                  padding: '4px 10px',
+                                  borderRadius: '8px',
+                                  background: 'var(--surface-alt)',
+                                  border: '1px solid var(--border)',
+                                  color: 'var(--muted)',
+                                }}>
+                                  {completedWinsCount} Awarded Seasons
+                                </span>
+                              </div>
+
+                              <h2 style={{
+                                margin: 0,
+                                fontSize: '2.15rem',
+                                fontWeight: 950,
+                                letterSpacing: '-0.03em',
+                                lineHeight: 1.18,
+                                background: league.id === 'rpl'
+                                  ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 40%, #b45309 85%, #78350f 100%)'
+                                  : (league.id === 'wpl'
+                                    ? 'linear-gradient(135deg, #10b981 0%, #059669 40%, #047857 85%, #064e3b 100%)'
+                                    : 'linear-gradient(135deg, #0284c7 0%, #2563eb 40%, #1d4ed8 85%, #1e1b4b 100%)'),
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                filter: `drop-shadow(0 2px 10px ${league.color}30)`,
+                                display: 'inline-block',
+                              }}>
+                                {league.title}
+                              </h2>
+
+                              <p style={{ margin: '6px 0 0 0', fontSize: '0.94rem', color: 'var(--muted)', fontWeight: 600 }}>
                                 {league.subtitle}
-                              </span>
+                              </p>
+                            </div>
+
+                            {/* 🏆 ALL-TIME / YEARLY CAMPUS PODIUM (HORIZONTAL CARDS) */}
+                            <div>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>🏆</span> {trophyYear === 'all_time' ? 'All-Time' : trophyYear} Campus Championship Podium
+                              </div>
+
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                gap: '14px',
+                              }}>
+                                {sortedRankings.slice(0, 3).map((item, idx) => {
+                                  const rankNum = (idx + 1) as 1 | 2 | 3;
+                                  const styles = [
+                                    {
+                                      bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, var(--card-bg) 100%)',
+                                      border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                                      titleColor: '#d97706',
+                                      glow: '0 6px 20px rgba(245, 158, 11, 0.12)',
+                                    },
+                                    {
+                                      bg: 'linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0%, var(--card-bg) 100%)',
+                                      border: '1.5px solid rgba(148, 163, 184, 0.4)',
+                                      titleColor: '#64748b',
+                                      glow: '0 6px 20px rgba(100, 116, 139, 0.12)',
+                                    },
+                                    {
+                                      bg: 'linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, var(--card-bg) 100%)',
+                                      border: '1.5px solid rgba(234, 88, 12, 0.4)',
+                                      titleColor: '#c2410c',
+                                      glow: '0 6px 20px rgba(234, 88, 12, 0.12)',
+                                    },
+                                  ][idx] || {
+                                    bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, var(--card-bg) 100%)',
+                                    border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                                    titleColor: '#d97706',
+                                    glow: '0 6px 20px rgba(245, 158, 11, 0.12)',
+                                  };
+
+                                  return (
+                                    <div
+                                      key={item.name}
+                                      style={{
+                                        background: styles.bg,
+                                        border: styles.border,
+                                        borderRadius: '22px',
+                                        padding: '18px 20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '16px',
+                                        boxShadow: styles.glow,
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                      }}
+                                    >
+                                      {/* Modern Luxury 3D Rank Badge */}
+                                      <LaurelRankMedal rank={rankNum} size={62} />
+
+                                      {/* Campus Info */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
+                                        <div style={{
+                                          fontSize: '1.18rem',
+                                          fontWeight: 950,
+                                          color: 'var(--text)',
+                                          letterSpacing: '-0.02em',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}>
+                                          {item.name}
+                                        </div>
+
+                                        <div style={{
+                                          fontSize: '0.84rem',
+                                          fontWeight: 900,
+                                          color: styles.titleColor,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                        }}>
+                                          <span>🏆</span> {item.wins} Championship {item.wins === 1 ? 'Title' : 'Titles'}
+                                        </div>
+
+                                        <div style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                                          {item.totalMetric}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Modern Accolades */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '7px 14px',
+                                borderRadius: '9999px',
+                                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08))',
+                                border: '1px solid rgba(245, 158, 11, 0.45)',
+                                fontSize: '0.78rem',
+                                fontWeight: 900,
+                                color: '#f59e0b',
+                              }}>
+                                <span>👑</span> Reigning Champion: {topCampus.name}
+                              </div>
+
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '7px 14px',
+                                borderRadius: '9999px',
+                                background: 'rgba(2, 132, 199, 0.12)',
+                                border: '1px solid rgba(2, 132, 199, 0.35)',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                color: '#0284c7',
+                              }}>
+                                <span>⭐</span> Total {completedWinsCount} Cups Awarded
+                              </div>
+
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '7px 14px',
+                                borderRadius: '9999px',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                border: '1px solid rgba(16, 185, 129, 0.35)',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                color: '#10b981',
+                              }}>
+                                <span>⚡</span> Highly Competitive
+                              </div>
                             </div>
                           </div>
-                          <span style={{
-                            fontSize: '0.74rem', fontWeight: 900, color: league.color,
-                            background: `${league.color}14`, padding: '3px 12px', borderRadius: '6px',
-                            border: `1px solid ${league.color}35`
-                          }}>
-                            12 Monthly Cups
-                          </span>
                         </div>
 
-                        {/* 12 Monthly Boxes Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                          {currYearData.map((d) => {
-                            const winner = league.id === 'rpl' ? d.rplWinner : (league.id === 'wpl' ? d.wplWinner : d.splWinner);
-                            const sorted = league.id === 'rpl' ? d.rplSorted : (league.id === 'wpl' ? d.wplSorted : d.splSorted);
+                        {/* ── 2. LOCATION CHAMPIONSHIP CABINETS (ONLY CAMPUSES WITH WINS) ── */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 360px))',
+                          gap: '20px',
+                        }}>
+                          {LOCATIONS.filter((loc) => {
+                            const locWins = allWinnersList.filter(
+                              (w) => !w.isFutureMonth && w.winnerLoc.toLowerCase() === loc.toLowerCase()
+                            );
+                            return locWins.length > 0;
+                          }).map((loc) => {
+                            const locWins = allWinnersList.filter(
+                              (w) => !w.isFutureMonth && w.winnerLoc.toLowerCase() === loc.toLowerCase()
+                            );
+                            const totalWins = locWins.length;
+                            const locData = locWinMap[loc] || { wins: 0, totalSales: 0, totalCount: 0 };
+                            const locMetric = league.id === 'rpl'
+                              ? `₹${(locData.totalSales / 100000).toFixed(2)}L Collected`
+                              : (league.id === 'wpl' ? `${locData.totalCount} Walk-ins` : `${locData.totalCount} Enrolled`);
+
+                            const locColors: Record<string, { border: string; bg: string; badgeBg: string; text: string }> = {
+                              Hyderabad: { border: 'rgba(245, 158, 11, 0.45)', bg: 'radial-gradient(ellipse at top, rgba(245, 158, 11, 0.12) 0%, var(--card-bg) 75%)', badgeBg: 'rgba(245, 158, 11, 0.2)', text: '#f59e0b' },
+                              Vijayawada: { border: 'rgba(56, 189, 248, 0.45)', bg: 'radial-gradient(ellipse at top, rgba(56, 189, 248, 0.12) 0%, var(--card-bg) 75%)', badgeBg: 'rgba(56, 189, 248, 0.2)', text: '#0284c7' },
+                              Visakhapatnam: { border: 'rgba(16, 185, 129, 0.45)', bg: 'radial-gradient(ellipse at top, rgba(16, 185, 129, 0.12) 0%, var(--card-bg) 75%)', badgeBg: 'rgba(16, 185, 129, 0.2)', text: '#10b981' },
+                              Bangalore: { border: 'rgba(239, 68, 68, 0.45)', bg: 'radial-gradient(ellipse at top, rgba(239, 68, 68, 0.12) 0%, var(--card-bg) 75%)', badgeBg: 'rgba(239, 68, 68, 0.2)', text: '#ef4444' },
+                            };
+                            const locStyle = locColors[loc] || locColors['Hyderabad'];
 
                             return (
                               <div
-                                key={`${league.id}-${yrNum}-${d.m}`}
-                                onClick={() => {
-                                  if (winner) {
-                                    setSelectedSeasonModal({
-                                      seasonNumber: d.m,
-                                      seasonName: `Season ${d.m} (${d.mName} ${yrNum}) ${league.id.toUpperCase()} Cup`,
-                                      totalMonthSales: d.totalMonthSales,
-                                      winnerBranch: { name: winner.loc, sales: (winner as any).sales || d.locSalesMap[winner.loc]?.sales || 0, team: Array.from((winner as any).counselors || d.locSalesMap[winner.loc]?.counselors || []) },
-                                      runnerBranch: sorted[1] ? { name: sorted[1].loc, sales: (sorted[1] as any).sales || d.locSalesMap[sorted[1].loc]?.sales || 0, team: Array.from((sorted[1] as any).counselors || d.locSalesMap[sorted[1].loc]?.counselors || []) } : null,
-                                      championCoun: d.championCoun,
-                                      allCounselors: d.sortedCoun.map(c => ({ ...c, branch: getCounselorLocation(c.name) })),
-                                      mLeads: d.mLeads,
-                                    });
-                                  }
-                                }}
+                                key={loc}
                                 style={{
-                                  background: 'var(--card-bg)',
-                                  border: '1.5px solid var(--border)',
-                                  borderRadius: '8px',
-                                  padding: '20px 18px 16px',
+                                  background: locStyle.bg,
+                                  border: `1.5px solid ${locStyle.border}`,
+                                  borderRadius: '20px',
+                                  padding: '20px 20px 18px',
                                   display: 'flex',
                                   flexDirection: 'column',
-                                  alignItems: 'center',
-                                  textAlign: 'center',
-                                  gap: '8px',
-                                  boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                                  cursor: winner ? 'pointer' : 'default',
-                                  transition: 'all 0.15s ease',
-                                  minHeight: '340px',
-                                  opacity: d.isFutureMonth ? 0.85 : 1,
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (winner) {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.borderColor = league.color;
-                                    e.currentTarget.style.boxShadow = `0 10px 28px ${league.color}26`;
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (winner) {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.borderColor = 'var(--border)';
-                                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
-                                  }
+                                  gap: '12px',
+                                  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                  position: 'relative',
                                 }}
                               >
-                                <ChampionshipTrophy3D type={league.trophyType} size={155} />
-                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
-                                  {league.icon} {league.id.toUpperCase()} Cup
-                                </h4>
-                                <span style={{
-                                  fontSize: '0.78rem',
-                                  fontWeight: 900,
-                                  padding: '4px 14px',
-                                  borderRadius: '6px',
-                                  background: winner ? 'rgba(16,185,129,0.12)' : (d.isFutureMonth ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)'),
-                                  border: winner ? '1px solid rgba(16,185,129,0.3)' : (d.isFutureMonth ? '1px dashed rgba(245,158,11,0.4)' : '1px solid rgba(59,130,246,0.3)'),
-                                  color: winner ? '#10b981' : (d.isFutureMonth ? '#f59e0b' : '#3b82f6'),
-                                }}>
-                                  {winner ? winner.loc : (d.isFutureMonth ? 'Upcoming' : 'Active Season')}
-                                </span>
-                                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: winner ? 'var(--text)' : 'var(--muted)' }}>
-                                  {winner ? `Champions ${d.mName} ${yrNum}` : `Season ${d.m} • ${d.mName} ${yrNum}`}
+                                {/* Location Header without dots/emojis */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <h4 style={{ margin: 0, fontSize: '1.16rem', fontWeight: 900, color: 'var(--text)' }}>
+                                    {loc} Campus
+                                  </h4>
+
+                                  {/* Win Multiplier Badge */}
+                                  <span style={{
+                                    fontSize: '0.78rem',
+                                    fontWeight: 900,
+                                    padding: '4px 12px',
+                                    borderRadius: '9999px',
+                                    background: locStyle.badgeBg,
+                                    border: `1px solid ${locStyle.border}`,
+                                    color: locStyle.text,
+                                    letterSpacing: '0.02em',
+                                    whiteSpace: 'nowrap',
+                                  }}>
+                                    {totalWins > 0 ? `🏆 ${totalWins}x Winner` : 'Contender'}
+                                  </span>
                                 </div>
-                                <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
-                                  {winner 
-                                    ? (league.id === 'rpl' ? `₹${(((winner as any).sales || 0) / 100000).toFixed(2)}L Fee Revenue generated.` : (league.id === 'wpl' ? `${(winner as any).count} Walk-in Candidates handled.` : `${(winner as any).count} Admissions enrolled.`))
-                                    : (d.isFutureMonth ? `Trophy awarded on ${d.unlockDateText} upon month conclusion.` : `Ongoing season tracking.`)}
-                                </p>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: winner ? league.color : 'var(--muted)', marginTop: 'auto' }}>
-                                  {winner ? 'View Leaderboard →' : (d.isFutureMonth ? '🔒 Upcoming Trophy' : 'View Live Standings →')}
-                                </span>
+
+                                {/* All-Time Year Summary & Expandable Winning Roll */}
+                                {trophyYear === 'all_time' ? (() => {
+                                  const wins2026 = locWins.filter(w => w.year === 2026).length;
+                                  const wins2025 = locWins.filter(w => w.year === 2025).length;
+                                  const boxKey = `${league.id}-${loc}`;
+                                  const isExpanded = !!expandedAllTimeRolls[boxKey];
+
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      {/* Year-by-Year Championship Breakdown Pills */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {wins2026 > 0 && (
+                                          <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '9px 12px',
+                                            borderRadius: '10px',
+                                            background: 'var(--card-bg)',
+                                            border: '1px solid var(--border)',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 800,
+                                            color: 'var(--text)',
+                                          }}>
+                                            <span>2026 Edition</span>
+                                            <span style={{ color: locStyle.text, fontWeight: 900, fontSize: '0.78rem' }}>
+                                              🏆 {wins2026}x Champion
+                                            </span>
+                                          </div>
+                                        )}
+                                        {wins2025 > 0 && (
+                                          <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '9px 12px',
+                                            borderRadius: '10px',
+                                            background: 'var(--card-bg)',
+                                            border: '1px solid var(--border)',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 800,
+                                            color: 'var(--text)',
+                                          }}>
+                                            <span>2025 Edition</span>
+                                            <span style={{ color: locStyle.text, fontWeight: 900, fontSize: '0.78rem' }}>
+                                              🏆 {wins2025}x Champion
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Expandable Arrow Button */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setExpandedAllTimeRolls(prev => ({ ...prev, [boxKey]: !prev[boxKey] }));
+                                        }}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          padding: '8px 12px',
+                                          borderRadius: '9px',
+                                          background: 'var(--surface-alt)',
+                                          border: '1px solid var(--border)',
+                                          color: 'var(--text)',
+                                          fontSize: '0.76rem',
+                                          fontWeight: 800,
+                                          cursor: 'pointer',
+                                          transition: 'all 0.15s ease',
+                                          marginTop: '2px',
+                                        }}
+                                      >
+                                        <span>
+                                          {isExpanded ? 'Hide Seasons Roll' : `View All Seasons List (${totalWins})`}
+                                        </span>
+                                        <span style={{
+                                          fontSize: '0.72rem',
+                                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                          transition: 'transform 0.2s ease',
+                                          display: 'inline-block',
+                                        }}>
+                                          ▼
+                                        </span>
+                                      </button>
+
+                                      {/* Expanded Detailed Seasons List */}
+                                      {isExpanded && (
+                                        <div style={{
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: '6px',
+                                          maxHeight: '220px',
+                                          overflowY: 'auto',
+                                          paddingRight: '4px',
+                                          marginTop: '2px',
+                                        }}>
+                                          {locWins.map((win, wIdx) => (
+                                            <div
+                                              key={wIdx}
+                                              style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                padding: '7px 10px',
+                                                borderRadius: '8px',
+                                                background: 'var(--card-bg)',
+                                                border: '1px solid var(--border)',
+                                                fontSize: '0.76rem',
+                                                fontWeight: 800,
+                                                color: 'var(--text)',
+                                              }}
+                                            >
+                                              Season {win.seasonNumber} • {win.monthName} {win.year}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })() : (
+                                  /* Single Year Direct Roll (2026 or 2025) */
+                                  <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                  }}>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)' }}>
+                                      Winning Roll ({totalWins} {totalWins === 1 ? 'Season' : 'Seasons'})
+                                    </div>
+
+                                    {totalWins > 0 ? (
+                                      <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px',
+                                        maxHeight: '260px',
+                                        overflowY: 'auto',
+                                        paddingRight: '4px',
+                                      }}>
+                                        {locWins.map((win, wIdx) => (
+                                          <div
+                                            key={wIdx}
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              padding: '8px 12px',
+                                              borderRadius: '10px',
+                                              background: 'var(--card-bg)',
+                                              border: '1px solid var(--border)',
+                                              fontSize: '0.78rem',
+                                              fontWeight: 800,
+                                              color: 'var(--text)',
+                                              transition: 'all 0.15s ease',
+                                            }}
+                                          >
+                                            Season {win.seasonNumber} • {win.monthName} {win.year}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div style={{
+                                        padding: '16px 12px',
+                                        borderRadius: '10px',
+                                        background: 'var(--surface-alt)',
+                                        textAlign: 'center',
+                                        fontSize: '0.76rem',
+                                        color: 'var(--muted)',
+                                        fontWeight: 600,
+                                      }}>
+                                        In active contention for upcoming seasons
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -1446,62 +2981,92 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                   })}
                 </div>
               );
-            })()}          </div>
+            })()}
+          </div>
         );
-      })()}      {/* ══════════════════════════════════════════════════════
-          TAB 1: 12-SEASONS GRAND TROPHIES & BADGES HALL OF FAME
+      })()}
+
+      {/* ══════════════════════════════════════════════════════
+          TAB: 🎖️ BADGES & MEDALS — Counselor Achievements & Honors
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'badges' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+          {/* Header Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)',
+            border: '1.5px solid rgba(168, 85, 247, 0.4)',
+            borderRadius: '20px',
+            padding: '24px 28px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '20px',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.25)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <span style={{ fontSize: '2.2rem' }}>🎖️</span>
+              <div>
+                <h2 style={{
+                  fontSize: '1.45rem',
+                  fontWeight: 900,
+                  margin: 0,
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f3e8ff 50%, #c084fc 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  letterSpacing: '-0.01em',
+                }}>
+                  Counselor Badges &amp; Championship Medals
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#94a3b8', fontWeight: 600 }}>
+                  Official Codegnan counselor achievement shields, performance medals, and milestone accolades
+                </p>
+              </div>
+            </div>
 
-
-          {/* Category Filter Tabs */}
-          <div style={{ display: 'inline-flex', background: 'var(--surface-alt)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '4px' }}>
-            {[
-              { id: 'all', label: '🌟 All Badges & Medals' },
-              { id: 'revenue', label: '💰 Revenue Badges' },
-              { id: 'enrollment', label: '🎓 Enrollment Badges' },
-              { id: 'walkin', label: '🚶 Walk-in Badges' },
-              { id: 'dropout', label: '🛡️ Retention Badges' },
-              { id: 'season', label: '🥇 Season Medals' },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setBadgeCategoryFilter(cat.id as any)}
-                style={{
-                  padding: '7px 16px', borderRadius: '9px', fontSize: '0.8rem', fontWeight: 800, border: 'none',
-                  background: badgeCategoryFilter === cat.id ? 'var(--primary)' : 'transparent',
-                  color: badgeCategoryFilter === cat.id ? '#fff' : 'var(--text)', cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {cat.label}
-              </button>
-            ))}
+            {/* Badges Category Filter */}
+            <div style={{ display: 'inline-flex', background: 'rgba(15, 23, 42, 0.75)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.12)', flexWrap: 'wrap', gap: '4px' }}>
+              {[
+                { id: 'all', label: '🌟 All Badges & Medals' },
+                { id: 'milestone', label: '🛡️ Milestones' },
+                { id: 'season', label: '🥇 Season Medals' },
+                { id: 'special', label: '💎 Special Honors' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setBadgeCategoryFilter(cat.id as any)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '7px',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    border: 'none',
+                    background: badgeCategoryFilter === cat.id ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : 'transparent',
+                    color: badgeCategoryFilter === cat.id ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: badgeCategoryFilter === cat.id ? '0 2px 8px rgba(168, 85, 247, 0.3)' : 'none',
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-
-
-          {/* ══════════════════════════════════════════════════════════════
-              SECTION 2: MASTER BADGES & AWARDED COUNSELLORS (CLICKABLE)
-          ══════════════════════════════════════════════════════════════ */}
-          {/* ══════════════════════════════════════════════════════════
-              SECTION 2: MASTER BADGES & MILESTONES (SHIELD SHAPE)
-          ══════════════════════════════════════════════════════════ */}
-          {(badgeCategoryFilter !== 'season') && (
+          {/* Section 1: Counselor Milestone & Performance Badges (Shields) */}
+          {(badgeCategoryFilter === 'all' || badgeCategoryFilter !== 'season') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                  🛡️ Master Milestone Badges (Click any to view Leaderboard)
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
+                  🛡️ Counselor Milestone &amp; Achievement Badges
                 </h3>
-                <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
-                  Showing pure data-driven milestones unlocked by all counselors
+                <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
+                  Showing pure data-driven milestones unlocked by counselors
                 </span>
               </div>
 
-              {/* Master Badges Grid (Shield Shapes) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
                 {ALL_BADGES
                   .filter((b) => b.category !== 'season' && (badgeCategoryFilter === 'all' || b.category === badgeCategoryFilter))
@@ -1518,7 +3083,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                         style={{
                           background: 'var(--card-bg)',
                           border: '1.5px solid var(--border)',
-                          borderRadius: '8px',
+                          borderRadius: '16px',
                           padding: '28px 20px 22px',
                           display: 'flex',
                           flexDirection: 'column',
@@ -1542,22 +3107,22 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                         }}
                       >
                         <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} shape="shield" />
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
+                        <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
                           {b.name}
                         </h4>
                         <span style={{
-                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 12px', borderRadius: '6px',
+                          fontSize: '0.74rem', fontWeight: 900, padding: '4px 14px', borderRadius: '6px',
                           background: qualifiers.length > 0 ? 'rgba(16,185,129,0.12)' : 'var(--surface-alt)',
                           border: qualifiers.length > 0 ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border)',
                           color: qualifiers.length > 0 ? '#10b981' : 'var(--muted)',
                         }}>
-                          {qualifiers.length} Awarded
+                          {qualifiers.length} Counselors Qualified
                         </span>
-                        <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
                           {b.description}
                         </p>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', marginTop: 'auto' }}>
-                          View Leaderboard →
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--primary)', marginTop: 'auto' }}>
+                          View Medal Leaderboard →
                         </span>
                       </div>
                     );
@@ -1566,21 +3131,18 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             </div>
           )}
 
-          {/* ══════════════════════════════════════════════════════════
-              SECTION 3: OFFICIAL SEASON CHAMPIONSHIP MEDALS (MEDAL SHAPES ONLY)
-          ══════════════════════════════════════════════════════════ */}
+          {/* Section 2: Official Season Championship Medals */}
           {(badgeCategoryFilter === 'all' || badgeCategoryFilter === 'season') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: badgeCategoryFilter === 'all' ? '12px' : '0px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                  🥇 Official Season Championship Medals (Pure Medal Shape)
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
+                  🥇 Official Season Championship Medals
                 </h3>
-                <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 700 }}>
                   Awarded to top performing counselors upon calendar season conclusion
                 </span>
               </div>
 
-              {/* Season Medals Grid (Pure Medal Shapes with Ribbon) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
                 {ALL_BADGES
                   .filter((b) => b.category === 'season')
@@ -1597,7 +3159,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                         style={{
                           background: 'var(--card-bg)',
                           border: '1.5px solid var(--border)',
-                          borderRadius: '8px',
+                          borderRadius: '16px',
                           padding: '28px 20px 22px',
                           display: 'flex',
                           flexDirection: 'column',
@@ -1620,23 +3182,22 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                           e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
                         }}
                       >
-                        {/* Pure Championship Medal with Ribbon */}
                         <BadgeCrest tier={b.tier} size={140} isUnlocked={true} icon={b.icon} shape="medal" />
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
+                        <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>
                           {b.name}
                         </h4>
                         <span style={{
-                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 12px', borderRadius: '6px',
+                          fontSize: '0.74rem', fontWeight: 900, padding: '4px 14px', borderRadius: '6px',
                           background: qualifiers.length > 0 ? 'rgba(245,158,11,0.14)' : 'var(--surface-alt)',
                           border: qualifiers.length > 0 ? '1px solid rgba(245,158,11,0.35)' : '1px solid var(--border)',
                           color: qualifiers.length > 0 ? '#f59e0b' : 'var(--muted)',
                         }}>
-                          {qualifiers.length} Awarded
+                          {qualifiers.length} Counselors Awarded
                         </span>
-                        <p style={{ margin: 0, fontSize: '0.71rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--muted)', lineHeight: 1.5, flex: 1 }}>
                           {b.description}
                         </p>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', marginTop: 'auto' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', marginTop: 'auto' }}>
                           View Medal Leaderboard →
                         </span>
                       </div>
@@ -1648,18 +3209,213 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          TAB 2: COUNSELORS POINTS TABLE & CHAMPIONSHIP PODIUM
+
+            {/* ══════════════════════════════════════════════════════
+          TAB: 📊 COUNSELOR STANDINGS & LEADERBOARD
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'points_table' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
           
-          {/* Championship Counselor Podium */}
+                    {/* ─── Unified Ultra-Modern Filter & League Control Bar (Combined Single Row) ─── */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '11px',
+            padding: '6px 12px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+          }}>
+            {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* 1. Clean League Segment Pills: Overall, RPL, WPL, SPL */}
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                {[
+                  { id: 'all', label: 'Overall', color: 'var(--primary)' },
+                  { id: 'rpl', label: 'RPL', color: '#f59e0b' },
+                  { id: 'wpl', label: 'WPL', color: '#10b981' },
+                  { id: 'spl', label: 'SPL', color: '#0284c7' },
+                ].map((l) => {
+                  const isActive = leagueMetricFilter === l.id;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setLeagueMetricFilter(l.id as any)}
+                      style={{
+                        height: '26px',
+                        padding: '0 10px',
+                        borderRadius: '6px',
+                        border: isActive ? `1.5px solid ${l.color}` : '1.5px solid transparent',
+                        background: isActive ? `${l.color}15` : 'transparent',
+                        color: isActive ? l.color : 'var(--muted)',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Subtle Vertical Divider */}
+              <div style={{ width: '1.5px', height: '16px', background: 'var(--border)', margin: '0 2px' }} />
+
+              {/* 2. Timeframe Modes: Daily, Weekly, Monthly, Yearly, All Time, Custom Range */}
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                {[
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                  { id: 'yearly', label: 'Yearly' },
+                  { id: 'all_time', label: 'All Time' },
+                  { id: 'custom', label: 'Custom Range' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setAnalyticsTimeframe(prev => ({ ...prev, mode: tab.id as any }))}
+                    style={{
+                      height: '26px',
+                      padding: '0 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: analyticsTimeframe.mode === tab.id ? 'var(--primary)' : 'transparent',
+                      color: analyticsTimeframe.mode === tab.id ? '#ffffff' : 'var(--text)',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: analyticsTimeframe.mode === tab.id ? '0 2px 6px rgba(99, 102, 241, 0.25)' : 'none',
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Custom Date Filter Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0 }}>
+              {/* 1. DAILY */}
+              {analyticsTimeframe.mode === 'daily' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.dailySub}
+                    options={[
+                      { value: 'today', label: 'Today' },
+                      { value: 'yesterday', label: 'Yesterday' },
+                      { value: 'custom_day', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, dailySub: val as any }))}
+                  />
+                  {analyticsTimeframe.dailySub === 'custom_day' && (
+                    <ModernDatePicker
+                      value={analyticsTimeframe.customDay}
+                      onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, customDay: val }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 2. WEEKLY */}
+              {analyticsTimeframe.mode === 'weekly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.weeklySub}
+                    options={[
+                      { value: 'this_week', label: 'This Week' },
+                      { value: 'last_week', label: 'Last Week' },
+                      { value: 'last_7_days', label: 'Last 7 Days' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, weeklySub: val as any }))}
+                  />
+                  {(analyticsTimeframe.weeklySub as string) === 'custom' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 3. MONTHLY */}
+              {analyticsTimeframe.mode === 'monthly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.monthlySub}
+                    options={[
+                      { value: 'current_month', label: 'Current Month' },
+                      { value: 'prev_month', label: 'Previous Month' },
+                      { value: 'specific_month', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, monthlySub: val as any }))}
+                  />
+                  {analyticsTimeframe.monthlySub === 'specific_month' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 4. YEARLY */}
+              {analyticsTimeframe.mode === 'yearly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.yearlySub}
+                    options={[
+                      { value: '2026', label: '2026 Annual' },
+                      { value: '2025', label: '2025 Annual' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, yearlySub: val as any }))}
+                  />
+                  {(analyticsTimeframe.yearlySub as string) === 'custom' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 5. CUSTOM RANGE */}
+              {analyticsTimeframe.mode === 'custom' && (
+                <ModernDateRangePicker
+                  startDate={analyticsTimeframe.customStartDate}
+                  endDate={analyticsTimeframe.customEndDate}
+                  onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Championship Counselor Podium - Top 3 Counselors */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '16px',
-            alignItems: 'flex-end',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            width: '100%',
+            gap: '18px',
+            alignItems: 'stretch',
           }}>
             {/* 2nd Place Counselor */}
             <div style={{
@@ -1681,37 +3437,24 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 🥈
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Runner Up Counselor (#2)
+                Runner Up (#2)
               </span>
-              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.08rem', fontWeight: 900, color: 'var(--text)' }}>
-                {counselorGamifications[1]?.name || '—'}
+              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+                {filteredCounselors[1]?.name || 'Counselor'}
               </h3>
-              <p style={{ margin: '0 0 8px 0', fontSize: '0.76rem', color: 'var(--muted)' }}>
-                📍 {counselorGamifications[1]?.branchName || '—'}
+              <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--muted)' }}>
+                📍 {filteredCounselors[1]?.branchName || 'Branch'}
               </p>
               <div style={{
-                display: 'inline-block',
-                fontSize: '0.66rem',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: '4px',
-                background: counselorGamifications[1]?.tierColor || '#94a3b8',
-                color: '#fff',
-                textTransform: 'uppercase',
-                marginBottom: '10px',
-              }}>
-                Lvl {counselorGamifications[1]?.level || 3} • {counselorGamifications[1]?.tierName || 'Silver Specialist'}
-              </div>
-              <div style={{
-                marginTop: '6px', padding: '8px', borderRadius: '8px',
-                background: 'var(--surface-alt)', fontSize: '0.92rem', fontWeight: 900,
+                marginTop: '12px', padding: '8px', borderRadius: '8px',
+                background: 'var(--surface-alt)', fontSize: '0.88rem', fontWeight: 900,
                 color: '#94a3b8', fontFamily: 'var(--font-mono)',
               }}>
-                {counselorGamifications[1]?.xp || 0} PTS
+                {leagueMetricFilter === 'rpl' ? `₹${(((filteredCounselors[1]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${filteredCounselors[1]?.walkinCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${filteredCounselors[1]?.completedCount || 0} Admissions` : `${filteredCounselors[1]?.xp || 0} XP`}
               </div>
             </div>
 
-            {/* 1st Place Counselor Champion */}
+            {/* 1st Place Champion Counselor */}
             <div style={{
               background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, var(--card-bg) 100%)',
               border: '2px solid rgba(245, 158, 11, 0.65)',
@@ -1727,10 +3470,10 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 color: '#fff', fontSize: '0.66rem', fontWeight: 900, padding: '2px 12px',
                 borderRadius: '9999px', letterSpacing: '0.05em', textTransform: 'uppercase',
               }}>
-                👑 {monthShortName} Counselor MVP
+                👑 Counselor MVP ({monthShortName})
               </div>
               <div style={{
-                width: '56px', height: '56px', borderRadius: '50%',
+                width: '54px', height: '54px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                 color: '#fff', fontSize: '1.4rem', fontWeight: 900,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1740,33 +3483,20 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 🏆
               </div>
               <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Top Counselor (#1)
+                Rank #1
               </span>
-              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.24rem', fontWeight: 900, color: 'var(--text)' }}>
-                {counselorGamifications[0]?.name || '—'}
+              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>
+                {filteredCounselors[0]?.name || 'Top Counselor'}
               </h3>
-              <p style={{ margin: '0 0 8px 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
-                📍 {counselorGamifications[0]?.branchName || '—'}
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>
+                📍 {filteredCounselors[0]?.branchName || 'Branch'}
               </p>
               <div style={{
-                display: 'inline-block',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '2px 9px',
-                borderRadius: '4px',
-                background: counselorGamifications[0]?.tierColor || '#f59e0b',
-                color: '#fff',
-                textTransform: 'uppercase',
-                marginBottom: '10px',
-              }}>
-                Lvl {counselorGamifications[0]?.level || 5} • {counselorGamifications[0]?.tierName || 'Gold Veteran'}
-              </div>
-              <div style={{
-                marginTop: '6px', padding: '9px', borderRadius: '10px',
-                background: 'rgba(245, 158, 11, 0.15)', fontSize: '1.08rem', fontWeight: 900,
+                marginTop: '12px', padding: '9px', borderRadius: '10px',
+                background: 'rgba(245, 158, 11, 0.15)', fontSize: '1.05rem', fontWeight: 900,
                 color: '#f59e0b', fontFamily: 'var(--font-mono)',
               }}>
-                {counselorGamifications[0]?.xp || 0} PTS
+                {leagueMetricFilter === 'rpl' ? `₹${(((filteredCounselors[0]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${filteredCounselors[0]?.walkinCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${filteredCounselors[0]?.completedCount || 0} Admissions` : `${filteredCounselors[0]?.xp || 0} XP`}
               </div>
             </div>
 
@@ -1790,37 +3520,25 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 🥉
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#cd7f32', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Bronze Tier Counselor (#3)
+                Bronze Tier (#3)
               </span>
-              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.08rem', fontWeight: 900, color: 'var(--text)' }}>
-                {counselorGamifications[2]?.name || '—'}
+              <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
+                {filteredCounselors[2]?.name || 'Counselor'}
               </h3>
-              <p style={{ margin: '0 0 8px 0', fontSize: '0.76rem', color: 'var(--muted)' }}>
-                📍 {counselorGamifications[2]?.branchName || '—'}
+              <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--muted)' }}>
+                📍 {filteredCounselors[2]?.branchName || 'Branch'}
               </p>
               <div style={{
-                display: 'inline-block',
-                fontSize: '0.66rem',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: '4px',
-                background: counselorGamifications[2]?.tierColor || '#cd7f32',
-                color: '#fff',
-                textTransform: 'uppercase',
-                marginBottom: '10px',
-              }}>
-                Lvl {counselorGamifications[2]?.level || 2} • {counselorGamifications[2]?.tierName || 'Bronze Apprentice'}
-              </div>
-              <div style={{
-                marginTop: '6px', padding: '8px', borderRadius: '8px',
-                background: 'var(--surface-alt)', fontSize: '0.92rem', fontWeight: 900,
+                marginTop: '12px', padding: '8px', borderRadius: '8px',
+                background: 'var(--surface-alt)', fontSize: '0.88rem', fontWeight: 900,
                 color: '#cd7f32', fontFamily: 'var(--font-mono)',
               }}>
-                {counselorGamifications[2]?.xp || 0} PTS
+                {leagueMetricFilter === 'rpl' ? `₹${(((filteredCounselors[2]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${filteredCounselors[2]?.walkinCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${filteredCounselors[2]?.completedCount || 0} Admissions` : `${filteredCounselors[2]?.xp || 0} XP`}
               </div>
             </div>
           </div>
 
+          {/* Counselor Standings Table Card */}
           <div style={{
             background: 'var(--card-bg)',
             border: '1.5px solid var(--border)',
@@ -1828,37 +3546,21 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             padding: '24px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
-              <div>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: 'var(--text)' }}>
-                  {selectedMonth} Counselors Performance &amp; Points Table
-                </h2>
-                <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '4px 0 0 0' }}>
-                  Live breakdown of student counseling volume, enrollment completions, conversion multipliers, and total championship points.
-                </p>
-              </div>
-
-              <div style={{
-                padding: '6px 14px', borderRadius: '8px',
-                background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)',
-                fontSize: '0.76rem', fontWeight: 800,
-              }}>
-                Formula: Intakes (+25) + Enrolled (+100) + Quality (+250) + Streak (+50)
-              </div>
-            </div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 16px 0', color: 'var(--text)' }}>
+              {timeframeSummaryLabel} Counselor Points Table &amp; Rankings
+            </h2>
 
             <div className="table-wrapper">
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '920px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Rank &amp; Counselor</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Campus Branch</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Total Intakes</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Completed</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Branch Location</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Intakes</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Admissions</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Conversion %</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Active Streak</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Badges</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'right' }}>Total Points (PTS)</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Tier / Badges</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'right' }}>{leagueMetricFilter === 'rpl' ? '💰 Revenue (₹L)' : leagueMetricFilter === 'wpl' ? '🚶 Walk-ins' : leagueMetricFilter === 'spl' ? '🎓 Admissions' : '🌟 Score (XP)'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1869,80 +3571,67 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-alt)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      {/* Rank & Counselor */}
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: '26px', height: '26px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.75rem', fontWeight: 900,
                             background: idx === 0 ? '#f59e0b' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--surface-alt)',
-                            color: idx <= 2 ? '#fff' : 'var(--muted)', fontWeight: 900, fontSize: '0.74rem',
+                            color: idx < 3 ? '#ffffff' : 'var(--muted)',
                           }}>
-                            #{idx + 1}
+                            {idx + 1}
                           </span>
                           <div style={{
-                            width: '36px', height: '36px', borderRadius: '50%',
+                            width: '32px', height: '32px', borderRadius: '50%',
                             background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                            color: '#fff', fontWeight: 900, fontSize: '0.8rem',
+                            color: '#fff', fontWeight: 800, fontSize: '0.75rem',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {getInitials(cg.name)}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text)' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text)' }}>
                               {cg.name}
                             </div>
-                            <span style={{
-                              fontSize: '0.66rem', fontWeight: 800, color: cg.tierColor,
-                            }}>
-                              Lvl {cg.level} • {cg.tierName}
-                            </span>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
+                              🔥 {cg.streakDays} Day Streak
+                            </div>
                           </div>
                         </div>
                       </td>
-
-                      {/* Campus Branch */}
                       <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>
-                        {cg.branchName}
+                        📍 {cg.branchName}
                       </td>
-
-                      {/* Total Intakes */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                        {Math.max(cg.completedCount + 2, 4)}
+                      <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
+                        {cg.walkinCount}
                       </td>
-
-                      {/* Completed */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
+                      <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
                         {cg.completedCount}
                       </td>
-
-                      {/* Conversion Rate */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
-                        {cg.conversionRate}%
-                      </td>
-
-                      {/* Streak */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#f59e0b' }}>
-                        🔥 {cg.streakDays}d
-                      </td>
-
-                      {/* Badges */}
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '0.74rem', fontWeight: 900, padding: '3px 8px', borderRadius: '6px',
-                          background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)',
+                          padding: '3px 8px', borderRadius: '6px',
+                          background: cg.conversionRate >= 70 ? 'rgba(16, 185, 129, 0.12)' : 'var(--surface-alt)',
+                          color: cg.conversionRate >= 70 ? '#10b981' : 'var(--text)',
+                          fontWeight: 800, fontSize: '0.78rem',
                         }}>
-                          {cg.badges.filter(b => b.isUnlocked).length} 🎖️
+                          {cg.conversionRate}%
                         </span>
                       </td>
-
-                      {/* Total Points */}
-                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '1rem', fontWeight: 900, color: 'var(--primary)', fontFamily: 'var(--font-mono)',
+                          padding: '3px 10px', borderRadius: '9999px',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          border: '1px solid rgba(99, 102, 241, 0.25)',
+                          color: 'var(--primary)',
+                          fontWeight: 800, fontSize: '0.74rem',
                         }}>
-                          {cg.xp} PTS
+                          🎖️ {cg.tierName} ({cg.badges.length} Badges)
                         </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, fontSize: '0.92rem', color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                        {leagueMetricFilter === 'rpl' ? `₹${(((cg.totalSales || 0)) / 100000).toFixed(2)}L` : leagueMetricFilter === 'wpl' ? `${cg.walkinCount || 0}` : leagueMetricFilter === 'spl' ? `${cg.completedCount || 0}` : `${cg.xp} XP`}
                       </td>
                     </tr>
                   ))}
@@ -1954,19 +3643,213 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TAB 3: CAMPUS STANDINGS & 3D PODIUM
+          TAB: 🏆 CAMPUS STANDINGS & LEADERBOARD
       ══════════════════════════════════════════════════════ */}
       {activeTab === 'league' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
           
-          {/* Championship Podium */}
+                    {/* ─── Unified Ultra-Modern Filter & League Control Bar (Combined Single Row) ─── */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '11px',
+            padding: '6px 12px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+          }}>
+            {/* Left: First League Pills (Overall, RPL, WPL, SPL), then Divider, then Timeframe Modes */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* 1. Clean League Segment Pills: Overall, RPL, WPL, SPL */}
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                {[
+                  { id: 'all', label: 'Overall', color: 'var(--primary)' },
+                  { id: 'rpl', label: 'RPL', color: '#f59e0b' },
+                  { id: 'wpl', label: 'WPL', color: '#10b981' },
+                  { id: 'spl', label: 'SPL', color: '#0284c7' },
+                ].map((l) => {
+                  const isActive = leagueMetricFilter === l.id;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setLeagueMetricFilter(l.id as any)}
+                      style={{
+                        height: '26px',
+                        padding: '0 10px',
+                        borderRadius: '6px',
+                        border: isActive ? `1.5px solid ${l.color}` : '1.5px solid transparent',
+                        background: isActive ? `${l.color}15` : 'transparent',
+                        color: isActive ? l.color : 'var(--muted)',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Subtle Vertical Divider */}
+              <div style={{ width: '1.5px', height: '16px', background: 'var(--border)', margin: '0 2px' }} />
+
+              {/* 2. Timeframe Modes: Daily, Weekly, Monthly, Yearly, All Time, Custom Range */}
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                {[
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                  { id: 'yearly', label: 'Yearly' },
+                  { id: 'all_time', label: 'All Time' },
+                  { id: 'custom', label: 'Custom Range' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setAnalyticsTimeframe(prev => ({ ...prev, mode: tab.id as any }))}
+                    style={{
+                      height: '26px',
+                      padding: '0 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: analyticsTimeframe.mode === tab.id ? 'var(--primary)' : 'transparent',
+                      color: analyticsTimeframe.mode === tab.id ? '#ffffff' : 'var(--text)',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: analyticsTimeframe.mode === tab.id ? '0 2px 6px rgba(99, 102, 241, 0.25)' : 'none',
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Custom Date Filter Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0 }}>
+              {/* 1. DAILY */}
+              {analyticsTimeframe.mode === 'daily' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.dailySub}
+                    options={[
+                      { value: 'today', label: 'Today' },
+                      { value: 'yesterday', label: 'Yesterday' },
+                      { value: 'custom_day', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, dailySub: val as any }))}
+                  />
+                  {analyticsTimeframe.dailySub === 'custom_day' && (
+                    <ModernDatePicker
+                      value={analyticsTimeframe.customDay}
+                      onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, customDay: val }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 2. WEEKLY */}
+              {analyticsTimeframe.mode === 'weekly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.weeklySub}
+                    options={[
+                      { value: 'this_week', label: 'This Week' },
+                      { value: 'last_week', label: 'Last Week' },
+                      { value: 'last_7_days', label: 'Last 7 Days' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, weeklySub: val as any }))}
+                  />
+                  {(analyticsTimeframe.weeklySub as string) === 'custom' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 3. MONTHLY */}
+              {analyticsTimeframe.mode === 'monthly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.monthlySub}
+                    options={[
+                      { value: 'current_month', label: 'Current Month' },
+                      { value: 'prev_month', label: 'Previous Month' },
+                      { value: 'specific_month', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, monthlySub: val as any }))}
+                  />
+                  {analyticsTimeframe.monthlySub === 'specific_month' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 4. YEARLY */}
+              {analyticsTimeframe.mode === 'yearly' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                  <ModernDropdownMenu
+                    value={analyticsTimeframe.yearlySub}
+                    options={[
+                      { value: '2026', label: '2026 Annual' },
+                      { value: '2025', label: '2025 Annual' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    onChange={(val) => setAnalyticsTimeframe(prev => ({ ...prev, yearlySub: val as any }))}
+                  />
+                  {(analyticsTimeframe.yearlySub as string) === 'custom' && (
+                    <ModernDateRangePicker
+                      startDate={analyticsTimeframe.customStartDate}
+                      endDate={analyticsTimeframe.customEndDate}
+                      onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 5. CUSTOM RANGE */}
+              {analyticsTimeframe.mode === 'custom' && (
+                <ModernDateRangePicker
+                  startDate={analyticsTimeframe.customStartDate}
+                  endDate={analyticsTimeframe.customEndDate}
+                  onChange={(s, e) => setAnalyticsTimeframe(prev => ({ ...prev, customStartDate: s, customEndDate: e }))}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Championship Campus Podium */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '16px',
-            alignItems: 'flex-end',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            width: '100%',
+            gap: '18px',
+            alignItems: 'stretch',
           }}>
-            {/* 2nd Place */}
+            {/* 2nd Place Campus */}
             <div style={{
               background: 'var(--card-bg)',
               border: '1.5px solid rgba(148, 163, 184, 0.4)',
@@ -1989,21 +3872,21 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 Runner Up (#2)
               </span>
               <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                {campusStandings[1]?.name || '3rd Campus (Pista House-HYD)'}
+                {campusStandingsForPeriod[1]?.name || '3rd Campus (Pista House-HYD)'}
               </h3>
               <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--muted)' }}>
-                📍 {campusStandings[1]?.location || 'Hyderabad'}
+                📍 {campusStandingsForPeriod[1]?.location || 'Hyderabad'}
               </p>
               <div style={{
                 marginTop: '12px', padding: '8px', borderRadius: '8px',
                 background: 'var(--surface-alt)', fontSize: '0.88rem', fontWeight: 900,
                 color: '#94a3b8', fontFamily: 'var(--font-mono)',
               }}>
-                {campusStandings[1]?.leaguePoints || 840} LP
+                {leagueMetricFilter === 'rpl' ? `₹${(((campusStandingsForPeriod[1]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${campusStandingsForPeriod[1]?.intakeCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${campusStandingsForPeriod[1]?.completedCount || 0} Admissions` : `${campusStandingsForPeriod[1]?.leaguePoints || 840} LP`}
               </div>
             </div>
 
-            {/* 1st Place Champion */}
+            {/* 1st Place Campus Champion */}
             <div style={{
               background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, var(--card-bg) 100%)',
               border: '2px solid rgba(245, 158, 11, 0.65)',
@@ -2035,21 +3918,21 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 Rank #1
               </span>
               <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>
-                {campusStandings[0]?.name || '1st Campus (JNTU-HYD)'}
+                {campusStandingsForPeriod[0]?.name || '1st Campus (JNTU-HYD)'}
               </h3>
               <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>
-                📍 {campusStandings[0]?.location || 'Hyderabad'}
+                📍 {campusStandingsForPeriod[0]?.location || 'Hyderabad'}
               </p>
               <div style={{
                 marginTop: '12px', padding: '9px', borderRadius: '10px',
                 background: 'rgba(245, 158, 11, 0.15)', fontSize: '1.05rem', fontWeight: 900,
                 color: '#f59e0b', fontFamily: 'var(--font-mono)',
               }}>
-                {campusStandings[0]?.leaguePoints || 1250} LP
+                {leagueMetricFilter === 'rpl' ? `₹${(((campusStandingsForPeriod[0]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${campusStandingsForPeriod[0]?.intakeCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${campusStandingsForPeriod[0]?.completedCount || 0} Admissions` : `${campusStandingsForPeriod[0]?.leaguePoints || 1250} LP`}
               </div>
             </div>
 
-            {/* 3rd Place */}
+            {/* 3rd Place Campus */}
             <div style={{
               background: 'var(--card-bg)',
               border: '1.5px solid rgba(205, 127, 50, 0.4)',
@@ -2072,22 +3955,22 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 Bronze Tier (#3)
               </span>
               <h3 style={{ margin: '4px 0 2px 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text)' }}>
-                {campusStandings[2]?.name || '1st Campus (Main-VSP)'}
+                {campusStandingsForPeriod[2]?.name || '1st Campus (Main-VSP)'}
               </h3>
               <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--muted)' }}>
-                📍 {campusStandings[2]?.location || 'Visakhapatnam'}
+                📍 {campusStandingsForPeriod[2]?.location || 'Visakhapatnam'}
               </p>
               <div style={{
                 marginTop: '12px', padding: '8px', borderRadius: '8px',
                 background: 'var(--surface-alt)', fontSize: '0.88rem', fontWeight: 900,
                 color: '#cd7f32', fontFamily: 'var(--font-mono)',
               }}>
-                {campusStandings[2]?.leaguePoints || 620} LP
+                {leagueMetricFilter === 'rpl' ? `₹${(((campusStandingsForPeriod[2]?.totalSales || 0)) / 100000).toFixed(2)}L Revenue` : leagueMetricFilter === 'wpl' ? `${campusStandingsForPeriod[2]?.intakeCount || 0} Walk-ins` : leagueMetricFilter === 'spl' ? `${campusStandingsForPeriod[2]?.completedCount || 0} Admissions` : `${campusStandingsForPeriod[2]?.leaguePoints || 620} LP`}
               </div>
             </div>
           </div>
 
-          {/* Standings Table Card */}
+          {/* Campus Standings Table Card */}
           <div style={{
             background: 'var(--card-bg)',
             border: '1.5px solid var(--border)',
@@ -2096,7 +3979,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
           }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 16px 0', color: 'var(--text)' }}>
-              {selectedMonth} Campus Target &amp; Leaderboard
+              {timeframeSummaryLabel} Campus Target &amp; Leaderboard
             </h2>
 
             <div className="table-wrapper">
@@ -2105,14 +3988,21 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                   <tr style={{ borderBottom: '1.5px solid var(--border)', background: 'var(--surface-alt, rgba(255,255,255,0.02))' }}>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'left' }}>Rank &amp; Campus</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>League Division</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Monthly Intakes</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Intakes</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Target Conversion %</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'center' }}>Win Streak</th>
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'right' }}>League Points (LP)</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', textAlign: 'right' }}>{leagueMetricFilter === 'rpl' ? '💰 Revenue (₹L)' : leagueMetricFilter === 'wpl' ? '🚶 Walk-ins' : leagueMetricFilter === 'spl' ? '🎓 Admissions' : '🌟 Score (XP)'}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCampuses.map((c) => (
+                  {campusStandingsForPeriod.filter((c) => {
+                    if (regionFilter !== 'all' && c.location !== regionFilter) return false;
+                    if (searchQuery.trim()) {
+                      const q = searchQuery.toLowerCase();
+                      return c.name.toLowerCase().includes(q) || c.location.toLowerCase().includes(q);
+                    }
+                    return true;
+                  }).map((c) => (
                     <tr
                       key={c.id}
                       style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s ease' }}
@@ -2122,230 +4012,58 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: '24px', height: '24px', borderRadius: '50%',
+                            width: '26px', height: '26px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.75rem', fontWeight: 900,
                             background: c.rank === 1 ? '#f59e0b' : c.rank === 2 ? '#94a3b8' : c.rank === 3 ? '#cd7f32' : 'var(--surface-alt)',
-                            color: c.rank <= 3 ? '#fff' : 'var(--muted)', fontWeight: 900, fontSize: '0.72rem',
+                            color: c.rank <= 3 ? '#ffffff' : 'var(--muted)',
                           }}>
-                            #{c.rank}
+                            {c.rank}
                           </span>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text)' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text)' }}>
                               {c.name}
                             </div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                              📍 {c.location} • Campus Lead: {c.mvpCounselorName}
+                            <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
+                              📍 {c.location} • MVP: {c.mvpCounselorName}
                             </div>
                           </div>
                         </div>
                       </td>
-
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: '9999px',
-                          background: 'rgba(245, 158, 11, 0.15)',
-                          color: '#d97706',
-                          border: '1px solid currentColor',
+                          padding: '3px 10px', borderRadius: '9999px',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          border: '1px solid rgba(99, 102, 241, 0.25)',
+                          color: 'var(--primary)',
+                          fontWeight: 800, fontSize: '0.74rem',
                         }}>
-                          {monthShortName} League
+                          {c.tier}
                         </span>
                       </td>
-
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                        {c.intakeCount}
+                      <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
+                        {c.completedCount} / {c.intakeCount}
                       </td>
-
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
-                        {c.conversionRate}%
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: '6px',
+                          background: c.conversionRate >= 70 ? 'rgba(16, 185, 129, 0.12)' : 'var(--surface-alt)',
+                          color: c.conversionRate >= 70 ? '#10b981' : 'var(--text)',
+                          fontWeight: 800, fontSize: '0.78rem',
+                        }}>
+                          {c.conversionRate}%
+                        </span>
                       </td>
-
-                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#f59e0b' }}>
-                        🔥 {c.winStreak}W
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem', color: '#f59e0b' }}>
+                        🔥 {c.winStreak}
                       </td>
-
-                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, fontSize: '0.98rem', color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, fontSize: '0.92rem', color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
                         {c.leaguePoints} LP
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════
-          TAB 4: CAMPUS COMPARISON MATRIX
-      ══════════════════════════════════════════════════════ */}
-      {activeTab === 'clash' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{
-            background: 'var(--card-bg)',
-            border: '1.5px solid var(--border)',
-            borderRadius: '18px',
-            padding: '24px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-              <div>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>
-                  Campus Performance Comparison Matrix
-                </h2>
-                <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '4px 0 0 0' }}>
-                  Select any two official walk-in campuses to compare intake velocity, conversion rate, and performance metrics.
-                </p>
-              </div>
-
-              {/* Selectors */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label htmlFor="campus-a-select" style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--muted)' }}>Campus A:</label>
-                  <select
-                    id="campus-a-select"
-                    value={campusAId}
-                    onChange={(e) => setCampusAId(e.target.value)}
-                    style={{
-                      padding: '7px 12px',
-                      borderRadius: '8px',
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '0.82rem',
-                      fontWeight: 800,
-                      outline: 'none',
-                    }}
-                  >
-                    {campusStandings.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <span style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--muted)' }}>VS</span>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label htmlFor="campus-b-select" style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--muted)' }}>Campus B:</label>
-                  <select
-                    id="campus-b-select"
-                    value={campusBId}
-                    onChange={(e) => setCampusBId(e.target.value)}
-                    style={{
-                      padding: '7px 12px',
-                      borderRadius: '8px',
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '0.82rem',
-                      fontWeight: 800,
-                      outline: 'none',
-                    }}
-                  >
-                    {campusStandings.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Comparison Side-by-Side Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-              
-              {/* Campus A Card */}
-              <div style={{
-                background: 'var(--surface-alt)',
-                border: '1.5px solid var(--primary)',
-                borderRadius: '14px',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
-                      Selected Campus
-                    </span>
-                    <h3 style={{ margin: '2px 0 0 0', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
-                      {selectedCampusA.name}
-                    </h3>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>
-                      📍 {selectedCampusA.location}
-                    </p>
-                  </div>
-                  <div style={{
-                    padding: '7px 12px', borderRadius: '8px',
-                    background: 'var(--primary)', color: '#fff',
-                    fontSize: '0.98rem', fontWeight: 900, fontFamily: 'var(--font-mono)',
-                  }}>
-                    {selectedCampusA.leaguePoints} LP
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Total Footfalls</span>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', marginTop: '2px' }}>
-                      {selectedCampusA.intakeCount}
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Conversion %</span>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>
-                      {selectedCampusA.conversionRate}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Campus B Card */}
-              <div style={{
-                background: 'var(--surface-alt)',
-                border: '1.5px solid rgba(168, 85, 247, 0.6)',
-                borderRadius: '14px',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#a855f7', textTransform: 'uppercase' }}>
-                      Comparison Campus
-                    </span>
-                    <h3 style={{ margin: '2px 0 0 0', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
-                      {selectedCampusB.name}
-                    </h3>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>
-                      📍 {selectedCampusB.location}
-                    </p>
-                  </div>
-                  <div style={{
-                    padding: '7px 12px', borderRadius: '8px',
-                    background: '#a855f7', color: '#fff',
-                    fontSize: '0.98rem', fontWeight: 900, fontFamily: 'var(--font-mono)',
-                  }}>
-                    {selectedCampusB.leaguePoints} LP
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Total Footfalls</span>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', marginTop: '2px' }}>
-                      {selectedCampusB.intakeCount}
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Conversion %</span>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>
-                      {selectedCampusB.conversionRate}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
@@ -2413,7 +4131,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px' }}>
                       <span style={{ color: 'var(--muted)' }}>Progress to Lvl {cg.level + 1}</span>
-                      <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{cg.xp} XP</span>
+                      <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{leagueMetricFilter === 'rpl' ? `₹${(((cg.totalSales || 0)) / 100000).toFixed(2)}L` : leagueMetricFilter === 'wpl' ? `${cg.walkinCount || 0}` : leagueMetricFilter === 'spl' ? `${cg.completedCount || 0}` : `${cg.xp} XP`}</span>
                     </div>
                     <div style={{ height: '6px', borderRadius: '9999px', background: 'var(--surface)', overflow: 'hidden' }}>
                       <div style={{
@@ -2600,7 +4318,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
             <div style={{ overflowY: 'auto', flex: 1, padding: '22px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               {/* Podium Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))', gap: '16px' }}>
                 {/* Winner Campus Plaque */}
                 {selectedSeasonModal.winnerBranch && (
                   <div style={{
@@ -3146,7 +4864,7 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                     🏆 All-Time Championship Hall of Fame
                   </div>
                   <h3 style={{ margin: '2px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>
-                    {selectedAllTimeLeagueModal.icon} {selectedAllTimeLeagueModal.title}
+                    {selectedAllTimeLeagueModal.title}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 900, color: selectedAllTimeLeagueModal.color, background: `${selectedAllTimeLeagueModal.color}1a`, padding: '3px 12px', borderRadius: '8px', border: `1px solid ${selectedAllTimeLeagueModal.color}44` }}>
@@ -3476,6 +5194,178 @@ export default function LeagueClient({ students, counselors, convertedLeads = []
                 style={{ padding: '8px 24px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.84rem', fontWeight: 800, cursor: 'pointer' }}
               >
                 Close Pedigree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+          {/* ─── Set / Edit Targets Modal ─── */}
+      {isEditTargetModalOpen && editingTargetEntity && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--card-bg)',
+            border: '1.5px solid var(--border)',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'fadeIn 0.2s ease-out',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: 'var(--text)' }}>
+                  ⚙️ Set Custom Target &amp; Incentives
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
+                  Adjust quotas and cash bonus tiers for {editingTargetEntity.name}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditTargetModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
+                  Target Entity
+                </label>
+                <select
+                  value={editingTargetEntity.name}
+                  onChange={(e) => setEditingTargetEntity(prev => prev ? ({ ...prev, name: e.target.value }) : null)}
+                  style={{
+                    width: '100%', padding: '9px 12px', borderRadius: '8px',
+                    border: '1.5px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, outline: 'none',
+                  }}
+                >
+                  {(targetScope === 'counselor' ? counselorGamifications.map(c => c.name) : campusStandings.map(c => c.name)).map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
+                    💰 Revenue Target (₹)
+                  </label>
+                  <input
+                    type="number"
+                    defaultValue={customTargetsOverride[editingTargetEntity.name]?.revenue || (targetScope === 'counselor' ? 500000 : 2500000)}
+                    id="target-input-revenue"
+                    style={{
+                      width: '100%', padding: '9px 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
+                    🎓 Admissions Target
+                  </label>
+                  <input
+                    type="number"
+                    defaultValue={customTargetsOverride[editingTargetEntity.name]?.admissions || (targetScope === 'counselor' ? 20 : 100)}
+                    id="target-input-admissions"
+                    style={{
+                      width: '100%', padding: '9px 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
+                    🚶 Walk-ins Target
+                  </label>
+                  <input
+                    type="number"
+                    defaultValue={customTargetsOverride[editingTargetEntity.name]?.walkins || (targetScope === 'counselor' ? 50 : 250)}
+                    id="target-input-walkins"
+                    style={{
+                      width: '100%', padding: '9px 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
+                    💵 Base 100% Incentive (₹)
+                  </label>
+                  <input
+                    type="number"
+                    defaultValue={customTargetsOverride[editingTargetEntity.name]?.baseIncentive || (targetScope === 'counselor' ? 5000 : 25000)}
+                    id="target-input-base-inc"
+                    style={{
+                      width: '100%', padding: '9px 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: '0.84rem', fontWeight: 700, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsEditTargetModalOpen(false)}
+                style={{ padding: '8px 18px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const rev = Number((document.getElementById('target-input-revenue') as HTMLInputElement)?.value) || 500000;
+                  const adm = Number((document.getElementById('target-input-admissions') as HTMLInputElement)?.value) || 20;
+                  const walk = Number((document.getElementById('target-input-walkins') as HTMLInputElement)?.value) || 50;
+                  const baseInc = Number((document.getElementById('target-input-base-inc') as HTMLInputElement)?.value) || 5000;
+
+                  setCustomTargetsOverride(prev => ({
+                    ...prev,
+                    [editingTargetEntity.name]: {
+                      revenue: rev,
+                      admissions: adm,
+                      walkins: walk,
+                      baseIncentive: baseInc,
+                      stretchBonus: Math.round(baseInc * 0.6),
+                    },
+                  }));
+                  setIsEditTargetModalOpen(false);
+                }}
+                style={{ padding: '8px 22px', borderRadius: '8px', background: 'var(--primary)', border: 'none', color: '#ffffff', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}
+              >
+                Save Quotas &amp; Incentives
               </button>
             </div>
           </div>
